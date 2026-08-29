@@ -12,7 +12,3 @@ __pycache__/
 .flutter-plugins-dependencies
 .pub-cache/
 build/
-
-# IDE
-.vscode/
-.idea/
