@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
 from dotenv import load_dotenv
@@ -6,11 +6,12 @@ from google import genai
 
 import os
 import json
+import pyttsx3
 
 
-# ---------------------------------------
-# Load environment variables
-# ---------------------------------------
+# =======================================
+# Load Environment Variables
+# =======================================
 
 load_dotenv()
 
@@ -20,27 +21,27 @@ if not api_key:
     raise ValueError("GEMINI_API_KEY not found in .env file")
 
 
-# ---------------------------------------
-# Flask application
-# ---------------------------------------
+# =======================================
+# Flask Application
+# =======================================
 
 app = Flask(__name__)
 
 CORS(app)
 
 
-# ---------------------------------------
-# Gemini client
-# ---------------------------------------
+# =======================================
+# Gemini Client
+# =======================================
 
 client = genai.Client(api_key=api_key)
 
 MODEL = "gemini-3.6-flash"
 
 
-# ---------------------------------------
+# =======================================
 # 1. Concept Explanation
-# ---------------------------------------
+# =======================================
 
 def explain_topic(topic):
 
@@ -67,9 +68,9 @@ def explain_topic(topic):
     return response.text
 
 
-# ---------------------------------------
+# =======================================
 # 2. One-Shot Revision
-# ---------------------------------------
+# =======================================
 
 def one_shot_revision(topic):
 
@@ -94,9 +95,9 @@ def one_shot_revision(topic):
     return response.text
 
 
-# ---------------------------------------
+# =======================================
 # 3. What If I Skip?
-# ---------------------------------------
+# =======================================
 
 def what_if_i_skip(topic):
 
@@ -122,9 +123,9 @@ def what_if_i_skip(topic):
     return response.text
 
 
-# ---------------------------------------
+# =======================================
 # 4. Visual Explanation
-# ---------------------------------------
+# =======================================
 
 def visual_explanation(topic):
 
@@ -161,12 +162,14 @@ def visual_explanation(topic):
 
     result = response.text.strip()
 
+    # Remove Markdown code block if Gemini adds it
     if result.startswith("```"):
         result = result.replace("```json", "")
         result = result.replace("```", "")
         result = result.strip()
 
     try:
+
         return json.loads(result)
 
     except json.JSONDecodeError:
@@ -178,9 +181,9 @@ def visual_explanation(topic):
         }
 
 
-# ---------------------------------------
+# =======================================
 # 5. AI Doubt Solver
-# ---------------------------------------
+# =======================================
 
 def solve_doubt(topic, question):
 
@@ -211,13 +214,42 @@ def solve_doubt(topic, question):
 
 
 # =======================================
+# 6. Voice Explanation
+# =======================================
+
+def generate_voice(topic):
+
+    # First generate explanation using Gemini
+    explanation = explain_topic(topic)
+
+    # Create Text-to-Speech engine
+    engine = pyttsx3.init()
+
+    # Set speaking speed
+    engine.setProperty("rate", 150)
+
+    # Name of audio file
+    audio_file = "pointer_explanation.mp3"
+
+    # Convert text to speech and save
+    engine.save_to_file(
+        explanation,
+        audio_file
+    )
+
+    engine.runAndWait()
+
+    return audio_file
+
+
+# =======================================
 # API ROUTES
 # =======================================
 
 
-# ---------------------------------------
+# =======================================
 # Home / Test
-# ---------------------------------------
+# =======================================
 
 @app.route("/", methods=["GET"])
 def home():
@@ -227,9 +259,9 @@ def home():
     })
 
 
-# ---------------------------------------
+# =======================================
 # Explanation API
-# ---------------------------------------
+# =======================================
 
 @app.route("/explain", methods=["POST"])
 def explain():
@@ -239,6 +271,7 @@ def explain():
     topic = data.get("topic")
 
     if not topic:
+
         return jsonify({
             "error": "Topic is required"
         }), 400
@@ -251,9 +284,9 @@ def explain():
     })
 
 
-# ---------------------------------------
+# =======================================
 # One-Shot Revision API
-# ---------------------------------------
+# =======================================
 
 @app.route("/revision", methods=["POST"])
 def revision():
@@ -263,6 +296,7 @@ def revision():
     topic = data.get("topic")
 
     if not topic:
+
         return jsonify({
             "error": "Topic is required"
         }), 400
@@ -275,9 +309,9 @@ def revision():
     })
 
 
-# ---------------------------------------
+# =======================================
 # What If I Skip API
-# ---------------------------------------
+# =======================================
 
 @app.route("/skip", methods=["POST"])
 def skip():
@@ -287,6 +321,7 @@ def skip():
     topic = data.get("topic")
 
     if not topic:
+
         return jsonify({
             "error": "Topic is required"
         }), 400
@@ -299,9 +334,9 @@ def skip():
     })
 
 
-# ---------------------------------------
+# =======================================
 # Visual Explanation API
-# ---------------------------------------
+# =======================================
 
 @app.route("/visual", methods=["POST"])
 def visual():
@@ -311,6 +346,7 @@ def visual():
     topic = data.get("topic")
 
     if not topic:
+
         return jsonify({
             "error": "Topic is required"
         }), 400
@@ -320,9 +356,9 @@ def visual():
     return jsonify(result)
 
 
-# ---------------------------------------
+# =======================================
 # AI Doubt Solver API
-# ---------------------------------------
+# =======================================
 
 @app.route("/doubt", methods=["POST"])
 def doubt():
@@ -338,7 +374,10 @@ def doubt():
             "error": "Topic and question are required"
         }), 400
 
-    answer = solve_doubt(topic, question)
+    answer = solve_doubt(
+        topic,
+        question
+    )
 
     return jsonify({
         "topic": topic,
@@ -348,7 +387,42 @@ def doubt():
 
 
 # =======================================
-# Start Flask server
+# Voice Explanation API
+# =======================================
+
+@app.route("/voice", methods=["POST"])
+def voice():
+
+    data = request.get_json()
+
+    topic = data.get("topic")
+
+    if not topic:
+
+        return jsonify({
+            "error": "Topic is required"
+        }), 400
+
+    try:
+
+        audio_file = generate_voice(topic)
+
+        return send_file(
+            audio_file,
+            mimetype="audio/mpeg",
+            as_attachment=False
+        )
+
+    except Exception as e:
+
+        return jsonify({
+            "error": "Voice generation failed",
+            "details": str(e)
+        }), 500
+
+
+# =======================================
+# Start Flask Server
 # =======================================
 
 if __name__ == "__main__":
