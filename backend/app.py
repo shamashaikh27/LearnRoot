@@ -1,10 +1,11 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
-from openai import OpenAI
+
 from db import get_connection
 from ai_quiz import generate_quiz
 from ai_recommendation import generate_recommendation
+
 import os
 
 
@@ -12,11 +13,20 @@ import os
 # LOAD ENVIRONMENT VARIABLES
 # ============================================================
 
-load_dotenv()
-
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY")
+# Find LearnRoot root folder
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
 )
+
+# .env is inside LearnRoot
+ENV_FILE = os.path.join(
+    BASE_DIR,
+    ".env"
+)
+
+load_dotenv(ENV_FILE)
 
 
 # ============================================================
@@ -40,6 +50,9 @@ def home():
 
 # ============================================================
 # GET ALL TOPICS
+#
+# All topics are available.
+# There is NO LOCK / UNLOCK system.
 # ============================================================
 
 @app.route("/topics")
@@ -51,7 +64,10 @@ def get_topics():
     try:
 
         connection = get_connection()
-        cursor = connection.cursor(dictionary=True)
+
+        cursor = connection.cursor(
+            dictionary=True
+        )
 
         cursor.execute("""
             SELECT
@@ -59,10 +75,11 @@ def get_topics():
                 subject,
                 topic_name,
                 topic_order,
-                completed,
-                unlocked
+                completed
             FROM topics
-            ORDER BY subject, topic_order
+            ORDER BY
+                subject,
+                topic_order
         """)
 
         topics = cursor.fetchall()
@@ -105,6 +122,11 @@ def test_db():
                 "message": "LearnRoot is connected to MySQL!"
             })
 
+        return jsonify({
+            "status": "error",
+            "message": "Database connection failed."
+        }), 500
+
     except Exception as e:
 
         return jsonify({
@@ -120,6 +142,17 @@ def test_db():
 
 # ============================================================
 # GET QUIZ BY TOPIC
+#
+# If questions already exist:
+#     Return existing questions.
+#
+# If questions do not exist:
+#     Generate 5 questions using Gemini.
+#
+# Gemini:
+#     2 Easy
+#     2 Moderate
+#     1 Hard
 # ============================================================
 
 @app.route("/quiz/<int:topic_id>")
@@ -131,10 +164,13 @@ def get_quiz(topic_id):
     try:
 
         connection = get_connection()
-        cursor = connection.cursor(dictionary=True)
+
+        cursor = connection.cursor(
+            dictionary=True
+        )
 
         # ----------------------------------------------------
-        # GET TOPIC INFORMATION
+        # GET TOPIC
         # ----------------------------------------------------
 
         cursor.execute("""
@@ -156,7 +192,7 @@ def get_quiz(topic_id):
             }), 404
 
         # ----------------------------------------------------
-        # GET EXISTING QUESTIONS
+        # CHECK EXISTING QUESTIONS
         # ----------------------------------------------------
 
         cursor.execute("""
@@ -176,16 +212,20 @@ def get_quiz(topic_id):
         questions = cursor.fetchall()
 
         # ----------------------------------------------------
-        # IF QUESTIONS EXIST, RETURN THEM
+        # RETURN EXISTING QUESTIONS
         # ----------------------------------------------------
 
         if questions:
 
-            return jsonify(questions)
+            return jsonify({
+                "status": "success",
+                "topic_id": topic_id,
+                "topic_name": topic["topic_name"],
+                "questions": questions
+            })
 
         # ----------------------------------------------------
-        # NO QUESTIONS
-        # GENERATE USING AI
+        # GENERATE QUIZ USING GEMINI
         # ----------------------------------------------------
 
         generated_questions = generate_quiz(
@@ -200,10 +240,21 @@ def get_quiz(topic_id):
             }), 500
 
         # ----------------------------------------------------
-        # SAVE GENERATED QUESTIONS
+        # CHECK QUESTION COUNT
         # ----------------------------------------------------
 
-        for question in generated_questions:
+        if len(generated_questions) < 5:
+
+            return jsonify({
+                "status": "error",
+                "message": "Gemini generated fewer than 5 questions."
+            }), 500
+
+        # ----------------------------------------------------
+        # SAVE QUESTIONS
+        # ----------------------------------------------------
+
+        for question in generated_questions[:5]:
 
             cursor.execute("""
                 INSERT INTO quizzes
@@ -217,7 +268,17 @@ def get_quiz(topic_id):
                     correct_answer,
                     solution
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s
+                )
             """, (
                 topic_id,
                 question["question"],
@@ -232,7 +293,7 @@ def get_quiz(topic_id):
         connection.commit()
 
         # ----------------------------------------------------
-        # GET NEW QUESTIONS
+        # GET SAVED QUESTIONS
         # ----------------------------------------------------
 
         cursor.execute("""
@@ -251,7 +312,12 @@ def get_quiz(topic_id):
 
         questions = cursor.fetchall()
 
-        return jsonify(questions)
+        return jsonify({
+            "status": "success",
+            "topic_id": topic_id,
+            "topic_name": topic["topic_name"],
+            "questions": questions
+        })
 
     except Exception as e:
 
@@ -274,9 +340,24 @@ def get_quiz(topic_id):
 
 # ============================================================
 # SUBMIT QUIZ
+#
+# Correct answer:
+#     is_correct = True
+#
+# Incorrect answer:
+#     is_correct = False
+#
+# Frontend can display:
+#     Correct   -> GREEN
+#     Incorrect -> RED
+#
+# Resources are available even if score < 50%.
 # ============================================================
 
-@app.route("/submit-quiz", methods=["POST"])
+@app.route(
+    "/submit-quiz",
+    methods=["POST"]
+)
 def submit_quiz():
 
     connection = None
@@ -293,8 +374,14 @@ def submit_quiz():
                 "message": "No data received."
             }), 400
 
-        topic_id = data.get("topic_id")
-        answers = data.get("answers", {})
+        topic_id = data.get(
+            "topic_id"
+        )
+
+        answers = data.get(
+            "answers",
+            {}
+        )
 
         if topic_id is None:
 
@@ -304,7 +391,10 @@ def submit_quiz():
             }), 400
 
         connection = get_connection()
-        cursor = connection.cursor(dictionary=True)
+
+        cursor = connection.cursor(
+            dictionary=True
+        )
 
         # ----------------------------------------------------
         # GET QUESTIONS
@@ -339,37 +429,84 @@ def submit_quiz():
         # ----------------------------------------------------
 
         score = 0
+
         solutions = []
 
         for question in questions:
 
-            quiz_id = str(question["quiz_id"])
+            quiz_id = str(
+                question["quiz_id"]
+            )
 
-            correct_answer = question["correct_answer"]
+            correct_answer = str(
+                question["correct_answer"]
+            ).upper()
 
-            student_answer = answers.get(quiz_id)
+            student_answer = answers.get(
+                quiz_id
+            )
 
-            if student_answer == correct_answer:
+            if student_answer is not None:
+
+                student_answer = str(
+                    student_answer
+                ).upper()
+
+            # ------------------------------------------------
+            # CHECK ANSWER
+            # ------------------------------------------------
+
+            is_correct = (
+                student_answer ==
+                correct_answer
+            )
+
+            if is_correct:
 
                 score += 1
 
+            # ------------------------------------------------
+            # STORE RESULT
+            # ------------------------------------------------
+
             solutions.append({
-                "quiz_id": question["quiz_id"],
-                "question": question["question"],
-                "student_answer": student_answer,
-                "correct_answer": correct_answer,
-                "solution": question["solution"]
+
+                "quiz_id":
+                    question["quiz_id"],
+
+                "question":
+                    question["question"],
+
+                "student_answer":
+                    student_answer,
+
+                "correct_answer":
+                    correct_answer,
+
+                "is_correct":
+                    is_correct,
+
+                "solution":
+                    question["solution"]
+
             })
 
         # ----------------------------------------------------
         # CALCULATE SCORE
         # ----------------------------------------------------
 
-        total_questions = len(questions)
+        total_questions = len(
+            questions
+        )
 
-        percentage = (score / total_questions) * 100
+        percentage = (
+            score /
+            total_questions
+        ) * 100
 
-        completed = percentage >= 50
+        completed = (
+            percentage >= 50
+        )
 
         # ----------------------------------------------------
         # STORE QUIZ RESULT
@@ -383,7 +520,13 @@ def submit_quiz():
                 total_questions,
                 percentage
             )
-            VALUES (%s, %s, %s, %s)
+            VALUES
+            (
+                %s,
+                %s,
+                %s,
+                %s
+            )
         """, (
             topic_id,
             score,
@@ -392,7 +535,7 @@ def submit_quiz():
         ))
 
         # ----------------------------------------------------
-        # CHECK EXISTING PROGRESS
+        # CHECK PROGRESS
         # ----------------------------------------------------
 
         cursor.execute("""
@@ -404,7 +547,7 @@ def submit_quiz():
         progress = cursor.fetchone()
 
         # ----------------------------------------------------
-        # UPDATE OR INSERT PROGRESS
+        # UPDATE EXISTING PROGRESS
         # ----------------------------------------------------
 
         if progress:
@@ -413,15 +556,25 @@ def submit_quiz():
                 UPDATE progress
                 SET
                     completed = %s,
-                    best_score = GREATEST(best_score, %s),
-                    attempts = attempts + 1,
-                    last_attempt = CURRENT_TIMESTAMP
+                    best_score =
+                        GREATEST(
+                            best_score,
+                            %s
+                        ),
+                    attempts =
+                        attempts + 1,
+                    last_attempt =
+                        CURRENT_TIMESTAMP
                 WHERE topic_id = %s
             """, (
                 completed,
                 percentage,
                 topic_id
             ))
+
+        # ----------------------------------------------------
+        # INSERT NEW PROGRESS
+        # ----------------------------------------------------
 
         else:
 
@@ -434,7 +587,14 @@ def submit_quiz():
                     attempts,
                     last_attempt
                 )
-                VALUES (%s, %s, %s, 1, CURRENT_TIMESTAMP)
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s,
+                    1,
+                    CURRENT_TIMESTAMP
+                )
             """, (
                 topic_id,
                 completed,
@@ -442,40 +602,20 @@ def submit_quiz():
             ))
 
         # ----------------------------------------------------
-        # UNLOCK NEXT TOPIC
+        # UPDATE TOPIC COMPLETED STATUS
         # ----------------------------------------------------
 
-        if percentage >= 50:
-
-            cursor.execute("""
-                SELECT topic_id
-                FROM topics
-                WHERE subject = (
-                    SELECT subject
-                    FROM topics
-                    WHERE topic_id = %s
-                )
-                AND topic_order > (
-                    SELECT topic_order
-                    FROM topics
-                    WHERE topic_id = %s
-                )
-                ORDER BY topic_order
-                LIMIT 1
-            """, (topic_id, topic_id))
-
-            next_topic = cursor.fetchone()
-
-            if next_topic:
-
-                cursor.execute("""
-                    UPDATE topics
-                    SET unlocked = TRUE
-                    WHERE topic_id = %s
-                """, (next_topic["topic_id"],))
+        cursor.execute("""
+            UPDATE topics
+            SET completed = %s
+            WHERE topic_id = %s
+        """, (
+            completed,
+            topic_id
+        ))
 
         # ----------------------------------------------------
-        # SAVE
+        # SAVE DATABASE CHANGES
         # ----------------------------------------------------
 
         connection.commit()
@@ -485,14 +625,34 @@ def submit_quiz():
         # ----------------------------------------------------
 
         return jsonify({
-            "status": "success",
-            "topic_id": topic_id,
-            "score": score,
-            "total_questions": total_questions,
-            "percentage": round(percentage, 2),
-            "completed": completed,
-            "solutions": solutions,
-            "message": "Quiz evaluated successfully!"
+
+            "status":
+                "success",
+
+            "topic_id":
+                topic_id,
+
+            "score":
+                score,
+
+            "total_questions":
+                total_questions,
+
+            "percentage":
+                round(
+                    percentage,
+                    2
+                ),
+
+            "completed":
+                completed,
+
+            "solutions":
+                solutions,
+
+            "message":
+                "Quiz evaluated successfully!"
+
         })
 
     except Exception as e:
@@ -516,6 +676,8 @@ def submit_quiz():
 
 # ============================================================
 # GET STUDENT PROGRESS
+#
+# All topics are available.
 # ============================================================
 
 @app.route("/progress")
@@ -527,21 +689,41 @@ def get_progress():
     try:
 
         connection = get_connection()
-        cursor = connection.cursor(dictionary=True)
+
+        cursor = connection.cursor(
+            dictionary=True
+        )
 
         cursor.execute("""
             SELECT
                 t.topic_id,
                 t.subject,
                 t.topic_name,
-                t.unlocked,
-                COALESCE(p.completed, 0) AS completed,
-                COALESCE(p.best_score, 0) AS best_score,
-                COALESCE(p.attempts, 0) AS attempts
+
+                COALESCE(
+                    p.completed,
+                    0
+                ) AS completed,
+
+                COALESCE(
+                    p.best_score,
+                    0
+                ) AS best_score,
+
+                COALESCE(
+                    p.attempts,
+                    0
+                ) AS attempts
+
             FROM topics t
+
             LEFT JOIN progress p
-                ON t.topic_id = p.topic_id
-            ORDER BY t.subject, t.topic_order
+                ON t.topic_id =
+                   p.topic_id
+
+            ORDER BY
+                t.subject,
+                t.topic_order
         """)
 
         progress = cursor.fetchall()
@@ -566,6 +748,9 @@ def get_progress():
 
 # ============================================================
 # GET WEAK TOPICS
+#
+# Weak topic:
+# BEST SCORE < 50%
 # ============================================================
 
 @app.route("/weak-topics")
@@ -577,28 +762,47 @@ def get_weak_topics():
     try:
 
         connection = get_connection()
-        cursor = connection.cursor(dictionary=True)
+
+        cursor = connection.cursor(
+            dictionary=True
+        )
 
         cursor.execute("""
             SELECT
                 t.topic_id,
                 t.subject,
                 t.topic_name,
-                MAX(qr.percentage) AS percentage
+                MAX(
+                    qr.percentage
+                ) AS percentage
+
             FROM quiz_results qr
+
             JOIN topics t
-                ON qr.topic_id = t.topic_id
+                ON qr.topic_id =
+                   t.topic_id
+
             GROUP BY
                 t.topic_id,
                 t.subject,
-                t.topic_name
-            HAVING MAX(qr.percentage) < 50
-            ORDER BY percentage ASC, t.topic_order ASC
+                t.topic_name,
+                t.topic_order
+
+            HAVING
+                MAX(
+                    qr.percentage
+                ) < 50
+
+            ORDER BY
+                percentage ASC,
+                t.topic_order ASC
         """)
 
         weak_topics = cursor.fetchall()
 
-        return jsonify(weak_topics)
+        return jsonify(
+            weak_topics
+        )
 
     except Exception as e:
 
@@ -614,11 +818,30 @@ def get_weak_topics():
 
         if connection:
             connection.close()
+
+
 # ============================================================
-# SMART RECOMMENDATIONS
+# LEARNING RESOURCES
+#
+# IMPORTANT:
+#
+# Resources are ALWAYS visible.
+#
+# < 50%:
+#     Notes + resources visible
+#
+# 50 - 79%:
+#     Notes + resources visible
+#
+# 80%+:
+#     Notes + resources visible
+#
+# SCORE NEVER HIDES NOTES.
 # ============================================================
 
-@app.route("/recommendations/<int:topic_id>")
+@app.route(
+    "/recommendations/<int:topic_id>"
+)
 def get_recommendations(topic_id):
 
     connection = None
@@ -627,7 +850,31 @@ def get_recommendations(topic_id):
     try:
 
         connection = get_connection()
-        cursor = connection.cursor(dictionary=True)
+
+        cursor = connection.cursor(
+            dictionary=True
+        )
+
+        # ----------------------------------------------------
+        # GET TOPIC
+        # ----------------------------------------------------
+
+        cursor.execute("""
+            SELECT
+                topic_id,
+                topic_name
+            FROM topics
+            WHERE topic_id = %s
+        """, (topic_id,))
+
+        topic = cursor.fetchone()
+
+        if not topic:
+
+            return jsonify({
+                "status": "error",
+                "message": "Topic not found."
+            }), 404
 
         # ----------------------------------------------------
         # GET BEST SCORE
@@ -635,88 +882,228 @@ def get_recommendations(topic_id):
 
         cursor.execute("""
             SELECT
-                COALESCE(MAX(percentage), 0) AS best_score
+                COALESCE(
+                    MAX(percentage),
+                    0
+                ) AS best_score
+
             FROM quiz_results
+
             WHERE topic_id = %s
         """, (topic_id,))
 
         score_data = cursor.fetchone()
 
         best_score = float(
-            score_data["best_score"] or 0
+            score_data["best_score"]
+            or 0
         )
 
         # ----------------------------------------------------
-        # CHOOSE RECOMMENDATION LEVEL
+        # DETERMINE LEARNING LEVEL
         # ----------------------------------------------------
 
         if best_score < 50:
 
-            recommendation_level = "Needs Improvement"
-
-            cursor.execute("""
-                SELECT
-                    resource_id,
-                    topic_id,
-                    resource_type,
-                    title,
-                    resource_link
-                FROM resources
-                WHERE topic_id = %s
-                ORDER BY resource_id
-            """, (topic_id,))
+            recommendation_level = (
+                "Needs Improvement"
+            )
 
         elif best_score < 80:
 
-            recommendation_level = "Practice"
-
-            cursor.execute("""
-                SELECT
-                    resource_id,
-                    topic_id,
-                    resource_type,
-                    title,
-                    resource_link
-                FROM resources
-                WHERE topic_id = %s
-                ORDER BY
-                    CASE
-                        WHEN resource_type = 'Video' THEN 1
-                        ELSE 2
-                    END,
-                    resource_id
-            """, (topic_id,))
+            recommendation_level = (
+                "Practice"
+            )
 
         else:
 
-            recommendation_level = "Advanced Learning"
+            recommendation_level = (
+                "Advanced Learning"
+            )
 
-            cursor.execute("""
-                SELECT
-                    resource_id,
-                    topic_id,
-                    resource_type,
-                    title,
-                    resource_link
-                FROM resources
-                WHERE topic_id = %s
-                ORDER BY
-                    CASE
-                        WHEN resource_type = 'Video' THEN 1
-                        ELSE 2
-                    END,
-                    resource_id
-            """, (topic_id,))
+        # ----------------------------------------------------
+        # GET ALL RESOURCES
+        #
+        # NO SCORE FILTER
+        # ----------------------------------------------------
+
+        cursor.execute("""
+            SELECT
+                resource_id,
+                topic_id,
+                resource_type,
+                title,
+                resource_link
+
+            FROM resources
+
+            WHERE topic_id = %s
+
+            ORDER BY resource_id
+        """, (topic_id,))
 
         resources = cursor.fetchall()
 
+        # ----------------------------------------------------
+        # RETURN RESOURCES
+        # ----------------------------------------------------
+
         return jsonify({
-            "status": "success",
-            "topic_id": topic_id,
-            "best_score": best_score,
-            "recommendation_level": recommendation_level,
-            "resources": resources,
-            "message": "Smart learning resources recommended successfully."
+
+            "status":
+                "success",
+
+            "topic_id":
+                topic_id,
+
+            "topic_name":
+                topic["topic_name"],
+
+            "best_score":
+                round(
+                    best_score,
+                    2
+                ),
+
+            "recommendation_level":
+                recommendation_level,
+
+            "notes_visible":
+                True,
+
+            "resources":
+                resources,
+
+            "message":
+                "Learning resources are always available."
+
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if connection:
+            connection.close()
+
+
+# ============================================================
+# AI SMART LEARNING RECOMMENDATION
+#
+# Gemini generates personalized guidance.
+#
+# Resources remain visible even below 50%.
+# ============================================================
+
+@app.route(
+    "/smart-recommendation/<int:topic_id>"
+)
+def smart_recommendation(topic_id):
+
+    connection = None
+    cursor = None
+
+    try:
+
+        connection = get_connection()
+
+        cursor = connection.cursor(
+            dictionary=True
+        )
+
+        # ----------------------------------------------------
+        # GET TOPIC
+        # ----------------------------------------------------
+
+        cursor.execute("""
+            SELECT
+                topic_id,
+                topic_name
+            FROM topics
+            WHERE topic_id = %s
+        """, (topic_id,))
+
+        topic = cursor.fetchone()
+
+        if not topic:
+
+            return jsonify({
+                "status": "error",
+                "message": "Topic not found."
+            }), 404
+
+        # ----------------------------------------------------
+        # GET BEST SCORE
+        # ----------------------------------------------------
+
+        cursor.execute("""
+            SELECT
+                COALESCE(
+                    MAX(percentage),
+                    0
+                ) AS best_score
+
+            FROM quiz_results
+
+            WHERE topic_id = %s
+        """, (topic_id,))
+
+        result = cursor.fetchone()
+
+        score = float(
+            result["best_score"]
+            or 0
+        )
+
+        # ----------------------------------------------------
+        # GENERATE GEMINI RECOMMENDATION
+        # ----------------------------------------------------
+
+        recommendation = (
+            generate_recommendation(
+                topic["topic_name"],
+                score
+            )
+        )
+
+        # ----------------------------------------------------
+        # RETURN AI RECOMMENDATION
+        # ----------------------------------------------------
+
+        return jsonify({
+
+            "status":
+                "success",
+
+            "topic_id":
+                topic_id,
+
+            "topic_name":
+                topic["topic_name"],
+
+            "score":
+                round(
+                    score,
+                    2
+                ),
+
+            "recommendation":
+                recommendation,
+
+            "notes_visible":
+                True,
+
+            "message":
+                "AI learning recommendation generated successfully."
+
         })
 
     except Exception as e:
@@ -748,34 +1135,44 @@ def get_analytics():
     try:
 
         connection = get_connection()
-        cursor = connection.cursor(dictionary=True)
+
+        cursor = connection.cursor(
+            dictionary=True
+        )
 
         # ----------------------------------------------------
         # TOTAL ATTEMPTS
         # ----------------------------------------------------
 
         cursor.execute("""
-            SELECT COUNT(*) AS total_attempts
+            SELECT
+                COUNT(*) AS total_attempts
             FROM quiz_results
         """)
 
         attempts_data = cursor.fetchone()
 
-        total_attempts = attempts_data["total_attempts"] or 0
+        total_attempts = (
+            attempts_data["total_attempts"]
+            or 0
+        )
 
         # ----------------------------------------------------
         # AVERAGE SCORE
         # ----------------------------------------------------
 
         cursor.execute("""
-            SELECT AVG(percentage) AS average_score
+            SELECT
+                AVG(percentage)
+                AS average_score
             FROM quiz_results
         """)
 
         average_data = cursor.fetchone()
 
         average_score = float(
-            average_data["average_score"] or 0
+            average_data["average_score"]
+            or 0
         )
 
         # ----------------------------------------------------
@@ -783,14 +1180,17 @@ def get_analytics():
         # ----------------------------------------------------
 
         cursor.execute("""
-            SELECT MAX(percentage) AS best_score
+            SELECT
+                MAX(percentage)
+                AS best_score
             FROM quiz_results
         """)
 
         best_data = cursor.fetchone()
 
         best_score = float(
-            best_data["best_score"] or 0
+            best_data["best_score"]
+            or 0
         )
 
         # ----------------------------------------------------
@@ -798,7 +1198,8 @@ def get_analytics():
         # ----------------------------------------------------
 
         cursor.execute("""
-            SELECT COUNT(*) AS completed_topics
+            SELECT
+                COUNT(*) AS completed_topics
             FROM progress
             WHERE completed = TRUE
         """)
@@ -806,7 +1207,8 @@ def get_analytics():
         completed_data = cursor.fetchone()
 
         completed_topics = (
-            completed_data["completed_topics"] or 0
+            completed_data["completed_topics"]
+            or 0
         )
 
         # ----------------------------------------------------
@@ -814,14 +1216,16 @@ def get_analytics():
         # ----------------------------------------------------
 
         cursor.execute("""
-            SELECT COUNT(*) AS total_topics
+            SELECT
+                COUNT(*) AS total_topics
             FROM topics
         """)
 
         total_data = cursor.fetchone()
 
         total_topics = (
-            total_data["total_topics"] or 0
+            total_data["total_topics"]
+            or 0
         )
 
         # ----------------------------------------------------
@@ -831,7 +1235,8 @@ def get_analytics():
         if total_topics > 0:
 
             overall_progress = (
-                completed_topics / total_topics
+                completed_topics /
+                total_topics
             ) * 100
 
         else:
@@ -843,16 +1248,37 @@ def get_analytics():
         # ----------------------------------------------------
 
         return jsonify({
-            "status": "success",
-            "total_attempts": total_attempts,
-            "average_score": round(average_score, 2),
-            "best_score": round(best_score, 2),
-            "completed_topics": completed_topics,
-            "total_topics": total_topics,
-            "overall_progress": round(
-                overall_progress,
-                2
-            )
+
+            "status":
+                "success",
+
+            "total_attempts":
+                total_attempts,
+
+            "average_score":
+                round(
+                    average_score,
+                    2
+                ),
+
+            "best_score":
+                round(
+                    best_score,
+                    2
+                ),
+
+            "completed_topics":
+                completed_topics,
+
+            "total_topics":
+                total_topics,
+
+            "overall_progress":
+                round(
+                    overall_progress,
+                    2
+                )
+
         })
 
     except Exception as e:
@@ -872,90 +1298,7 @@ def get_analytics():
 
 
 # ============================================================
-# AI SMART LEARNING RECOMMENDATION
-# ============================================================
-
-@app.route("/smart-recommendation/<int:topic_id>")
-def smart_recommendation(topic_id):
-
-    connection = None
-    cursor = None
-
-    try:
-
-        connection = get_connection()
-        cursor = connection.cursor(dictionary=True)
-
-        # ----------------------------------------------------
-        # GET TOPIC NAME
-        # ----------------------------------------------------
-
-        cursor.execute("""
-            SELECT topic_name
-            FROM topics
-            WHERE topic_id = %s
-        """, (topic_id,))
-
-        topic = cursor.fetchone()
-
-        if not topic:
-
-            return jsonify({
-                "status": "error",
-                "message": "Topic not found."
-            }), 404
-
-        # ----------------------------------------------------
-        # GET BEST SCORE
-        # ----------------------------------------------------
-
-        cursor.execute("""
-            SELECT MAX(percentage) AS best_score
-            FROM quiz_results
-            WHERE topic_id = %s
-        """, (topic_id,))
-
-        result = cursor.fetchone()
-
-        score = float(
-            result["best_score"] or 0
-        )
-
-        # ----------------------------------------------------
-        # GENERATE AI RECOMMENDATION
-        # ----------------------------------------------------
-
-        recommendation = generate_recommendation(
-            topic["topic_name"],
-            score
-        )
-
-        return jsonify({
-            "status": "success",
-            "topic_id": topic_id,
-            "topic_name": topic["topic_name"],
-            "score": round(score, 2),
-            "recommendation": recommendation
-        })
-
-    except Exception as e:
-
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-    finally:
-
-        if cursor:
-            cursor.close()
-
-        if connection:
-            connection.close()
-
-
-# ============================================================
-# TEST OPENAI AI CONNECTION
+# TEST GEMINI AI CONNECTION
 # ============================================================
 
 @app.route("/test-ai")
@@ -963,21 +1306,51 @@ def test_ai():
 
     try:
 
-        response = client.responses.create(
-            model="gpt-5.6",
-            input="Say hello to LearnRoot in one short sentence."
+        from google import genai
+
+        gemini_key = os.getenv(
+            "GEMINI_API_KEY"
+        )
+
+        if not gemini_key:
+
+            return jsonify({
+                "status": "error",
+                "message": "GEMINI_API_KEY is not set in LearnRoot/.env"
+            }), 500
+
+        client = genai.Client(
+            api_key=gemini_key
+        )
+
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=(
+                "Say hello to LearnRoot "
+                "in one short sentence."
+            )
         )
 
         return jsonify({
-            "status": "success",
-            "message": response.output_text
+
+            "status":
+                "success",
+
+            "message":
+                response.text
+
         })
 
     except Exception as e:
 
         return jsonify({
-            "status": "error",
-            "message": str(e)
+
+            "status":
+                "error",
+
+            "message":
+                str(e)
+
         }), 500
 
 
@@ -987,4 +1360,8 @@ def test_ai():
 
 if __name__ == "__main__":
 
-    app.run(debug=True)
+    app.run(
+        debug=True,
+        host="127.0.0.1",
+        port=5000
+    )

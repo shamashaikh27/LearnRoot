@@ -45,13 +45,6 @@ function App() {
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        /*
-          Remove duplicate topics.
-
-          If a topic has been attempted multiple times,
-          only the lowest score is displayed.
-        */
-
         const uniqueTopics = {};
 
         data.forEach((topic) => {
@@ -71,7 +64,6 @@ function App() {
 
         const cleanedTopics = Object.values(uniqueTopics);
 
-        // Lowest score first
         cleanedTopics.sort(
           (a, b) =>
             Number(a.percentage) - Number(b.percentage)
@@ -105,7 +97,7 @@ function App() {
   };
 
   // ============================================================
-  // LOAD DASHBOARD DATA
+  // INITIAL LOAD
   // ============================================================
 
   useEffect(() => {
@@ -116,21 +108,10 @@ function App() {
 
   // ============================================================
   // START QUIZ
+  // ALL TOPICS ARE OPEN
   // ============================================================
 
-  const startQuiz = async (topic, allowLocked = false) => {
-    /*
-      Normal dashboard:
-      Locked topics cannot be opened.
-
-      Weak topic:
-      We allow review even if the topic is locked.
-    */
-
-    if (!topic.unlocked && !allowLocked) {
-      return;
-    }
-
+  const startQuiz = async (topic) => {
     try {
       setLoading(true);
       setMessage("");
@@ -150,7 +131,9 @@ function App() {
       if (Array.isArray(data)) {
         setQuestions(data);
       } else {
-        setMessage("Unable to load quiz questions.");
+        setMessage(
+          data.message || "Unable to load quiz questions."
+        );
       }
     } catch (error) {
       console.log(error);
@@ -165,6 +148,11 @@ function App() {
   // ============================================================
 
   const selectAnswer = (quizId, answer) => {
+    // Do not allow changing answers after quiz is submitted
+    if (result) {
+      return;
+    }
+
     setAnswers((previous) => ({
       ...previous,
       [quizId]: answer,
@@ -173,6 +161,7 @@ function App() {
 
   // ============================================================
   // LOAD RESOURCES
+  // RESOURCES ARE ALWAYS AVAILABLE
   // ============================================================
 
   const loadResources = async (topicId) => {
@@ -189,7 +178,7 @@ function App() {
         setResources([]);
       }
     } catch (error) {
-      console.log(error);
+      console.log("Unable to load resources.");
       setResources([]);
     }
   };
@@ -233,19 +222,22 @@ function App() {
       if (data.status === "success") {
         setResult(data);
 
-        // Load resources
-        await loadResources(
-          selectedTopic.topic_id
-        );
+        // ======================================================
+        // LOAD RESOURCES REGARDLESS OF SCORE
+        // ======================================================
 
-        // Refresh dashboard data
+        await loadResources(selectedTopic.topic_id);
+
+        // ======================================================
+        // REFRESH DASHBOARD
+        // ======================================================
+
         await loadTopics();
         await loadWeakTopics();
         await loadAnalytics();
       } else {
         setMessage(
-          data.message ||
-            "Quiz submission failed."
+          data.message || "Quiz submission failed."
         );
       }
     } catch (error) {
@@ -254,6 +246,58 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ============================================================
+  // GET OPTION TEXT
+  // ============================================================
+
+  const getOptionText = (question, option) => {
+    if (option === "A") return question.option_a;
+    if (option === "B") return question.option_b;
+    if (option === "C") return question.option_c;
+    if (option === "D") return question.option_d;
+
+    return "";
+  };
+
+  // ============================================================
+  // GET ANSWER CLASS
+  // GREEN = CORRECT
+  // RED = INCORRECT
+  // ============================================================
+
+  const getAnswerClass = (question, option) => {
+    // Before submission
+    if (!result) {
+      return "";
+    }
+
+    const studentAnswer = answers[question.quiz_id];
+    const correctAnswer = question.correct_answer;
+
+    // Correct selected answer
+    if (
+      studentAnswer === option &&
+      studentAnswer === correctAnswer
+    ) {
+      return "answer-correct";
+    }
+
+    // Incorrect selected answer
+    if (
+      studentAnswer === option &&
+      studentAnswer !== correctAnswer
+    ) {
+      return "answer-incorrect";
+    }
+
+    // Also show the correct answer in green
+    if (option === correctAnswer) {
+      return "answer-correct";
+    }
+
+    return "";
   };
 
   // ============================================================
@@ -305,7 +349,7 @@ function App() {
             <h1>🌱 LearnRoot</h1>
 
             <p>
-              Learn Smart. Learn in the Right Order.
+              Learn Smart. Learn at Your Own Pace.
             </p>
           </div>
         </header>
@@ -329,11 +373,11 @@ function App() {
             </h2>
 
             <p>
-              Complete each quiz to unlock the next topic.
+              Select any topic and start learning.
+              All topics are available.
             </p>
 
           </section>
-
 
           {/* =====================================================
               LEARNING ANALYTICS
@@ -374,7 +418,6 @@ function App() {
 
                 </div>
 
-
                 {/* AVERAGE SCORE */}
 
                 <div className="analytics-card">
@@ -397,7 +440,6 @@ function App() {
 
                 </div>
 
-
                 {/* BEST SCORE */}
 
                 <div className="analytics-card">
@@ -419,7 +461,6 @@ function App() {
                   </p>
 
                 </div>
-
 
                 {/* COMPLETED TOPICS */}
 
@@ -446,7 +487,6 @@ function App() {
                 </div>
 
               </div>
-
 
               {/* OVERALL PROGRESS */}
 
@@ -477,15 +517,14 @@ function App() {
                 </div>
 
                 <p>
-                  Keep completing topics to improve
-                  your overall progress.
+                  Keep completing quizzes to improve
+                  your learning progress.
                 </p>
 
               </div>
 
             </section>
           )}
-
 
           {/* =====================================================
               TOPICS TO IMPROVE
@@ -494,8 +533,6 @@ function App() {
           {weakTopics.length > 0 && (
 
             <section className="weak-section">
-
-              {/* SECTION HEADER */}
 
               <div className="weak-header">
 
@@ -532,9 +569,6 @@ function App() {
 
               </div>
 
-
-              {/* WEAK TOPIC CARDS */}
-
               <div className="weak-grid">
 
                 {weakTopics.map((topic) => {
@@ -559,8 +593,6 @@ function App() {
                       key={topic.topic_id}
                     >
 
-                      {/* TOP */}
-
                       <div className="weak-card-top">
 
                         <span className="weak-subject">
@@ -573,15 +605,9 @@ function App() {
 
                       </div>
 
-
-                      {/* TOPIC */}
-
                       <h3>
                         {topic.topic_name}
                       </h3>
-
-
-                      {/* SCORE */}
 
                       <div className="weak-score-area">
 
@@ -597,7 +623,6 @@ function App() {
                           </div>
 
                         </div>
-
 
                         <div className="score-info">
 
@@ -617,28 +642,16 @@ function App() {
 
                       </div>
 
-
-                      {/* REVIEW BUTTON */}
-
                       <button
                         className="review-button"
                         onClick={() => {
-
                           if (selected) {
-
-                            startQuiz(
-                              selected,
-                              true
-                            );
-
+                            startQuiz(selected);
                           } else {
-
                             setMessage(
                               "Topic information not found."
                             );
-
                           }
-
                         }}
                       >
 
@@ -653,7 +666,6 @@ function App() {
                       </button>
 
                     </div>
-
                   );
                 })}
 
@@ -661,7 +673,6 @@ function App() {
 
             </section>
           )}
-
 
           {/* =====================================================
               NO WEAK TOPICS
@@ -691,7 +702,6 @@ function App() {
             </section>
           )}
 
-
           {/* =====================================================
               SUBJECTS / LEARNING PATH
           ====================================================== */}
@@ -718,11 +728,7 @@ function App() {
                     (topic) => (
 
                       <div
-                        className={`topic-card ${
-                          topic.unlocked
-                            ? "unlocked"
-                            : "locked"
-                        }`}
+                        className="topic-card unlocked"
                         key={topic.topic_id}
                       >
 
@@ -731,44 +737,24 @@ function App() {
                         </div>
 
                         <h3>
-
-                          {topic.unlocked
-                            ? "📖"
-                            : "🔒"}
-
-                          {" "}
-
-                          {topic.topic_name}
-
+                          📖 {topic.topic_name}
                         </h3>
 
                         <div className="topic-status">
-
                           {topic.completed
                             ? "✅ Completed"
-                            : topic.unlocked
-                            ? "🔓 Unlocked"
-                            : "🔒 Locked"}
-
+                            : "📚 Available"}
                         </div>
 
-                        {topic.unlocked ? (
+                        {/* EVERY TOPIC IS OPEN */}
 
-                          <button
-                            onClick={() =>
-                              startQuiz(topic)
-                            }
-                          >
-                            Start Quiz →
-                          </button>
-
-                        ) : (
-
-                          <p className="locked-text">
-                            Complete the previous topic
-                          </p>
-
-                        )}
+                        <button
+                          onClick={() =>
+                            startQuiz(topic)
+                          }
+                        >
+                          Start Quiz →
+                        </button>
 
                       </div>
                     )
@@ -782,13 +768,12 @@ function App() {
 
         </main>
 
-
         {/* FOOTER */}
 
         <footer>
 
           <p>
-            🌱 LearnRoot — Your Personalized Learning Path
+            🌱 LearnRoot — Your Personalized Learning Platform
           </p>
 
         </footer>
@@ -796,7 +781,6 @@ function App() {
       </div>
     );
   }
-
 
   // ============================================================
   // QUIZ PAGE
@@ -825,7 +809,6 @@ function App() {
             ← Back to Topics
           </button>
 
-
           <section className="quiz-section">
 
             <div className="quiz-header">
@@ -842,17 +825,21 @@ function App() {
                 Answer all questions and submit your quiz.
               </p>
 
-            </div>
+              <div className="quiz-info">
+                📝 {questions.length} Questions
+                {" • "}
+                🎯 Easy + Moderate + Hard
+              </div>
 
+            </div>
 
             {loading && (
 
               <div className="message">
-                Loading...
+                Generating your AI quiz...
               </div>
 
             )}
-
 
             {!loading &&
               questions.map(
@@ -868,10 +855,28 @@ function App() {
                       {question.question}
                     </h3>
 
+                    {/* DIFFICULTY */}
+
+                    {question.difficulty && (
+
+                      <span
+                        className={`difficulty-badge ${String(
+                          question.difficulty
+                        ).toLowerCase()}`}
+                      >
+                        {question.difficulty}
+                      </span>
+
+                    )}
 
                     {/* OPTION A */}
 
-                    <label>
+                    <label
+                      className={getAnswerClass(
+                        question,
+                        "A"
+                      )}
+                    >
 
                       <input
                         type="radio"
@@ -887,16 +892,23 @@ function App() {
                             "A"
                           )
                         }
+                        disabled={!!result}
                       />
 
-                      A. {question.option_a}
+                      <span>
+                        A. {question.option_a}
+                      </span>
 
                     </label>
 
-
                     {/* OPTION B */}
 
-                    <label>
+                    <label
+                      className={getAnswerClass(
+                        question,
+                        "B"
+                      )}
+                    >
 
                       <input
                         type="radio"
@@ -912,16 +924,23 @@ function App() {
                             "B"
                           )
                         }
+                        disabled={!!result}
                       />
 
-                      B. {question.option_b}
+                      <span>
+                        B. {question.option_b}
+                      </span>
 
                     </label>
 
-
                     {/* OPTION C */}
 
-                    <label>
+                    <label
+                      className={getAnswerClass(
+                        question,
+                        "C"
+                      )}
+                    >
 
                       <input
                         type="radio"
@@ -937,16 +956,23 @@ function App() {
                             "C"
                           )
                         }
+                        disabled={!!result}
                       />
 
-                      C. {question.option_c}
+                      <span>
+                        C. {question.option_c}
+                      </span>
 
                     </label>
 
-
                     {/* OPTION D */}
 
-                    <label>
+                    <label
+                      className={getAnswerClass(
+                        question,
+                        "D"
+                      )}
+                    >
 
                       <input
                         type="radio"
@@ -962,16 +988,18 @@ function App() {
                             "D"
                           )
                         }
+                        disabled={!!result}
                       />
 
-                      D. {question.option_d}
+                      <span>
+                        D. {question.option_d}
+                      </span>
 
                     </label>
 
                   </div>
                 )
               )}
-
 
             {!loading &&
               questions.length > 0 && (
@@ -996,7 +1024,6 @@ function App() {
     );
   }
 
-
   // ============================================================
   // RESULT PAGE
   // ============================================================
@@ -1013,13 +1040,13 @@ function App() {
 
       </header>
 
-
       <main className="container">
 
         <section className="result-section">
 
-
-          {/* RESULT */}
+          {/* ====================================================
+              RESULT
+          ===================================================== */}
 
           <div className="result-card">
 
@@ -1044,16 +1071,14 @@ function App() {
 
             </p>
 
-
             {result.percentage < 50 && (
 
               <p>
-                📖 Keep practicing! Review the
-                resources below and try again.
+                📖 Keep practicing! Your learning
+                resources are available below.
               </p>
 
             )}
-
 
             {result.percentage >= 50 &&
               result.percentage < 80 && (
@@ -1065,7 +1090,6 @@ function App() {
 
               )}
 
-
             {result.percentage >= 80 && (
 
               <p>
@@ -1076,10 +1100,9 @@ function App() {
 
           </div>
 
-
-          {/* =====================================================
+          {/* ====================================================
               SOLUTIONS
-          ====================================================== */}
+          ===================================================== */}
 
           {result.solutions &&
             result.solutions.length > 0 && (
@@ -1087,15 +1110,23 @@ function App() {
               <section className="solutions-section">
 
                 <h2>
-                  📝 Correct Solutions
+                  📝 Quiz Review
                 </h2>
 
+                <p className="section-description">
+                  Review your answers and correct solutions.
+                </p>
 
                 {result.solutions.map(
                   (solution, index) => (
 
                     <div
-                      className="solution-card"
+                      className={`solution-card ${
+                        solution.student_answer ===
+                        solution.correct_answer
+                          ? "solution-correct"
+                          : "solution-incorrect"
+                      }`}
                       key={
                         solution.quiz_id ||
                         index
@@ -1107,6 +1138,22 @@ function App() {
                         {solution.question}
                       </h3>
 
+                      <p>
+
+                        <strong>
+                          Your Answer:
+                        </strong>
+
+                        {" "}
+
+                        {solution.student_answer
+                          ? getOptionText(
+                              questions[index],
+                              solution.student_answer
+                            )
+                          : "Not answered"}
+
+                      </p>
 
                       <p>
 
@@ -1116,17 +1163,19 @@ function App() {
 
                         {" "}
 
-                        {solution.correct_answer}
+                        {getOptionText(
+                          questions[index],
+                          solution.correct_answer
+                        )}
 
                       </p>
-
 
                       {solution.solution && (
 
                         <p>
 
                           <strong>
-                            Solution:
+                            Explanation:
                           </strong>
 
                           {" "}
@@ -1145,17 +1194,22 @@ function App() {
               </section>
             )}
 
-
-          {/* =====================================================
-              RESOURCES
-          ====================================================== */}
+          {/* ====================================================
+              LEARNING RESOURCES
+              ALWAYS VISIBLE
+          ===================================================== */}
 
           <section className="resources-section">
 
             <h2>
-              📚 Recommended Resources
+              📚 AI Learning Resources & Notes
             </h2>
 
+            <p className="section-description">
+              These resources are available regardless
+              of your quiz score. Use them to strengthen
+              your understanding of the topic.
+            </p>
 
             {resources.length === 0 ? (
 
@@ -1186,7 +1240,6 @@ function App() {
 
                       </div>
 
-
                       <div>
 
                         <span className="resource-type">
@@ -1195,11 +1248,9 @@ function App() {
 
                         </span>
 
-
                         <h3>
                           {resource.title}
                         </h3>
-
 
                         <a
                           href={
@@ -1222,8 +1273,9 @@ function App() {
 
           </section>
 
-
-          {/* CONTINUE */}
+          {/* ====================================================
+              CONTINUE
+          ===================================================== */}
 
           <button
             className="continue-button"
