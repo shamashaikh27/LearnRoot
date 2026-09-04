@@ -12,3 +12,7 @@ __pycache__/
 .flutter-plugins-dependencies
 .pub-cache/
 build/
+
+# Generated audio
+*.mp3
+*.wav
