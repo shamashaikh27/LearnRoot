@@ -1,22 +1,68 @@
-# LearnRoot AI Visual Tutor API
+# LearnRoot - AI Visual Tutor API Documentation
 
 ## Module 3 - AI Visual Tutor
 
-LearnRoot AI Visual Tutor provides AI-powered learning assistance for
-Computer Engineering students.
+LearnRoot is a prerequisite-aware learning platform designed to help Computer Engineering students understand topics, revise concepts, solve doubts, and understand the consequences of skipping prerequisite topics.
 
-The module provides:
-
-1. AI Concept Explanation
-2. AI Visual Explanation
-3. AI Summary
-4. AI Doubt Solver
-5. AI "What If I Skip?"
-6. Voice Explanation using Text-to-Speech
+This document describes the APIs developed for **Module 3 - AI Visual Tutor**.
 
 ---
 
-# Base URL
+# 1. Module Overview
+
+Module 3 provides AI-powered learning assistance using the Google Gemini API.
+
+The module contains four main AI features:
+
+1. AI Visual Explanation with Text-to-Speech
+2. AI Summary of the Concept
+3. AI Doubt Solver
+4. AI "What If I Skip?"
+
+The backend is developed using:
+
+- Python
+- Flask
+- Google Gemini API
+- `google-genai`
+- `python-dotenv`
+- Flask-CORS
+- `pyttsx3`
+- FFmpeg
+- JSON
+
+---
+
+# 2. Module 3 Architecture
 
 ```text
-http://127.0.0.1:5000
+                    MODULE 2
+                 Prerequisite DAG
+                       │
+                Student selects topic
+                       ↓
+              ┌─────────────────┐
+              │   MODULE 3      │
+              │   AI VISUAL     │
+              │     TUTOR       │
+              └────────┬────────┘
+                       │
+       ┌───────────────┼────────────────┐
+       ↓               ↓                ↓
+   Explanation      Summary        What If I Skip?
+       │               │                │
+       └───────────────┼────────────────┘
+                       ↓
+                  Gemini API
+                       ↓
+                 AI response
+                       ↓
+              Flutter UI / TTS
+
+                 AI DOUBT SOLVER
+                       ↑
+                 Student question
+                       ↓
+                    Gemini
+                       ↓
+                  AI answer
