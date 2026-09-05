@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'module2/screens/graph_screen.dart';
+import 'module2/screens/subject_screen.dart';
 
 void main() {
   runApp(const LearnRootApp());
@@ -19,7 +19,7 @@ class LearnRootApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const GraphScreen(),
+      home: const SubjectScreen(),
     );
   }
 }

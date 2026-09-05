@@ -1,3 +1,4 @@
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -11,7 +12,14 @@ import 'topic_details_screen.dart';
 // =============================================================
 
 class GraphScreen extends StatefulWidget {
-  const GraphScreen({super.key});
+  final String subject;
+  final List<Topic> topics;
+
+  const GraphScreen({
+    super.key,
+    required this.subject,
+    required this.topics,
+  });
 
   @override
   State<GraphScreen> createState() => _GraphScreenState();
@@ -31,21 +39,27 @@ class _GraphScreenState extends State<GraphScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredTopics = syllabusTopics.where((topic) {
-      return topic.name.toLowerCase().contains(
-            searchText.toLowerCase(),
-          );
+    // Only show topics belonging to the selected subject
+    final filteredTopics = widget.topics.where((topic) {
+      return topic.name
+          .toLowerCase()
+          .contains(searchText.toLowerCase());
     }).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F7FC),
 
+      // =======================================================
+      // TOPIC LIST APP BAR
+      // =======================================================
+
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F7FC),
         elevation: 0,
-        title: const Text(
-          'Data Structures',
-          style: TextStyle(
+
+        title: Text(
+          widget.subject,
+          style: const TextStyle(
             color: Color(0xFF252238),
             fontWeight: FontWeight.bold,
           ),
@@ -169,8 +183,7 @@ class _GraphScreenState extends State<GraphScreen> {
                     itemCount: filteredTopics.length,
 
                     itemBuilder: (context, index) {
-                      final topic =
-                          filteredTopics[index];
+                      final topic = filteredTopics[index];
 
                       return Container(
                         margin: const EdgeInsets.symmetric(
@@ -231,6 +244,7 @@ class _GraphScreenState extends State<GraphScreen> {
                                 builder: (_) =>
                                     PrerequisiteGraphScreen(
                                   selectedTopic: topic,
+                                  subject: widget.subject,
                                 ),
                               ),
                             );
@@ -252,10 +266,12 @@ class _GraphScreenState extends State<GraphScreen> {
 
 class PrerequisiteGraphScreen extends StatelessWidget {
   final Topic selectedTopic;
+  final String subject;
 
   const PrerequisiteGraphScreen({
     super.key,
     required this.selectedTopic,
+    required this.subject,
   });
 
   // ===========================================================
@@ -265,8 +281,12 @@ class PrerequisiteGraphScreen extends StatelessWidget {
   List<Topic> get prerequisiteTopics {
     final result = <Topic>[];
 
+    final subjectTopics = syllabusTopics.where((topic) {
+      return topic.subject == subject;
+    }).toList();
+
     for (final id in selectedTopic.prerequisites) {
-      for (final topic in syllabusTopics) {
+      for (final topic in subjectTopics) {
         if (topic.id == id) {
           result.add(topic);
           break;
@@ -283,9 +303,8 @@ class PrerequisiteGraphScreen extends StatelessWidget {
 
   List<Topic> get usedInTopics {
     return syllabusTopics.where((topic) {
-      return topic.prerequisites.contains(
-        selectedTopic.id,
-      );
+      return topic.subject == subject &&
+          topic.prerequisites.contains(selectedTopic.id);
     }).toList();
   }
 
@@ -297,9 +316,25 @@ class PrerequisiteGraphScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F7FC),
 
+      // =======================================================
+      // GRAPH SCREEN APP BAR
+      // =======================================================
+
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8F7FC),
         elevation: 0,
+
+        // LEFT SIDE → PREVIOUS GRAPH
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: Color(0xFF252238),
+          ),
+
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
 
         title: Text(
           selectedTopic.name,
@@ -308,6 +343,24 @@ class PrerequisiteGraphScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
+
+        // RIGHT SIDE → TOPIC LIST
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.close_rounded,
+              color: Color(0xFF252238),
+            ),
+
+            onPressed: () {
+              Navigator.popUntil(
+                context,
+                (route) =>
+                    route.settings.name == '/topicList',
+              );
+            },
+          ),
+        ],
       ),
 
       body: SafeArea(
@@ -342,18 +395,13 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                 height: 52,
 
                 child: ElevatedButton.icon(
-                  style:
-                      ElevatedButton.styleFrom(
+                  style: ElevatedButton.styleFrom(
                     backgroundColor:
                         const Color(0xFF6C63A8),
-
-                    foregroundColor:
-                        Colors.white,
-
+                    foregroundColor: Colors.white,
                     elevation: 0,
 
-                    shape:
-                        RoundedRectangleBorder(
+                    shape: RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.circular(14),
                     ),
@@ -365,8 +413,8 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) =>
                             TopicDetailsScreen(
-                          selectedTopic:
-                              selectedTopic,
+                          selectedTopic: selectedTopic,
+                          subject: selectedTopic.subject,
                         ),
                       ),
                     );
@@ -406,18 +454,15 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                   mainAxisAlignment:
                       MainAxisAlignment.center,
 
-                  mainAxisSize:
-                      MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.min,
 
                   children: [
                     const Text(
                       'How to read: ',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight:
-                            FontWeight.w600,
-                        color:
-                            Color(0xFF555555),
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF555555),
                       ),
                     ),
 
@@ -443,7 +488,7 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                       color:
                           const Color(0xFFE6A34A),
                       text:
-                          'post requisite — where this topic is further used',
+                          'Post requisite — where this topic is further used',
                     ),
                   ],
                 ),
@@ -543,33 +588,25 @@ class _GraphArea extends StatelessWidget {
                   _PrerequisiteGraphPainter(
                 prerequisiteCount:
                     prerequisiteTopics.length,
-
                 usedInCount:
                     usedInTopics.length,
               ),
 
               child: Stack(
                 children: [
-                  // ==========================================
-                  // PREREQUISITE NODES - ABOVE
-                  // ==========================================
+                  // PREREQUISITES
 
                   ..._buildPrerequisiteNodes(
                     context,
                     constraints,
                   ),
 
-                  // ==========================================
-                  // CURRENT TOPIC - MIDDLE
-                  // ==========================================
+                  // CURRENT TOPIC
 
                   _positionedNode(
                     context: context,
-
                     topic: selectedTopic,
-
-                    type:
-                        _NodeType.current,
+                    type: _NodeType.current,
 
                     left:
                         constraints.maxWidth * 0.5 -
@@ -582,9 +619,7 @@ class _GraphArea extends StatelessWidget {
                     width: 210,
                   ),
 
-                  // ==========================================
-                  // USED-IN NODES - BELOW
-                  // ==========================================
+                  // USED-IN TOPICS
 
                   ..._buildUsedInNodes(
                     context,
@@ -600,7 +635,7 @@ class _GraphArea extends StatelessWidget {
   }
 
   // ===========================================================
-  // PREREQUISITE NODE POSITIONS - TOP
+  // PREREQUISITE NODE POSITIONS
   // ===========================================================
 
   List<Widget> _buildPrerequisiteNodes(
@@ -626,12 +661,8 @@ class _GraphArea extends StatelessWidget {
       widgets.add(
         _positionedNode(
           context: context,
-
-          topic:
-              prerequisiteTopics[i],
-
-          type:
-              _NodeType.prerequisite,
+          topic: prerequisiteTopics[i],
+          type: _NodeType.prerequisite,
 
           left:
               spacing * (i + 1) - 95,
@@ -647,7 +678,7 @@ class _GraphArea extends StatelessWidget {
   }
 
   // ===========================================================
-  // USED-IN NODE POSITIONS - BOTTOM
+  // USED-IN NODE POSITIONS
   // ===========================================================
 
   List<Widget> _buildUsedInNodes(
@@ -673,12 +704,8 @@ class _GraphArea extends StatelessWidget {
       widgets.add(
         _positionedNode(
           context: context,
-
-          topic:
-              usedInTopics[i],
-
-          type:
-              _NodeType.usedIn,
+          topic: usedInTopics[i],
+          type: _NodeType.usedIn,
 
           left:
               spacing * (i + 1) - 95,
@@ -759,6 +786,7 @@ class _GraphArea extends StatelessWidget {
               builder: (_) =>
                   PrerequisiteGraphScreen(
                 selectedTopic: topic,
+                subject: topic.subject,
               ),
             ),
           );
@@ -809,10 +837,8 @@ class _GraphArea extends StatelessWidget {
 
             style: TextStyle(
               color: textColor,
-
               fontSize:
                   isCurrent ? 16 : 13,
-
               fontWeight:
                   FontWeight.bold,
             ),

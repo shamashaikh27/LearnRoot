@@ -6,10 +6,12 @@ import '../models/topic.dart';
 
 class TopicDetailsScreen extends StatelessWidget {
   final Topic selectedTopic;
+  final String subject;
 
   const TopicDetailsScreen({
     super.key,
     required this.selectedTopic,
+    required this.subject,
   });
 
   @override
@@ -46,10 +48,10 @@ class TopicDetailsScreen extends StatelessWidget {
 
         elevation: 0,
 
-        title: Text(
-          selectedTopic.name,
+        title: const Text(
+          'Topic Details',
 
-          style: const TextStyle(
+          style: TextStyle(
             color: Color(0xFF252238),
             fontWeight: FontWeight.bold,
           ),
@@ -601,6 +603,7 @@ class _GraphScreenWrapper extends StatelessWidget {
     return Scaffold(
       body: PrerequisiteGraphScreen(
         selectedTopic: selectedTopic,
+        subject: selectedTopic.subject,
       ),
     );
   }
