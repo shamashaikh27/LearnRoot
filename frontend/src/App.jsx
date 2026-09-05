@@ -9,16 +9,19 @@ function App() {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
+  const [aiNotes, setAiNotes] = useState("");
   const [resources, setResources] = useState([]);
   const [weakTopics, setWeakTopics] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+
   const [loading, setLoading] = useState(false);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ============================================================
+  // =========================
   // LOAD TOPICS
-  // ============================================================
-
+  // =========================
   const loadTopics = async () => {
     try {
       const response = await fetch(`${API}/topics`);
@@ -27,18 +30,17 @@ function App() {
       if (Array.isArray(data)) {
         setTopics(data);
       } else {
-        setMessage("Unable to load topics.");
+        setMessage(data.message || "Unable to load topics.");
       }
     } catch (error) {
-      console.log(error);
+      console.error("Topics Error:", error);
       setMessage("Unable to connect to LearnRoot backend.");
     }
   };
 
-  // ============================================================
+  // =========================
   // LOAD WEAK TOPICS
-  // ============================================================
-
+  // =========================
   const loadWeakTopics = async () => {
     try {
       const response = await fetch(`${API}/weak-topics`);
@@ -74,15 +76,14 @@ function App() {
         setWeakTopics([]);
       }
     } catch (error) {
-      console.log("Unable to load weak topics.");
+      console.error("Weak Topics Error:", error);
       setWeakTopics([]);
     }
   };
 
-  // ============================================================
+  // =========================
   // LOAD ANALYTICS
-  // ============================================================
-
+  // =========================
   const loadAnalytics = async () => {
     try {
       const response = await fetch(`${API}/analytics`);
@@ -92,13 +93,9 @@ function App() {
         setAnalytics(data);
       }
     } catch (error) {
-      console.log("Unable to load analytics.");
+      console.error("Analytics Error:", error);
     }
   };
-
-  // ============================================================
-  // INITIAL LOAD
-  // ============================================================
 
   useEffect(() => {
     loadTopics();
@@ -106,11 +103,41 @@ function App() {
     loadAnalytics();
   }, []);
 
-  // ============================================================
-  // START QUIZ
-  // ALL TOPICS ARE OPEN
-  // ============================================================
+  // =========================
+  // LOAD RESOURCES
+  // =========================
+  const loadResources = async (topicId) => {
+    try {
+      setResourcesLoading(true);
 
+      const response = await fetch(
+        `${API}/recommendations/${topicId}`
+      );
+
+      const data = await response.json();
+
+      console.log("Database Resources:", data);
+
+      if (
+        response.ok &&
+        data.status === "success" &&
+        Array.isArray(data.resources)
+      ) {
+        setResources(data.resources);
+      } else {
+        setResources([]);
+      }
+    } catch (error) {
+      console.error("Resources Error:", error);
+      setResources([]);
+    } finally {
+      setResourcesLoading(false);
+    }
+  };
+
+  // =========================
+  // START QUIZ
+  // =========================
   const startQuiz = async (topic) => {
     try {
       setLoading(true);
@@ -120,7 +147,10 @@ function App() {
       setQuestions([]);
       setAnswers({});
       setResult(null);
+      setAiNotes("");
       setResources([]);
+
+      await loadResources(topic.topic_id);
 
       const response = await fetch(
         `${API}/quiz/${topic.topic_id}`
@@ -128,27 +158,29 @@ function App() {
 
       const data = await response.json();
 
-      if (Array.isArray(data)) {
-        setQuestions(data);
+      if (
+        data.status === "success" &&
+        Array.isArray(data.questions)
+      ) {
+        setQuestions(data.questions);
       } else {
         setMessage(
-          data.message || "Unable to load quiz questions."
+          data.message ||
+            "Unable to load quiz questions."
         );
       }
     } catch (error) {
-      console.log(error);
+      console.error("Quiz Error:", error);
       setMessage("Unable to load quiz.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
+  // =========================
   // SELECT ANSWER
-  // ============================================================
-
+  // =========================
   const selectAnswer = (quizId, answer) => {
-    // Do not allow changing answers after quiz is submitted
     if (result) {
       return;
     }
@@ -159,40 +191,63 @@ function App() {
     }));
   };
 
-  // ============================================================
-  // LOAD RESOURCES
-  // RESOURCES ARE ALWAYS AVAILABLE
-  // ============================================================
-
-  const loadResources = async (topicId) => {
+  // =========================
+  // GENERATE SMART NOTES
+  // =========================
+  const generateAINotes = async (topicId) => {
     try {
+      setNotesLoading(true);
+      setMessage("");
+      setAiNotes("");
+
+      console.log(
+        "Requesting Smart Notes for topic:",
+        topicId
+      );
+
       const response = await fetch(
-        `${API}/recommendations/${topicId}`
+        `${API}/ai-notes/${topicId}`
       );
 
       const data = await response.json();
 
-      if (data.status === "success") {
-        setResources(data.resources || []);
+      console.log("Smart Notes Response:", data);
+
+      if (
+        response.ok &&
+        data.status === "success" &&
+        data.notes
+      ) {
+        setAiNotes(data.notes);
       } else {
-        setResources([]);
+        setMessage(
+          data.message ||
+            "Unable to load Smart Notes."
+        );
       }
     } catch (error) {
-      console.log("Unable to load resources.");
-      setResources([]);
+      console.error("Smart Notes Error:", error);
+
+      setMessage(
+        "Unable to load Smart Notes. Please check the backend and Gemini API."
+      );
+    } finally {
+      setNotesLoading(false);
     }
   };
 
-  // ============================================================
+  // =========================
   // SUBMIT QUIZ
-  // ============================================================
-
+  // =========================
   const submitQuiz = async () => {
     if (!selectedTopic) {
       return;
     }
 
-    if (Object.keys(answers).length < questions.length) {
+    if (
+      Object.keys(answers).length <
+      questions.length
+    ) {
       setMessage("Please answer all questions.");
       return;
     }
@@ -222,61 +277,69 @@ function App() {
       if (data.status === "success") {
         setResult(data);
 
-        // ======================================================
-        // LOAD RESOURCES REGARDLESS OF SCORE
-        // ======================================================
-
-        await loadResources(selectedTopic.topic_id);
-
-        // ======================================================
-        // REFRESH DASHBOARD
-        // ======================================================
+        await loadResources(
+          selectedTopic.topic_id
+        );
 
         await loadTopics();
         await loadWeakTopics();
         await loadAnalytics();
       } else {
         setMessage(
-          data.message || "Quiz submission failed."
+          data.message ||
+            "Quiz submission failed."
         );
       }
     } catch (error) {
-      console.log(error);
+      console.error("Submit Quiz Error:", error);
+
       setMessage("Unable to submit quiz.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
+  // =========================
   // GET OPTION TEXT
-  // ============================================================
-
+  // =========================
   const getOptionText = (question, option) => {
-    if (option === "A") return question.option_a;
-    if (option === "B") return question.option_b;
-    if (option === "C") return question.option_c;
-    if (option === "D") return question.option_d;
+    if (!question) {
+      return "";
+    }
+
+    if (option === "A") {
+      return question.option_a;
+    }
+
+    if (option === "B") {
+      return question.option_b;
+    }
+
+    if (option === "C") {
+      return question.option_c;
+    }
+
+    if (option === "D") {
+      return question.option_d;
+    }
 
     return "";
   };
 
-  // ============================================================
-  // GET ANSWER CLASS
-  // GREEN = CORRECT
-  // RED = INCORRECT
-  // ============================================================
-
+  // =========================
+  // ANSWER COLOR
+  // =========================
   const getAnswerClass = (question, option) => {
-    // Before submission
     if (!result) {
       return "";
     }
 
-    const studentAnswer = answers[question.quiz_id];
-    const correctAnswer = question.correct_answer;
+    const studentAnswer =
+      answers[question.quiz_id];
 
-    // Correct selected answer
+    const correctAnswer =
+      question.correct_answer;
+
     if (
       studentAnswer === option &&
       studentAnswer === correctAnswer
@@ -284,7 +347,6 @@ function App() {
       return "answer-correct";
     }
 
-    // Incorrect selected answer
     if (
       studentAnswer === option &&
       studentAnswer !== correctAnswer
@@ -292,7 +354,6 @@ function App() {
       return "answer-incorrect";
     }
 
-    // Also show the correct answer in green
     if (option === correctAnswer) {
       return "answer-correct";
     }
@@ -300,27 +361,184 @@ function App() {
     return "";
   };
 
-  // ============================================================
-  // BACK TO DASHBOARD
-  // ============================================================
+  // =========================
+  // RENDER SMART NOTES
+  // =========================
+  const renderAINotes = (notes) => {
+    if (!notes) {
+      return null;
+    }
 
+    const lines = notes.split("\n");
+
+    return lines.map((line, index) => {
+      const trimmedLine = line.trim();
+
+      if (!trimmedLine) {
+        return (
+          <div
+            key={index}
+            style={{ height: "8px" }}
+          />
+        );
+      }
+
+      if (
+        trimmedLine === "---" ||
+        trimmedLine === "***" ||
+        trimmedLine === "___"
+      ) {
+        return <hr key={index} />;
+      }
+
+      if (trimmedLine.startsWith("# ")) {
+        return (
+          <h2 key={index}>
+            {trimmedLine.substring(2)}
+          </h2>
+        );
+      }
+
+      if (trimmedLine.startsWith("## ")) {
+        return (
+          <h3 key={index}>
+            {trimmedLine.substring(3)}
+          </h3>
+        );
+      }
+
+      if (trimmedLine.startsWith("### ")) {
+        return (
+          <h4 key={index}>
+            {trimmedLine.substring(4)}
+          </h4>
+        );
+      }
+
+      if (/^\d+\.\s/.test(trimmedLine)) {
+        return (
+          <h3 key={index}>
+            {trimmedLine}
+          </h3>
+        );
+      }
+
+      if (
+        trimmedLine.startsWith("- ") ||
+        trimmedLine.startsWith("* ") ||
+        trimmedLine.startsWith("• ")
+      ) {
+        const bulletText =
+          trimmedLine.replace(
+            /^[-*•]\s/,
+            ""
+          );
+
+        return (
+          <div
+            className="ai-note-bullet"
+            key={index}
+          >
+            <span>•</span>
+            <span>{bulletText}</span>
+          </div>
+        );
+      }
+
+      if (/^\d+\)\s/.test(trimmedLine)) {
+        return (
+          <p key={index}>
+            {trimmedLine}
+          </p>
+        );
+      }
+
+      const formattedText =
+        trimmedLine.replace(
+          /\*\*(.*?)\*\*/g,
+          "$1"
+        );
+
+      const cleanText =
+        formattedText.replace(
+          /`([^`]+)`/g,
+          "$1"
+        );
+
+      return (
+        <p key={index}>
+          {cleanText}
+        </p>
+      );
+    });
+  };
+
+  // =========================
+  // RESOURCE ICON
+  // =========================
+  const getResourceIcon = (type) => {
+    if (!type) {
+      return "📚";
+    }
+
+    const resourceType =
+      String(type).toLowerCase();
+
+    if (
+      resourceType.includes("video")
+    ) {
+      return "🎥";
+    }
+
+    if (
+      resourceType.includes("note")
+    ) {
+      return "📖";
+    }
+
+    if (
+      resourceType.includes("pdf")
+    ) {
+      return "📄";
+    }
+
+    if (
+      resourceType.includes("link")
+    ) {
+      return "🔗";
+    }
+
+    if (
+      resourceType.includes("book")
+    ) {
+      return "📚";
+    }
+
+    return "📘";
+  };
+
+  // =========================
+  // GO HOME
+  // =========================
   const goHome = () => {
     setSelectedTopic(null);
     setQuestions([]);
     setAnswers({});
     setResult(null);
     setResources([]);
+    setAiNotes("");
     setMessage("");
+    setNotesLoading(false);
+    setResourcesLoading(false);
 
     loadTopics();
     loadWeakTopics();
     loadAnalytics();
   };
 
-  // ============================================================
-  // GROUP TOPICS BY SUBJECT
-  // ============================================================
-
+  // =========================
+  // GROUP TOPICS
+  // =========================
   const groupedTopics = topics.reduce(
     (groups, topic) => {
       if (!groups[topic.subject]) {
@@ -334,37 +552,47 @@ function App() {
     {}
   );
 
-  // ============================================================
-  // DASHBOARD
-  // ============================================================
+  // =========================
+  // FILTER VIDEO RESOURCES
+  // =========================
+  const videoResources = resources.filter(
+    (resource) => {
+      const type = String(
+        resource.resource_type ||
+          resource.type ||
+          ""
+      ).toLowerCase();
+
+      return type === "video";
+    }
+  );
+
+  // =========================================================
+  // HOME PAGE
+  // =========================================================
 
   if (!selectedTopic) {
     return (
       <div className="app">
-
-        {/* HEADER */}
 
         <header className="header">
           <div>
             <h1>🌱 LearnRoot</h1>
 
             <p>
-              Learn Smart. Learn at Your Own Pace.
+              Learn Smart. Learn at
+              Your Own Pace.
             </p>
           </div>
         </header>
 
         <main className="container">
 
-          {/* MESSAGE */}
-
           {message && (
             <div className="message">
               {message}
             </div>
           )}
-
-          {/* WELCOME */}
 
           <section className="welcome">
 
@@ -373,15 +601,14 @@ function App() {
             </h2>
 
             <p>
-              Select any topic and start learning.
-              All topics are available.
+              Select any topic and start
+              learning. All topics are
+              available.
             </p>
 
           </section>
 
-          {/* =====================================================
-              LEARNING ANALYTICS
-          ====================================================== */}
+          {/* ANALYTICS */}
 
           {analytics && (
             <section className="analytics-section">
@@ -391,12 +618,11 @@ function App() {
               </h2>
 
               <p className="section-description">
-                Track your overall learning performance.
+                Track your overall learning
+                performance.
               </p>
 
               <div className="analytics-grid">
-
-                {/* TOTAL ATTEMPTS */}
 
                 <div className="analytics-card">
 
@@ -418,8 +644,6 @@ function App() {
 
                 </div>
 
-                {/* AVERAGE SCORE */}
-
                 <div className="analytics-card">
 
                   <div className="analytics-icon">
@@ -440,8 +664,6 @@ function App() {
 
                 </div>
 
-                {/* BEST SCORE */}
-
                 <div className="analytics-card">
 
                   <div className="analytics-icon">
@@ -461,8 +683,6 @@ function App() {
                   </p>
 
                 </div>
-
-                {/* COMPLETED TOPICS */}
 
                 <div className="analytics-card">
 
@@ -488,8 +708,6 @@ function App() {
 
               </div>
 
-              {/* OVERALL PROGRESS */}
-
               <div className="overall-progress-card">
 
                 <div className="overall-progress-header">
@@ -511,14 +729,14 @@ function App() {
                     style={{
                       width: `${analytics.overall_progress}%`,
                     }}
-                  >
-                  </div>
+                  />
 
                 </div>
 
                 <p>
-                  Keep completing quizzes to improve
-                  your learning progress.
+                  Keep completing quizzes
+                  to improve your learning
+                  progress.
                 </p>
 
               </div>
@@ -526,12 +744,9 @@ function App() {
             </section>
           )}
 
-          {/* =====================================================
-              TOPICS TO IMPROVE
-          ====================================================== */}
+          {/* WEAK TOPICS */}
 
           {weakTopics.length > 0 && (
-
             <section className="weak-section">
 
               <div className="weak-header">
@@ -543,12 +758,14 @@ function App() {
                   </span>
 
                   <h2>
-                    Topics That Need Your Attention
+                    Topics That Need
+                    Your Attention
                   </h2>
 
                   <p>
-                    Strengthen these concepts and improve
-                    your quiz performance.
+                    Strengthen these concepts
+                    and improve your quiz
+                    performance.
                   </p>
 
                 </div>
@@ -573,21 +790,25 @@ function App() {
 
                 {weakTopics.map((topic) => {
 
-                  const selected = topics.find(
-                    (item) =>
-                      item.topic_id === topic.topic_id
-                  );
+                  const selected =
+                    topics.find(
+                      (item) =>
+                        item.topic_id ===
+                        topic.topic_id
+                    );
 
-                  const score = Math.max(
-                    0,
-                    Math.min(
-                      Number(topic.percentage || 0),
-                      100
-                    )
-                  );
+                  const score =
+                    Math.max(
+                      0,
+                      Math.min(
+                        Number(
+                          topic.percentage || 0
+                        ),
+                        100
+                      )
+                    );
 
                   return (
-
                     <div
                       className="weak-card"
                       key={topic.topic_id}
@@ -635,7 +856,8 @@ function App() {
                           </strong>
 
                           <small>
-                            Keep practicing to improve
+                            Keep practicing
+                            to improve
                           </small>
 
                         </div>
@@ -674,12 +896,7 @@ function App() {
             </section>
           )}
 
-          {/* =====================================================
-              NO WEAK TOPICS
-          ====================================================== */}
-
           {weakTopics.length === 0 && (
-
             <section className="no-weak-section">
 
               <div className="no-weak-icon">
@@ -693,8 +910,9 @@ function App() {
                 </h3>
 
                 <p>
-                  No topics currently need improvement.
-                  Keep completing quizzes to track your progress.
+                  No topics currently need
+                  improvement. Keep completing
+                  quizzes to track your progress.
                 </p>
 
               </div>
@@ -702,13 +920,10 @@ function App() {
             </section>
           )}
 
-          {/* =====================================================
-              SUBJECTS / LEARNING PATH
-          ====================================================== */}
+          {/* SUBJECTS AND TOPICS */}
 
           {Object.keys(groupedTopics).map(
             (subject) => (
-
               <section
                 className="subject-section"
                 key={subject}
@@ -733,11 +948,13 @@ function App() {
                       >
 
                         <div className="topic-number">
-                          Topic {topic.topic_order}
+                          Topic{" "}
+                          {topic.topic_order}
                         </div>
 
                         <h3>
-                          📖 {topic.topic_name}
+                          📖{" "}
+                          {topic.topic_name}
                         </h3>
 
                         <div className="topic-status">
@@ -745,8 +962,6 @@ function App() {
                             ? "✅ Completed"
                             : "📚 Available"}
                         </div>
-
-                        {/* EVERY TOPIC IS OPEN */}
 
                         <button
                           onClick={() =>
@@ -757,6 +972,7 @@ function App() {
                         </button>
 
                       </div>
+
                     )
                   )}
 
@@ -768,12 +984,11 @@ function App() {
 
         </main>
 
-        {/* FOOTER */}
-
         <footer>
 
           <p>
-            🌱 LearnRoot — Your Personalized Learning Platform
+            🌱 LearnRoot — Your Personalized
+            Learning Platform
           </p>
 
         </footer>
@@ -782,14 +997,12 @@ function App() {
     );
   }
 
-  // ============================================================
+  // =========================================================
   // QUIZ PAGE
-  // ============================================================
+  // =========================================================
 
   if (!result) {
-
     return (
-
       <div className="app">
 
         <header className="header">
@@ -822,7 +1035,8 @@ function App() {
               </h2>
 
               <p>
-                Answer all questions and submit your quiz.
+                Answer all questions and
+                submit your quiz.
               </p>
 
               <div className="quiz-info">
@@ -833,18 +1047,30 @@ function App() {
 
             </div>
 
-            {loading && (
-
+            {message && (
               <div className="message">
-                Generating your AI quiz...
+                {message}
               </div>
-
             )}
+
+            {loading && (
+              <div className="message">
+                🤖 Generating your AI quiz...
+              </div>
+            )}
+
+            {!loading &&
+              questions.length === 0 && (
+                <div className="message">
+                  No questions found.
+                  Please check your backend
+                  and Gemini API.
+                </div>
+              )}
 
             {!loading &&
               questions.map(
                 (question, index) => (
-
                   <div
                     className="question-card"
                     key={question.quiz_id}
@@ -855,10 +1081,7 @@ function App() {
                       {question.question}
                     </h3>
 
-                    {/* DIFFICULTY */}
-
                     {question.difficulty && (
-
                       <span
                         className={`difficulty-badge ${String(
                           question.difficulty
@@ -866,10 +1089,7 @@ function App() {
                       >
                         {question.difficulty}
                       </span>
-
                     )}
-
-                    {/* OPTION A */}
 
                     <label
                       className={getAnswerClass(
@@ -892,7 +1112,6 @@ function App() {
                             "A"
                           )
                         }
-                        disabled={!!result}
                       />
 
                       <span>
@@ -900,8 +1119,6 @@ function App() {
                       </span>
 
                     </label>
-
-                    {/* OPTION B */}
 
                     <label
                       className={getAnswerClass(
@@ -924,7 +1141,6 @@ function App() {
                             "B"
                           )
                         }
-                        disabled={!!result}
                       />
 
                       <span>
@@ -932,8 +1148,6 @@ function App() {
                       </span>
 
                     </label>
-
-                    {/* OPTION C */}
 
                     <label
                       className={getAnswerClass(
@@ -956,7 +1170,6 @@ function App() {
                             "C"
                           )
                         }
-                        disabled={!!result}
                       />
 
                       <span>
@@ -964,8 +1177,6 @@ function App() {
                       </span>
 
                     </label>
-
-                    {/* OPTION D */}
 
                     <label
                       className={getAnswerClass(
@@ -988,7 +1199,6 @@ function App() {
                             "D"
                           )
                         }
-                        disabled={!!result}
                       />
 
                       <span>
@@ -1003,7 +1213,6 @@ function App() {
 
             {!loading &&
               questions.length > 0 && (
-
                 <button
                   className="submit-button"
                   onClick={submitQuiz}
@@ -1013,7 +1222,6 @@ function App() {
                     ? "Submitting..."
                     : "Submit Quiz"}
                 </button>
-
               )}
 
           </section>
@@ -1024,12 +1232,11 @@ function App() {
     );
   }
 
-  // ============================================================
+  // =========================================================
   // RESULT PAGE
-  // ============================================================
+  // =========================================================
 
   return (
-
     <div className="app">
 
       <header className="header">
@@ -1044,9 +1251,7 @@ function App() {
 
         <section className="result-section">
 
-          {/* ====================================================
-              RESULT
-          ===================================================== */}
+          {/* SCORE */}
 
           <div className="result-card">
 
@@ -1059,50 +1264,42 @@ function App() {
             </div>
 
             <p>
-
-              Score:
-
-              {" "}
-
+              Score:{" "}
               <strong>
                 {result.score} /{" "}
                 {result.total_questions}
               </strong>
-
             </p>
 
             {result.percentage < 50 && (
-
               <p>
-                📖 Keep practicing! Your learning
-                resources are available below.
+                📖 Keep practicing!
+                Use the Smart Notes
+                below to strengthen your
+                understanding.
               </p>
-
             )}
 
             {result.percentage >= 50 &&
               result.percentage < 80 && (
-
                 <p>
-                  👍 Good job! Keep improving
-                  your understanding.
+                  👍 Good job!
+                  Use the Smart Notes below
+                  for improvement.
                 </p>
-
               )}
 
             {result.percentage >= 80 && (
-
               <p>
                 🌟 Excellent performance!
+                Use the Smart Notes for
+                quick revision.
               </p>
-
             )}
 
           </div>
 
-          {/* ====================================================
-              SOLUTIONS
-          ===================================================== */}
+          {/* QUIZ REVIEW */}
 
           {result.solutions &&
             result.solutions.length > 0 && (
@@ -1114,175 +1311,327 @@ function App() {
                 </h2>
 
                 <p className="section-description">
-                  Review your answers and correct solutions.
+                  Review your answers and
+                  correct solutions.
                 </p>
 
                 {result.solutions.map(
-                  (solution, index) => (
+                  (solution, index) => {
 
-                    <div
-                      className={`solution-card ${
-                        solution.student_answer ===
-                        solution.correct_answer
-                          ? "solution-correct"
-                          : "solution-incorrect"
-                      }`}
-                      key={
-                        solution.quiz_id ||
-                        index
-                      }
-                    >
+                    const currentQuestion =
+                      questions.find(
+                        (q) =>
+                          Number(q.quiz_id) ===
+                          Number(solution.quiz_id)
+                      );
 
-                      <h3>
-                        Q{index + 1}.{" "}
-                        {solution.question}
-                      </h3>
+                    return (
+                      <div
+                        className={`solution-card ${
+                          solution.is_correct
+                            ? "solution-correct"
+                            : "solution-incorrect"
+                        }`}
+                        key={
+                          solution.quiz_id ||
+                          index
+                        }
+                      >
 
-                      <p>
-
-                        <strong>
-                          Your Answer:
-                        </strong>
-
-                        {" "}
-
-                        {solution.student_answer
-                          ? getOptionText(
-                              questions[index],
-                              solution.student_answer
-                            )
-                          : "Not answered"}
-
-                      </p>
-
-                      <p>
-
-                        <strong>
-                          Correct Answer:
-                        </strong>
-
-                        {" "}
-
-                        {getOptionText(
-                          questions[index],
-                          solution.correct_answer
-                        )}
-
-                      </p>
-
-                      {solution.solution && (
+                        <h3>
+                          Q{index + 1}.{" "}
+                          {solution.question}
+                        </h3>
 
                         <p>
-
                           <strong>
-                            Explanation:
-                          </strong>
+                            Your Answer:
+                          </strong>{" "}
 
-                          {" "}
-
-                          {solution.solution}
-
+                          {solution.student_answer
+                            ? getOptionText(
+                                currentQuestion,
+                                solution.student_answer
+                              )
+                            : "Not answered"}
                         </p>
 
-                      )}
+                        <p>
+                          <strong>
+                            Correct Answer:
+                          </strong>{" "}
 
-                    </div>
+                          {getOptionText(
+                            currentQuestion,
+                            solution.correct_answer
+                          )}
+                        </p>
 
-                  )
+                        {solution.solution && (
+                          <p>
+                            <strong>
+                              Explanation:
+                            </strong>{" "}
+
+                            {solution.solution}
+                          </p>
+                        )}
+
+                      </div>
+                    );
+                  }
                 )}
 
               </section>
             )}
 
-          {/* ====================================================
-              LEARNING RESOURCES
-              ALWAYS VISIBLE
-          ===================================================== */}
+          {/* =================================================
+              SMART NOTES + VIDEO RESOURCES
+          ================================================= */}
 
-          <section className="resources-section">
+          <div className="learning-area">
 
-            <h2>
-              📚 AI Learning Resources & Notes
-            </h2>
+            {/* SMART NOTES */}
 
-            <p className="section-description">
-              These resources are available regardless
-              of your quiz score. Use them to strengthen
-              your understanding of the topic.
-            </p>
+            <div className="learning-column">
 
-            {resources.length === 0 ? (
+              <div className="learning-heading">
 
-              <div className="message">
-                No resources found for this topic.
+                <h2>
+                  🤖 Smart Notes
+                </h2>
+
+                <p>
+                  AI-powered study notes for
+                  your selected topic.
+                </p>
+
               </div>
 
-            ) : (
+              <div className="ai-learning-card">
 
-              <div className="resource-grid">
+                {!aiNotes ? (
 
-                {resources.map(
-                  (resource) => (
+                  <div className="ai-empty-state">
 
-                    <div
-                      className="resource-card"
-                      key={
-                        resource.resource_id
-                      }
-                    >
-
-                      <div className="resource-icon">
-
-                        {resource.resource_type ===
-                        "Video"
-                          ? "🎥"
-                          : "📖"}
-
-                      </div>
-
-                      <div>
-
-                        <span className="resource-type">
-
-                          {resource.resource_type}
-
-                        </span>
-
-                        <h3>
-                          {resource.title}
-                        </h3>
-
-                        <a
-                          href={
-                            resource.resource_link
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Open Resource →
-                        </a>
-
-                      </div>
-
+                    <div className="ai-icon">
+                      ✨
                     </div>
-                  )
+
+                    <h2>
+                      Smart Notes
+                    </h2>
+
+                    <p>
+                      Get clear and useful
+                      study notes for this
+                      topic using Gemini AI.
+                    </p>
+
+                    <button
+                      className="primary-btn"
+                      onClick={() =>
+                        generateAINotes(
+                          selectedTopic.topic_id
+                        )
+                      }
+                      disabled={notesLoading}
+                    >
+                      🤖{" "}
+                      {notesLoading
+                        ? "Loading..."
+                        : "View Smart Notes"}
+                    </button>
+
+                  </div>
+
+                ) : (
+
+                  <div className="ai-notes-content">
+
+                    {renderAINotes(aiNotes)}
+
+                  </div>
+
                 )}
 
               </div>
-            )}
 
-          </section>
+            </div>
 
-          {/* ====================================================
-              CONTINUE
-          ===================================================== */}
+            {/* VIDEO RESOURCES */}
 
-          <button
-            className="continue-button"
-            onClick={goHome}
-          >
-            Continue Learning →
-          </button>
+            <div className="learning-column">
+
+              <div className="learning-heading">
+
+                <h2>
+                  🎥 Video Resources
+                </h2>
+
+                <p>
+                  Watch videos to better understand
+                  this topic.
+                </p>
+
+              </div>
+
+              <div className="video-learning-card">
+
+                <div className="video-visual">
+
+                  <div className="video-circle">
+                    🎬
+                  </div>
+
+                  <h3>
+                    Learn Through Video
+                  </h3>
+
+                  <p>
+                    Visual explanations can make
+                    difficult concepts easier to understand.
+                  </p>
+
+                </div>
+
+                <div className="video-list">
+
+                  {resourcesLoading && (
+                    <div className="video-empty-state">
+
+                      <span>🎥</span>
+
+                      <p>
+                        Loading video resources...
+                      </p>
+
+                    </div>
+                  )}
+
+                  {!resourcesLoading &&
+                    videoResources.length === 0 && (
+
+                      <div className="video-empty-state">
+
+                        <div className="video-empty-icon">
+                          🎥
+                        </div>
+
+                        <h3>
+                          No Videos Available
+                        </h3>
+
+                        <p>
+                          Video resources for this
+                          topic are not available yet.
+                        </p>
+
+                      </div>
+
+                    )}
+
+                  {!resourcesLoading &&
+                    videoResources.map(
+                      (resource, index) => {
+
+                        const videoLink =
+                          resource.resource_link ||
+                          resource.url ||
+                          resource.link ||
+                          "";
+
+                        return (
+                          <div
+                            className="video-resource-item"
+                            key={
+                              resource.resource_id ||
+                              resource.id ||
+                              index
+                            }
+                          >
+
+                            <div className="video-resource-icon">
+                              {getResourceIcon(
+                                resource.resource_type ||
+                                  resource.type
+                              )}
+                            </div>
+
+                            <div className="video-resource-info">
+
+                              <span>
+                                VIDEO
+                              </span>
+
+                              <h3>
+                                {resource.title}
+                              </h3>
+
+                              {videoLink && (
+                                <a
+                                  href={videoLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  Open Video →
+                                </a>
+                              )}
+
+                            </div>
+
+                          </div>
+                        );
+                      }
+                    )}
+
+                </div>
+
+                {videoResources.length > 0 && (
+                  <button
+                    className="video-view-btn"
+                    onClick={() => {
+
+                      const video =
+                        videoResources[0];
+
+                      const videoLink =
+                        video?.resource_link ||
+                        video?.url ||
+                        video?.link ||
+                        "";
+
+                      if (videoLink) {
+                        window.open(
+                          videoLink,
+                          "_blank"
+                        );
+                      }
+
+                    }}
+                  >
+                    🎥 View Videos
+                  </button>
+                )}
+
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* CONTINUE */}
+
+          <div className="continue-learning">
+
+            <button
+              className="back-button"
+              onClick={goHome}
+            >
+              ← Continue Learning
+            </button>
+
+          </div>
 
         </section>
 

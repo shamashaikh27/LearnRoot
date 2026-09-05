@@ -5,28 +5,31 @@ from dotenv import load_dotenv
 from db import get_connection
 from ai_quiz import generate_quiz
 from ai_recommendation import generate_recommendation
+from ai_notes import generate_notes
 
 import os
+
+
+# ============================================================
+# FIND LEARNROOT FOLDERS
+# ============================================================
+
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BACKEND_DIR)
 
 
 # ============================================================
 # LOAD ENVIRONMENT VARIABLES
 # ============================================================
 
-# Find LearnRoot root folder
-BASE_DIR = os.path.dirname(
-    os.path.dirname(
-        os.path.abspath(__file__)
-    )
-)
+ROOT_ENV = os.path.join(ROOT_DIR, ".env")
+BACKEND_ENV = os.path.join(BACKEND_DIR, ".env")
 
-# .env is inside LearnRoot
-ENV_FILE = os.path.join(
-    BASE_DIR,
-    ".env"
-)
+if os.path.exists(ROOT_ENV):
+    load_dotenv(ROOT_ENV)
 
-load_dotenv(ENV_FILE)
+if os.path.exists(BACKEND_ENV):
+    load_dotenv(BACKEND_ENV, override=True)
 
 
 # ============================================================
@@ -42,20 +45,20 @@ CORS(app)
 # HOME
 # ============================================================
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
 
-    return "LearnRoot Backend is Running!"
+    return jsonify({
+        "status": "success",
+        "message": "LearnRoot Backend is Running!"
+    })
 
 
 # ============================================================
 # GET ALL TOPICS
-#
-# All topics are available.
-# There is NO LOCK / UNLOCK system.
 # ============================================================
 
-@app.route("/topics")
+@app.route("/topics", methods=["GET"])
 def get_topics():
 
     connection = None
@@ -65,9 +68,14 @@ def get_topics():
 
         connection = get_connection()
 
-        cursor = connection.cursor(
-            dictionary=True
-        )
+        if not connection or not connection.is_connected():
+
+            return jsonify({
+                "status": "error",
+                "message": "Database connection failed."
+            }), 500
+
+        cursor = connection.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT
@@ -77,9 +85,7 @@ def get_topics():
                 topic_order,
                 completed
             FROM topics
-            ORDER BY
-                subject,
-                topic_order
+            ORDER BY subject, topic_order
         """)
 
         topics = cursor.fetchall()
@@ -88,9 +94,11 @@ def get_topics():
 
     except Exception as e:
 
+        print("Topics Error:", str(e))
+
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Unable to load topics."
         }), 500
 
     finally:
@@ -106,7 +114,7 @@ def get_topics():
 # TEST DATABASE
 # ============================================================
 
-@app.route("/test-db")
+@app.route("/test-db", methods=["GET"])
 def test_db():
 
     connection = None
@@ -115,7 +123,7 @@ def test_db():
 
         connection = get_connection()
 
-        if connection.is_connected():
+        if connection and connection.is_connected():
 
             return jsonify({
                 "status": "success",
@@ -129,9 +137,11 @@ def test_db():
 
     except Exception as e:
 
+        print("Database Error:", str(e))
+
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Database connection failed."
         }), 500
 
     finally:
@@ -142,20 +152,9 @@ def test_db():
 
 # ============================================================
 # GET QUIZ BY TOPIC
-#
-# If questions already exist:
-#     Return existing questions.
-#
-# If questions do not exist:
-#     Generate 5 questions using Gemini.
-#
-# Gemini:
-#     2 Easy
-#     2 Moderate
-#     1 Hard
 # ============================================================
 
-@app.route("/quiz/<int:topic_id>")
+@app.route("/quiz/<int:topic_id>", methods=["GET"])
 def get_quiz(topic_id):
 
     connection = None
@@ -165,9 +164,14 @@ def get_quiz(topic_id):
 
         connection = get_connection()
 
-        cursor = connection.cursor(
-            dictionary=True
-        )
+        if not connection or not connection.is_connected():
+
+            return jsonify({
+                "status": "error",
+                "message": "Database connection failed."
+            }), 500
+
+        cursor = connection.cursor(dictionary=True)
 
         # ----------------------------------------------------
         # GET TOPIC
@@ -212,7 +216,7 @@ def get_quiz(topic_id):
         questions = cursor.fetchall()
 
         # ----------------------------------------------------
-        # RETURN EXISTING QUESTIONS
+        # RETURN EXISTING QUIZ
         # ----------------------------------------------------
 
         if questions:
@@ -225,36 +229,151 @@ def get_quiz(topic_id):
             })
 
         # ----------------------------------------------------
-        # GENERATE QUIZ USING GEMINI
+        # GENERATE NEW QUIZ
         # ----------------------------------------------------
 
-        generated_questions = generate_quiz(
-            topic["topic_name"]
-        )
+        print("------------------------------------------")
+        print("Generating Gemini Quiz")
+        print(f"Topic: {topic['topic_name']}")
+        print("------------------------------------------")
+
+        try:
+
+            generated_questions = generate_quiz(
+                topic["topic_name"]
+            )
+
+        except Exception as ai_error:
+
+            print("Gemini Quiz Error:", str(ai_error))
+
+            return jsonify({
+                "status": "error",
+                "message": "Gemini could not generate the quiz.",
+                "details": str(ai_error)
+            }), 500
+
+        # ----------------------------------------------------
+        # CHECK GENERATED QUESTIONS
+        # ----------------------------------------------------
 
         if not generated_questions:
 
             return jsonify({
                 "status": "error",
-                "message": "Unable to generate quiz questions."
+                "message": "Gemini returned no quiz questions."
             }), 500
 
-        # ----------------------------------------------------
-        # CHECK QUESTION COUNT
-        # ----------------------------------------------------
+        if not isinstance(generated_questions, list):
+
+            return jsonify({
+                "status": "error",
+                "message": "Invalid quiz format received from Gemini."
+            }), 500
 
         if len(generated_questions) < 5:
 
             return jsonify({
                 "status": "error",
-                "message": "Gemini generated fewer than 5 questions."
+                "message": (
+                    f"Gemini generated only "
+                    f"{len(generated_questions)} questions. "
+                    f"At least 5 are required."
+                )
+            }), 500
+
+        # ----------------------------------------------------
+        # VALIDATE QUESTIONS
+        # ----------------------------------------------------
+
+        required_fields = [
+            "question",
+            "option_a",
+            "option_b",
+            "option_c",
+            "option_d",
+            "correct_answer"
+        ]
+
+        valid_questions = []
+
+        for question in generated_questions[:5]:
+
+            if not isinstance(question, dict):
+                continue
+
+            missing_fields = [
+                field
+                for field in required_fields
+                if not question.get(field)
+            ]
+
+            if missing_fields:
+
+                print(
+                    "Skipping invalid question. "
+                    f"Missing: {missing_fields}"
+                )
+
+                continue
+
+            correct_answer = str(
+                question["correct_answer"]
+            ).upper().strip()
+
+            if correct_answer not in ["A", "B", "C", "D"]:
+
+                print(
+                    "Skipping question with invalid "
+                    "correct answer:",
+                    correct_answer
+                )
+
+                continue
+
+            valid_questions.append({
+
+                "question":
+                    str(question["question"]),
+
+                "option_a":
+                    str(question["option_a"]),
+
+                "option_b":
+                    str(question["option_b"]),
+
+                "option_c":
+                    str(question["option_c"]),
+
+                "option_d":
+                    str(question["option_d"]),
+
+                "correct_answer":
+                    correct_answer,
+
+                "solution":
+                    str(question.get("solution", ""))
+            })
+
+        # ----------------------------------------------------
+        # CHECK VALID QUESTIONS
+        # ----------------------------------------------------
+
+        if len(valid_questions) < 5:
+
+            return jsonify({
+                "status": "error",
+                "message": (
+                    "Gemini returned invalid quiz data. "
+                    "Please try again."
+                )
             }), 500
 
         # ----------------------------------------------------
         # SAVE QUESTIONS
         # ----------------------------------------------------
 
-        for question in generated_questions[:5]:
+        for question in valid_questions:
 
             cursor.execute("""
                 INSERT INTO quizzes
@@ -269,16 +388,7 @@ def get_quiz(topic_id):
                     solution
                 )
                 VALUES
-                (
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    %s
-                )
+                (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 topic_id,
                 question["question"],
@@ -287,7 +397,7 @@ def get_quiz(topic_id):
                 question["option_c"],
                 question["option_d"],
                 question["correct_answer"],
-                question.get("solution", "")
+                question["solution"]
             ))
 
         connection.commit()
@@ -321,12 +431,18 @@ def get_quiz(topic_id):
 
     except Exception as e:
 
+        print("------------------------------------------")
+        print("Quiz Error:")
+        print(str(e))
+        print("------------------------------------------")
+
         if connection:
             connection.rollback()
 
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Unable to load quiz.",
+            "details": str(e)
         }), 500
 
     finally:
@@ -340,24 +456,9 @@ def get_quiz(topic_id):
 
 # ============================================================
 # SUBMIT QUIZ
-#
-# Correct answer:
-#     is_correct = True
-#
-# Incorrect answer:
-#     is_correct = False
-#
-# Frontend can display:
-#     Correct   -> GREEN
-#     Incorrect -> RED
-#
-# Resources are available even if score < 50%.
 # ============================================================
 
-@app.route(
-    "/submit-quiz",
-    methods=["POST"]
-)
+@app.route("/submit-quiz", methods=["POST"])
 def submit_quiz():
 
     connection = None
@@ -365,23 +466,17 @@ def submit_quiz():
 
     try:
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
 
             return jsonify({
                 "status": "error",
-                "message": "No data received."
+                "message": "No quiz data received."
             }), 400
 
-        topic_id = data.get(
-            "topic_id"
-        )
-
-        answers = data.get(
-            "answers",
-            {}
-        )
+        topic_id = data.get("topic_id")
+        answers = data.get("answers", {})
 
         if topic_id is None:
 
@@ -390,11 +485,23 @@ def submit_quiz():
                 "message": "topic_id is required."
             }), 400
 
+        if not isinstance(answers, dict):
+
+            return jsonify({
+                "status": "error",
+                "message": "Answers must be an object."
+            }), 400
+
         connection = get_connection()
 
-        cursor = connection.cursor(
-            dictionary=True
-        )
+        if not connection or not connection.is_connected():
+
+            return jsonify({
+                "status": "error",
+                "message": "Database connection failed."
+            }), 500
+
+        cursor = connection.cursor(dictionary=True)
 
         # ----------------------------------------------------
         # GET QUESTIONS
@@ -421,15 +528,14 @@ def submit_quiz():
 
             return jsonify({
                 "status": "error",
-                "message": "No quiz questions found for this topic."
+                "message": "No quiz questions found."
             }), 404
 
         # ----------------------------------------------------
-        # EVALUATE ANSWERS
+        # EVALUATE
         # ----------------------------------------------------
 
         score = 0
-
         solutions = []
 
         for question in questions:
@@ -440,7 +546,7 @@ def submit_quiz():
 
             correct_answer = str(
                 question["correct_answer"]
-            ).upper()
+            ).upper().strip()
 
             student_answer = answers.get(
                 quiz_id
@@ -450,24 +556,14 @@ def submit_quiz():
 
                 student_answer = str(
                     student_answer
-                ).upper()
-
-            # ------------------------------------------------
-            # CHECK ANSWER
-            # ------------------------------------------------
+                ).upper().strip()
 
             is_correct = (
-                student_answer ==
-                correct_answer
+                student_answer == correct_answer
             )
 
             if is_correct:
-
                 score += 1
-
-            # ------------------------------------------------
-            # STORE RESULT
-            # ------------------------------------------------
 
             solutions.append({
 
@@ -487,26 +583,27 @@ def submit_quiz():
                     is_correct,
 
                 "solution":
-                    question["solution"]
-
+                    question["solution"] or ""
             })
 
         # ----------------------------------------------------
         # CALCULATE SCORE
         # ----------------------------------------------------
 
-        total_questions = len(
-            questions
-        )
+        total_questions = len(questions)
+
+        if total_questions == 0:
+
+            return jsonify({
+                "status": "error",
+                "message": "Quiz contains no questions."
+            }), 400
 
         percentage = (
-            score /
-            total_questions
+            score / total_questions
         ) * 100
 
-        completed = (
-            percentage >= 50
-        )
+        completed = percentage >= 50
 
         # ----------------------------------------------------
         # STORE QUIZ RESULT
@@ -521,12 +618,7 @@ def submit_quiz():
                 percentage
             )
             VALUES
-            (
-                %s,
-                %s,
-                %s,
-                %s
-            )
+            (%s, %s, %s, %s)
         """, (
             topic_id,
             score,
@@ -547,7 +639,7 @@ def submit_quiz():
         progress = cursor.fetchone()
 
         # ----------------------------------------------------
-        # UPDATE EXISTING PROGRESS
+        # UPDATE PROGRESS
         # ----------------------------------------------------
 
         if progress:
@@ -556,15 +648,15 @@ def submit_quiz():
                 UPDATE progress
                 SET
                     completed = %s,
-                    best_score =
-                        GREATEST(
-                            best_score,
-                            %s
-                        ),
-                    attempts =
-                        attempts + 1,
-                    last_attempt =
-                        CURRENT_TIMESTAMP
+                    best_score = GREATEST(
+                        COALESCE(best_score, 0),
+                        %s
+                    ),
+                    attempts = COALESCE(
+                        attempts,
+                        0
+                    ) + 1,
+                    last_attempt = CURRENT_TIMESTAMP
                 WHERE topic_id = %s
             """, (
                 completed,
@@ -573,7 +665,7 @@ def submit_quiz():
             ))
 
         # ----------------------------------------------------
-        # INSERT NEW PROGRESS
+        # INSERT PROGRESS
         # ----------------------------------------------------
 
         else:
@@ -602,27 +694,10 @@ def submit_quiz():
             ))
 
         # ----------------------------------------------------
-        # UPDATE TOPIC COMPLETED STATUS
-        # ----------------------------------------------------
-
-        cursor.execute("""
-            UPDATE topics
-            SET completed = %s
-            WHERE topic_id = %s
-        """, (
-            completed,
-            topic_id
-        ))
-
-        # ----------------------------------------------------
-        # SAVE DATABASE CHANGES
+        # COMMIT
         # ----------------------------------------------------
 
         connection.commit()
-
-        # ----------------------------------------------------
-        # RETURN RESULT
-        # ----------------------------------------------------
 
         return jsonify({
 
@@ -639,10 +714,7 @@ def submit_quiz():
                 total_questions,
 
             "percentage":
-                round(
-                    percentage,
-                    2
-                ),
+                round(percentage, 2),
 
             "completed":
                 completed,
@@ -652,17 +724,22 @@ def submit_quiz():
 
             "message":
                 "Quiz evaluated successfully!"
-
         })
 
     except Exception as e:
+
+        print("------------------------------------------")
+        print("Submit Quiz Error:")
+        print(str(e))
+        print("------------------------------------------")
 
         if connection:
             connection.rollback()
 
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Unable to submit quiz.",
+            "details": str(e)
         }), 500
 
     finally:
@@ -675,12 +752,10 @@ def submit_quiz():
 
 
 # ============================================================
-# GET STUDENT PROGRESS
-#
-# All topics are available.
+# GET PROGRESS
 # ============================================================
 
-@app.route("/progress")
+@app.route("/progress", methods=["GET"])
 def get_progress():
 
     connection = None
@@ -690,37 +765,28 @@ def get_progress():
 
         connection = get_connection()
 
-        cursor = connection.cursor(
-            dictionary=True
-        )
+        cursor = connection.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT
                 t.topic_id,
                 t.subject,
                 t.topic_name,
-
                 COALESCE(
                     p.completed,
                     0
                 ) AS completed,
-
                 COALESCE(
                     p.best_score,
                     0
                 ) AS best_score,
-
                 COALESCE(
                     p.attempts,
                     0
                 ) AS attempts
-
             FROM topics t
-
             LEFT JOIN progress p
-                ON t.topic_id =
-                   p.topic_id
-
+                ON t.topic_id = p.topic_id
             ORDER BY
                 t.subject,
                 t.topic_order
@@ -732,9 +798,11 @@ def get_progress():
 
     except Exception as e:
 
+        print("Progress Error:", str(e))
+
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Unable to load progress."
         }), 500
 
     finally:
@@ -748,12 +816,9 @@ def get_progress():
 
 # ============================================================
 # GET WEAK TOPICS
-#
-# Weak topic:
-# BEST SCORE < 50%
 # ============================================================
 
-@app.route("/weak-topics")
+@app.route("/weak-topics", methods=["GET"])
 def get_weak_topics():
 
     connection = None
@@ -763,36 +828,24 @@ def get_weak_topics():
 
         connection = get_connection()
 
-        cursor = connection.cursor(
-            dictionary=True
-        )
+        cursor = connection.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT
                 t.topic_id,
                 t.subject,
                 t.topic_name,
-                MAX(
-                    qr.percentage
-                ) AS percentage
-
+                MAX(qr.percentage) AS percentage
             FROM quiz_results qr
-
             JOIN topics t
-                ON qr.topic_id =
-                   t.topic_id
-
+                ON qr.topic_id = t.topic_id
             GROUP BY
                 t.topic_id,
                 t.subject,
                 t.topic_name,
                 t.topic_order
-
             HAVING
-                MAX(
-                    qr.percentage
-                ) < 50
-
+                MAX(qr.percentage) < 50
             ORDER BY
                 percentage ASC,
                 t.topic_order ASC
@@ -800,15 +853,15 @@ def get_weak_topics():
 
         weak_topics = cursor.fetchall()
 
-        return jsonify(
-            weak_topics
-        )
+        return jsonify(weak_topics)
 
     except Exception as e:
 
+        print("Weak Topics Error:", str(e))
+
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Unable to load weak topics."
         }), 500
 
     finally:
@@ -821,26 +874,12 @@ def get_weak_topics():
 
 
 # ============================================================
-# LEARNING RESOURCES
-#
-# IMPORTANT:
-#
-# Resources are ALWAYS visible.
-#
-# < 50%:
-#     Notes + resources visible
-#
-# 50 - 79%:
-#     Notes + resources visible
-#
-# 80%+:
-#     Notes + resources visible
-#
-# SCORE NEVER HIDES NOTES.
+# DATABASE RESOURCES
 # ============================================================
 
 @app.route(
-    "/recommendations/<int:topic_id>"
+    "/recommendations/<int:topic_id>",
+    methods=["GET"]
 )
 def get_recommendations(topic_id):
 
@@ -851,9 +890,7 @@ def get_recommendations(topic_id):
 
         connection = get_connection()
 
-        cursor = connection.cursor(
-            dictionary=True
-        )
+        cursor = connection.cursor(dictionary=True)
 
         # ----------------------------------------------------
         # GET TOPIC
@@ -886,45 +923,34 @@ def get_recommendations(topic_id):
                     MAX(percentage),
                     0
                 ) AS best_score
-
             FROM quiz_results
-
             WHERE topic_id = %s
         """, (topic_id,))
 
         score_data = cursor.fetchone()
 
         best_score = float(
-            score_data["best_score"]
-            or 0
+            score_data["best_score"] or 0
         )
 
         # ----------------------------------------------------
-        # DETERMINE LEARNING LEVEL
+        # RECOMMENDATION LEVEL
         # ----------------------------------------------------
 
         if best_score < 50:
 
-            recommendation_level = (
-                "Needs Improvement"
-            )
+            recommendation_level = "Needs Improvement"
 
         elif best_score < 80:
 
-            recommendation_level = (
-                "Practice"
-            )
+            recommendation_level = "Practice"
 
         else:
 
-            recommendation_level = (
-                "Advanced Learning"
-            )
+            recommendation_level = "Advanced Learning"
 
         # ----------------------------------------------------
-        # GET ALL RESOURCES
-        #
-        # NO SCORE FILTER
+        # GET RESOURCES
         # ----------------------------------------------------
 
         cursor.execute("""
@@ -934,19 +960,12 @@ def get_recommendations(topic_id):
                 resource_type,
                 title,
                 resource_link
-
             FROM resources
-
             WHERE topic_id = %s
-
             ORDER BY resource_id
         """, (topic_id,))
 
         resources = cursor.fetchall()
-
-        # ----------------------------------------------------
-        # RETURN RESOURCES
-        # ----------------------------------------------------
 
         return jsonify({
 
@@ -960,30 +979,22 @@ def get_recommendations(topic_id):
                 topic["topic_name"],
 
             "best_score":
-                round(
-                    best_score,
-                    2
-                ),
+                round(best_score, 2),
 
             "recommendation_level":
                 recommendation_level,
 
-            "notes_visible":
-                True,
-
             "resources":
-                resources,
-
-            "message":
-                "Learning resources are always available."
-
+                resources
         })
 
     except Exception as e:
 
+        print("Resources Error:", str(e))
+
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Unable to load resources."
         }), 500
 
     finally:
@@ -996,15 +1007,12 @@ def get_recommendations(topic_id):
 
 
 # ============================================================
-# AI SMART LEARNING RECOMMENDATION
-#
-# Gemini generates personalized guidance.
-#
-# Resources remain visible even below 50%.
+# AI SMART RECOMMENDATION
 # ============================================================
 
 @app.route(
-    "/smart-recommendation/<int:topic_id>"
+    "/smart-recommendation/<int:topic_id>",
+    methods=["GET"]
 )
 def smart_recommendation(topic_id):
 
@@ -1015,9 +1023,7 @@ def smart_recommendation(topic_id):
 
         connection = get_connection()
 
-        cursor = connection.cursor(
-            dictionary=True
-        )
+        cursor = connection.cursor(dictionary=True)
 
         # ----------------------------------------------------
         # GET TOPIC
@@ -1050,33 +1056,46 @@ def smart_recommendation(topic_id):
                     MAX(percentage),
                     0
                 ) AS best_score
-
             FROM quiz_results
-
             WHERE topic_id = %s
         """, (topic_id,))
 
         result = cursor.fetchone()
 
         score = float(
-            result["best_score"]
-            or 0
+            result["best_score"] or 0
         )
 
         # ----------------------------------------------------
-        # GENERATE GEMINI RECOMMENDATION
+        # GENERATE AI RECOMMENDATION
         # ----------------------------------------------------
 
-        recommendation = (
-            generate_recommendation(
+        try:
+
+            recommendation = generate_recommendation(
                 topic["topic_name"],
                 score
             )
-        )
 
-        # ----------------------------------------------------
-        # RETURN AI RECOMMENDATION
-        # ----------------------------------------------------
+        except Exception as ai_error:
+
+            print(
+                "AI Recommendation Error:",
+                str(ai_error)
+            )
+
+            return jsonify({
+                "status": "error",
+                "message": "Unable to generate AI recommendation.",
+                "details": str(ai_error)
+            }), 500
+
+        if not recommendation:
+
+            return jsonify({
+                "status": "error",
+                "message": "AI returned no recommendation."
+            }), 500
 
         return jsonify({
 
@@ -1090,27 +1109,298 @@ def smart_recommendation(topic_id):
                 topic["topic_name"],
 
             "score":
-                round(
-                    score,
-                    2
-                ),
+                round(score, 2),
 
             "recommendation":
-                recommendation,
-
-            "notes_visible":
-                True,
-
-            "message":
-                "AI learning recommendation generated successfully."
-
+                recommendation
         })
 
     except Exception as e:
 
+        print(
+            "Smart Recommendation Error:",
+            str(e)
+        )
+
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Unable to generate recommendation."
+        }), 500
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if connection:
+            connection.close()
+
+
+# ============================================================
+# AI GENERATED NOTES
+# ============================================================
+#
+# COMMON NOTES FOR ALL STUDENTS
+#
+# Flow:
+#
+# React requests /ai-notes/<topic_id>
+#             ↓
+# Flask checks ai_notes table
+#             ↓
+#       Notes already exist?
+#          /          \
+#        YES          NO
+#         ↓            ↓
+#   Return notes     Gemini
+#                      ↓
+#                 Generate notes
+#                      ↓
+#                 Save MySQL
+#                      ↓
+#                 Return notes
+#
+# ============================================================
+
+@app.route(
+    "/ai-notes/<int:topic_id>",
+    methods=["GET"]
+)
+def ai_notes(topic_id):
+
+    connection = None
+    cursor = None
+
+    try:
+
+        connection = get_connection()
+
+        if not connection or not connection.is_connected():
+
+            return jsonify({
+                "status": "error",
+                "message": "Database connection failed."
+            }), 500
+
+        cursor = connection.cursor(dictionary=True)
+
+        # ====================================================
+        # 1. GET TOPIC
+        # ====================================================
+
+        cursor.execute("""
+            SELECT
+                topic_id,
+                subject,
+                topic_name
+            FROM topics
+            WHERE topic_id = %s
+        """, (topic_id,))
+
+        topic = cursor.fetchone()
+
+        if not topic:
+
+            return jsonify({
+                "status": "error",
+                "message": "Topic not found."
+            }), 404
+
+        topic_name = topic["topic_name"]
+
+        print("------------------------------------------")
+        print("AI NOTES REQUEST")
+        print(f"Topic ID: {topic_id}")
+        print(f"Topic: {topic_name}")
+        print("------------------------------------------")
+
+        # ====================================================
+        # 2. CHECK DATABASE FOR EXISTING NOTES
+        # ====================================================
+
+        cursor.execute("""
+            SELECT
+                note_id,
+                topic_id,
+                notes,
+                generated_by,
+                created_at,
+                updated_at
+            FROM ai_notes
+            WHERE topic_id = %s
+            LIMIT 1
+        """, (topic_id,))
+
+        existing_notes = cursor.fetchone()
+
+        # ====================================================
+        # 3. NOTES ALREADY EXIST
+        # ====================================================
+
+        if existing_notes:
+
+            print("AI notes found in database.")
+            print("Returning stored notes.")
+            print("------------------------------------------")
+
+            return jsonify({
+
+                "status":
+                    "success",
+
+                "topic_id":
+                    topic_id,
+
+                "subject":
+                    topic["subject"],
+
+                "topic_name":
+                    topic_name,
+
+                "notes":
+                    existing_notes["notes"],
+
+                "generated_by":
+                    existing_notes["generated_by"],
+
+                "source":
+                    "database",
+
+                "created_at":
+                    existing_notes["created_at"],
+
+                "updated_at":
+                    existing_notes["updated_at"]
+            })
+
+        # ====================================================
+        # 4. NOTES DON'T EXIST
+        # ====================================================
+
+        print("No notes found in database.")
+        print("Generating notes using Gemini...")
+
+        # IMPORTANT:
+        # We do NOT send student score.
+        # These notes are COMMON for every student.
+
+        try:
+
+            notes = generate_notes(
+                topic_name
+            )
+
+        except Exception as ai_error:
+
+            print("------------------------------------------")
+            print("Gemini AI Notes Error:")
+            print(str(ai_error))
+            print("------------------------------------------")
+
+            return jsonify({
+
+                "status":
+                    "error",
+
+                "message":
+                    "Gemini could not generate AI notes.",
+
+                "details":
+                    str(ai_error)
+            }), 500
+
+        # ====================================================
+        # 5. CHECK GENERATED NOTES
+        # ====================================================
+
+        if not notes:
+
+            return jsonify({
+
+                "status":
+                    "error",
+
+                "message":
+                    "Gemini returned empty notes."
+            }), 500
+
+        # ====================================================
+        # 6. SAVE NOTES INTO DATABASE
+        # ====================================================
+
+        print("Saving AI notes into MySQL...")
+
+        cursor.execute("""
+            INSERT INTO ai_notes
+            (
+                topic_id,
+                notes,
+                generated_by
+            )
+            VALUES
+            (
+                %s,
+                %s,
+                %s
+            )
+        """, (
+            topic_id,
+            notes,
+            "Gemini AI"
+        ))
+
+        connection.commit()
+
+        print("AI notes successfully saved to database.")
+
+        # ====================================================
+        # 7. RETURN NEWLY GENERATED NOTES
+        # ====================================================
+
+        return jsonify({
+
+            "status":
+                "success",
+
+            "topic_id":
+                topic_id,
+
+            "subject":
+                topic["subject"],
+
+            "topic_name":
+                topic_name,
+
+            "notes":
+                notes,
+
+            "generated_by":
+                "Gemini AI",
+
+            "source":
+                "gemini"
+        })
+
+    except Exception as e:
+
+        print("------------------------------------------")
+        print("AI Notes Endpoint Error:")
+        print(str(e))
+        print("------------------------------------------")
+
+        if connection:
+            connection.rollback()
+
+        return jsonify({
+
+            "status":
+                "error",
+
+            "message":
+                "Unable to load AI notes.",
+
+            "details":
+                str(e)
         }), 500
 
     finally:
@@ -1126,7 +1416,7 @@ def smart_recommendation(topic_id):
 # LEARNING ANALYTICS
 # ============================================================
 
-@app.route("/analytics")
+@app.route("/analytics", methods=["GET"])
 def get_analytics():
 
     connection = None
@@ -1136,9 +1426,7 @@ def get_analytics():
 
         connection = get_connection()
 
-        cursor = connection.cursor(
-            dictionary=True
-        )
+        cursor = connection.cursor(dictionary=True)
 
         # ----------------------------------------------------
         # TOTAL ATTEMPTS
@@ -1153,8 +1441,7 @@ def get_analytics():
         attempts_data = cursor.fetchone()
 
         total_attempts = (
-            attempts_data["total_attempts"]
-            or 0
+            attempts_data["total_attempts"] or 0
         )
 
         # ----------------------------------------------------
@@ -1163,16 +1450,14 @@ def get_analytics():
 
         cursor.execute("""
             SELECT
-                AVG(percentage)
-                AS average_score
+                AVG(percentage) AS average_score
             FROM quiz_results
         """)
 
         average_data = cursor.fetchone()
 
         average_score = float(
-            average_data["average_score"]
-            or 0
+            average_data["average_score"] or 0
         )
 
         # ----------------------------------------------------
@@ -1181,16 +1466,14 @@ def get_analytics():
 
         cursor.execute("""
             SELECT
-                MAX(percentage)
-                AS best_score
+                MAX(percentage) AS best_score
             FROM quiz_results
         """)
 
         best_data = cursor.fetchone()
 
         best_score = float(
-            best_data["best_score"]
-            or 0
+            best_data["best_score"] or 0
         )
 
         # ----------------------------------------------------
@@ -1207,8 +1490,7 @@ def get_analytics():
         completed_data = cursor.fetchone()
 
         completed_topics = (
-            completed_data["completed_topics"]
-            or 0
+            completed_data["completed_topics"] or 0
         )
 
         # ----------------------------------------------------
@@ -1224,8 +1506,7 @@ def get_analytics():
         total_data = cursor.fetchone()
 
         total_topics = (
-            total_data["total_topics"]
-            or 0
+            total_data["total_topics"] or 0
         )
 
         # ----------------------------------------------------
@@ -1278,14 +1559,18 @@ def get_analytics():
                     overall_progress,
                     2
                 )
-
         })
 
     except Exception as e:
 
+        print(
+            "Analytics Error:",
+            str(e)
+        )
+
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Unable to load analytics."
         }), 500
 
     finally:
@@ -1298,60 +1583,34 @@ def get_analytics():
 
 
 # ============================================================
-# TEST GEMINI AI CONNECTION
+# ERROR HANDLERS
 # ============================================================
 
-@app.route("/test-ai")
-def test_ai():
+@app.errorhandler(404)
+def page_not_found(error):
 
-    try:
+    return jsonify({
+        "status": "error",
+        "message": "API endpoint not found."
+    }), 404
 
-        from google import genai
 
-        gemini_key = os.getenv(
-            "GEMINI_API_KEY"
-        )
+@app.errorhandler(405)
+def method_not_allowed(error):
 
-        if not gemini_key:
+    return jsonify({
+        "status": "error",
+        "message": "HTTP method not allowed."
+    }), 405
 
-            return jsonify({
-                "status": "error",
-                "message": "GEMINI_API_KEY is not set in LearnRoot/.env"
-            }), 500
 
-        client = genai.Client(
-            api_key=gemini_key
-        )
+@app.errorhandler(500)
+def internal_server_error(error):
 
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=(
-                "Say hello to LearnRoot "
-                "in one short sentence."
-            )
-        )
-
-        return jsonify({
-
-            "status":
-                "success",
-
-            "message":
-                response.text
-
-        })
-
-    except Exception as e:
-
-        return jsonify({
-
-            "status":
-                "error",
-
-            "message":
-                str(e)
-
-        }), 500
+    return jsonify({
+        "status": "error",
+        "message": "Internal server error."
+    }), 500
 
 
 # ============================================================
@@ -1359,6 +1618,13 @@ def test_ai():
 # ============================================================
 
 if __name__ == "__main__":
+
+    print("==========================================")
+    print("LearnRoot Backend Starting...")
+    print("Backend URL: http://127.0.0.1:5000")
+    print("AI Notes: /ai-notes/<topic_id>")
+    print("Quiz: /quiz/<topic_id>")
+    print("==========================================")
 
     app.run(
         debug=True,
