@@ -38,7 +38,8 @@ CORS(app)
 
 client = genai.Client(api_key=api_key)
 
-MODEL = "gemini-3.6-flash"
+# Lightweight model suitable for LearnRoot
+MODEL = "gemini-3.5-flash-lite"
 
 
 # =======================================
@@ -62,11 +63,11 @@ def generate_with_retry(prompt, max_retries=3):
 
             error_message = str(e)
 
-            # Do not retry when Gemini quota/rate limit is exceeded
+            # Do not retry quota/rate-limit errors
             if "429" in error_message or "RESOURCE_EXHAUSTED" in error_message:
                 raise e
 
-            # Retry temporary server errors
+            # Retry temporary Gemini server errors
             if "503" in error_message or "UNAVAILABLE" in error_message:
 
                 if attempt < max_retries - 1:
@@ -120,23 +121,21 @@ def ai_error_response(error):
 def explain_topic(topic):
 
     prompt = f"""
-You are an AI tutor for a college learning platform called LearnRoot.
+You are a college AI tutor for LearnRoot.
 
-Explain the topic "{topic}" to a Computer Engineering student.
+Explain this Computer Engineering topic:
+{topic}
 
-Use simple and clear language.
+Use simple but technically correct language.
 
-Include:
-
+Include only:
 1. Definition
-2. Main concept
+2. Main idea
 3. Simple example
-4. Why the topic is important
-5. Connection with prerequisite concepts
+4. Why it is important
+5. Prerequisite connection
 
-Keep the explanation student-friendly.
-
-Do not make the explanation unnecessarily complicated.
+Keep the answer concise and student-friendly.
 """
 
     return generate_with_retry(prompt)
@@ -149,26 +148,21 @@ Do not make the explanation unnecessarily complicated.
 def summarize_topic(topic):
 
     prompt = f"""
-You are an AI tutor for a college learning platform called LearnRoot.
+You are a college AI tutor for LearnRoot.
 
-Generate a concise, exam-oriented summary of the topic: "{topic}".
-
-The summary should help a student quickly revise the concept.
+Create short exam-oriented revision notes for:
+{topic}
 
 Include:
+- Short definition
+- 4 to 6 key points
+- Important terms, formulas, or syntax
+- Small example if useful
+- Remember section
 
-1. A short definition
-2. 4-6 important points
-3. Important terms, formulas, syntax, or concepts if applicable
-4. A small example if useful
-5. A short "Remember" section
-
-Keep the language simple but technically correct.
-
-Do not give a long detailed explanation.
-Do not include unnecessary information.
-
-Return the answer in clear Markdown format.
+Use simple language.
+Keep it concise.
+Return Markdown.
 """
 
     return generate_with_retry(prompt)
@@ -181,21 +175,19 @@ Return the answer in clear Markdown format.
 def what_if_i_skip(topic):
 
     prompt = f"""
-You are an AI tutor for a college learning platform called LearnRoot.
+You are an AI tutor for LearnRoot.
 
-The student is thinking about skipping the topic "{topic}".
+The student is considering skipping:
+{topic}
 
-Explain:
+Explain briefly:
+1. Why it is important
+2. What later concepts may become difficult
+3. What learning gap may occur
+4. Whether it should be studied first
+5. One simple academic example
 
-1. Why this topic is important
-2. Which later concepts may become difficult
-3. How skipping it can create learning gaps
-4. Whether the student should study it first
-5. Give one simple academic example
-
-Keep the answer simple and helpful.
-
-Do not use unnecessarily complicated terminology.
+Keep the answer concise and easy to understand.
 """
 
     return generate_with_retry(prompt)
@@ -208,38 +200,38 @@ Do not use unnecessarily complicated terminology.
 def visual_explanation(topic):
 
     prompt = f"""
-You are an AI tutor for a college learning platform called LearnRoot.
+You are an AI tutor for LearnRoot.
 
-Create a simple visual explanation of "{topic}"
-for a Computer Engineering student.
+Create a simple step-by-step visual explanation of:
+{topic}
 
-Break the concept into 4 to 6 logical steps.
+Return ONLY valid JSON.
 
-Return ONLY valid JSON in this format:
+Use exactly this structure:
 
 {{
-    "topic": "Topic name",
-    "central_idea": "One short sentence",
+    "topic": "{topic}",
+    "central_idea": "one short sentence",
     "steps": [
         {{
-            "title": "Step title",
-            "description": "Short explanation"
+            "title": "short title",
+            "description": "short explanation"
         }}
     ]
 }}
 
 Rules:
-
-- Do not use Markdown.
-- Do not use code blocks.
+- Create 4 to 5 steps.
 - Keep titles short.
 - Keep descriptions short.
-- Return valid JSON only.
+- No Markdown.
+- No code block.
+- Return JSON only.
 """
 
     result = generate_with_retry(prompt).strip()
 
-    # Remove Markdown code block if Gemini adds it
+    # Remove Markdown code fences if Gemini adds them
     if result.startswith("```"):
 
         result = result.replace("```json", "")
@@ -251,6 +243,9 @@ Rules:
         return json.loads(result)
 
     except json.JSONDecodeError:
+
+        print("Gemini returned invalid JSON:")
+        print(result)
 
         return {
             "topic": topic,
@@ -266,8 +261,7 @@ Rules:
 def solve_doubt(topic, question):
 
     prompt = f"""
-You are an AI tutor for Computer Engineering students
-inside the LearnRoot learning platform.
+You are a contextual academic tutor inside LearnRoot.
 
 Current topic:
 {topic}
@@ -275,19 +269,18 @@ Current topic:
 Student question:
 {question}
 
-Answer the student's academic doubt.
+Answer ONLY if the question is academically related
+to the current topic.
 
 Rules:
+- Use simple language.
+- Explain clearly.
+- Give a small example when useful.
+- Keep the answer concise.
+- Do not act as a general chatbot.
 
-- Stay related to the given topic.
-- Answer only academic questions related to the current topic.
-- Explain step-by-step when necessary.
-- Give a simple example if useful.
-- Use simple and clear language.
-- Avoid unnecessarily complicated terminology.
-- If the question is unrelated to the current topic, politely say that
-  the question is outside the current topic and ask the student to
-  select the appropriate topic.
+If unrelated, say:
+"This question is outside the current topic. Please select the appropriate topic."
 """
 
     return generate_with_retry(prompt)
@@ -299,17 +292,20 @@ Rules:
 
 def generate_voice(topic):
 
-    # Generate explanation using Gemini
+    # Generate AI explanation
     explanation = explain_topic(topic)
 
     # Create Text-to-Speech engine
     engine = pyttsx3.init()
 
-    # Set speaking speed
+    # Speaking speed
     engine.setProperty("rate", 150)
 
-    # Create a safe filename from the topic
-    safe_topic = topic.lower().replace(" ", "_")
+    # Safe filename
+    safe_topic = "".join(
+        character if character.isalnum() else "_"
+        for character in topic.lower()
+    )
 
     # Temporary WAV file
     wav_file = f"{safe_topic}_temp.wav"
@@ -317,7 +313,7 @@ def generate_voice(topic):
     # Final MP3 file
     mp3_file = f"{safe_topic}_explanation.mp3"
 
-    # Convert text to speech and save as WAV
+    # Generate WAV
     engine.save_to_file(
         explanation,
         wav_file
@@ -326,7 +322,12 @@ def generate_voice(topic):
     engine.runAndWait()
 
     # FFmpeg executable path
-    ffmpeg_path = r"C:\Users\Shama\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-9.0.1-full_build-shared\bin\ffmpeg.exe"
+    ffmpeg_path = (
+        r"C:\Users\Shama\AppData\Local\Microsoft\WinGet\Packages"
+        r"\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        r"\ffmpeg-9.0.1-full_build-shared"
+        r"\bin\ffmpeg.exe"
+    )
 
     # Convert WAV to MP3
     subprocess.run(
@@ -344,11 +345,10 @@ def generate_voice(topic):
         check=True
     )
 
-    # Delete temporary WAV file
+    # Delete temporary WAV
     if os.path.exists(wav_file):
         os.remove(wav_file)
 
-    # Return MP3 file
     return mp3_file
 
 
@@ -367,6 +367,7 @@ def home():
     return jsonify({
         "message": "LearnRoot AI Visual Tutor API is running.",
         "module": "Module 3 - AI Visual Tutor",
+        "model": MODEL,
         "endpoints": [
             "/explain",
             "/summary",
