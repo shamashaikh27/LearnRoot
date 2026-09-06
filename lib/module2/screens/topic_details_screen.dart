@@ -1,372 +1,994 @@
-import 'graph_screen.dart';
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 
 import '../data/syllabus_data.dart';
 import '../models/topic.dart';
+import 'graph_screen.dart';
 
 class TopicDetailsScreen extends StatelessWidget {
   final Topic selectedTopic;
+  final String subject;
 
   const TopicDetailsScreen({
     super.key,
     required this.selectedTopic,
+    required this.subject,
   });
 
   @override
   Widget build(BuildContext context) {
-    // ==========================================================
-    // FIND PREREQUISITES
-    // ==========================================================
+    final isDark =
+        Theme.of(context).brightness == Brightness.dark;
 
-    final prerequisites = syllabusTopics.where(
-      (topic) => selectedTopic.prerequisites
-          .contains(topic.id),
-    ).toList();
+    final backgroundColor = isDark
+        ? AppTheme.darkBackground
+        : AppTheme.lightBackground;
 
-    // ==========================================================
-    // FIND TOPICS THAT USE THIS TOPIC
-    // ==========================================================
+    final secondarySurface = isDark
+        ? AppTheme.darkSecondary
+        : AppTheme.lightSecondary;
 
-    final usedInTopics = syllabusTopics.where(
-      (topic) => topic.prerequisites
-          .contains(selectedTopic.id),
-    ).toList();
+    final cardColor = isDark
+        ? AppTheme.darkCard
+        : AppTheme.lightCard;
+
+    final borderColor = isDark
+        ? const Color(0xFF222D50)
+        : const Color(0xFFE8E6F0);
+
+    final mainText = isDark
+        ? AppTheme.darkMainText
+        : AppTheme.lightMainText;
+
+    final secondaryText = isDark
+        ? AppTheme.darkSecondaryText
+        : AppTheme.lightSecondaryText;
+
+    final prerequisites = syllabusTopics
+        .where(
+          (topic) =>
+              selectedTopic.prerequisites.contains(topic.id),
+        )
+        .toList();
+
+    final usedInTopics = syllabusTopics
+        .where(
+          (topic) =>
+              topic.prerequisites.contains(selectedTopic.id),
+        )
+        .toList();
 
     return Scaffold(
-      backgroundColor:
-          const Color(0xFFF8F7FC),
+      backgroundColor: backgroundColor,
 
-      // ========================================================
+      // =========================================================
       // APP BAR
-      // ========================================================
-
+      // =========================================================
+      //
+      // The title "Explore Topic" has intentionally been removed.
+      // This prevents it from staying fixed while scrolling.
+      //
       appBar: AppBar(
-        backgroundColor:
-            const Color(0xFFF8F7FC),
-
+        backgroundColor: backgroundColor,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
 
-        title: Text(
-          selectedTopic.name,
-
-          style: const TextStyle(
-            color: Color(0xFF252238),
-            fontWeight: FontWeight.bold,
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: mainText,
+            size: 23,
           ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
+
+        titleSpacing: 0,
+
+        // No Explore Topic title here.
+        title: const SizedBox.shrink(),
+
+        actions: [
+          IconButton(
+            tooltip: 'Bookmark',
+            icon: Icon(
+              Icons.bookmark_border_rounded,
+              color: mainText,
+              size: 22,
+            ),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: secondarySurface,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  content: Text(
+                    'Bookmark feature coming later.',
+                    style: TextStyle(
+                      color: mainText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
 
-      // ========================================================
+      // =========================================================
       // BODY
-      // ========================================================
+      // =========================================================
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          20,
-          10,
-          20,
-          30,
-        ),
+      body: SafeArea(
+        top: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 900;
 
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-
-          children: [
-            // ==================================================
-            // TOPIC TITLE
-            // ==================================================
-
-            Center(
-              child: Text(
-                selectedTopic.name,
-
-                textAlign: TextAlign.center,
-
-                style: const TextStyle(
-                  fontSize: 29,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF252238),
-                ),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                10,
+                16,
+                40,
               ),
-            ),
-
-            const SizedBox(height: 28),
-
-            // ==================================================
-            // AI EXPLANATION
-            // ==================================================
-
-            Container(
-              width: double.infinity,
-
-              padding:
-                  const EdgeInsets.all(20),
-
-              decoration: BoxDecoration(
-                color: Colors.white,
-
-                borderRadius:
-                    BorderRadius.circular(18),
-
-                boxShadow: const [
-                  BoxShadow(
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
-                    color: Colors.black12,
-                  ),
-                ],
-              ),
-
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
+                  // =================================================
+                  // CURRENT TOPIC HEADER
+                  // =================================================
 
-                        decoration:
-                            BoxDecoration(
-                          color:
-                              const Color(0xFFEDEBFA),
+                  _buildTopicHeader(
+                    isDark: isDark,
+                    secondarySurface: secondarySurface,
+                    mainText: mainText,
+                    secondaryText: secondaryText,
+                  ),
 
-                          borderRadius:
-                              BorderRadius.circular(
-                            12,
+                  const SizedBox(height: 28),
+
+                  // =================================================
+                  // AI LEARNING
+                  // =================================================
+
+                  _buildSectionHeader(
+                    icon: Icons.smart_toy_rounded,
+                    title: 'AI Learning',
+                    subtitle:
+                        'Learn this topic with intelligent AI-powered tools.',
+                    count: '4 Tools',
+                    mainText: mainText,
+                    secondaryText: secondaryText,
+                    isDark: isDark,
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  if (isWide)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _buildExploreCard(
+                                isDark: isDark,
+                                cardColor: cardColor,
+                                borderColor: borderColor,
+                                mainText: mainText,
+                                secondaryText: secondaryText,
+                                icon:
+                                    Icons.auto_awesome_rounded,
+                                title: 'AI Summary',
+                                subtitle:
+                                    'Get a simple and concise summary of this topic.',
+                                iconBackground:
+                                    AppTheme.primaryPurple,
+                                iconColor: Colors.white,
+                                onTap: () {
+                                  _showComingSoon(
+                                    context,
+                                    'AI Summary',
+                                    isDark,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                              _buildExploreCard(
+                                isDark: isDark,
+                                cardColor: cardColor,
+                                borderColor: borderColor,
+                                mainText: mainText,
+                                secondaryText: secondaryText,
+                                icon:
+                                    Icons.chat_bubble_rounded,
+                                title: 'AI Doubt Solver',
+                                subtitle:
+                                    'Ask questions and clear your doubts with AI.',
+                                iconBackground:
+                                    secondarySurface,
+                                iconColor:
+                                    AppTheme.primaryPurple,
+                                onTap: () {
+                                  _showComingSoon(
+                                    context,
+                                    'AI Doubt Solver',
+                                    isDark,
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         ),
 
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color:
-                              Color(0xFF6C63A8),
+                        const SizedBox(width: 14),
+
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _buildExploreCard(
+                                isDark: isDark,
+                                cardColor: cardColor,
+                                borderColor: borderColor,
+                                mainText: mainText,
+                                secondaryText: secondaryText,
+                                icon:
+                                    Icons.auto_graph_rounded,
+                                title:
+                                    'AI Visual Explanation',
+                                subtitle:
+                                    'Understand concepts through visual explanations.',
+                                iconBackground:
+                                    secondarySurface,
+                                iconColor:
+                                    AppTheme.gradientPurpleEnd,
+                                onTap: () {
+                                  _showComingSoon(
+                                    context,
+                                    'AI Visual Explanation',
+                                    isDark,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                              _buildExploreCard(
+                                isDark: isDark,
+                                cardColor: cardColor,
+                                borderColor: borderColor,
+                                mainText: mainText,
+                                secondaryText: secondaryText,
+                                icon:
+                                    Icons.warning_amber_rounded,
+                                title: 'What If I Skip?',
+                                subtitle:
+                                    'See how skipping this topic can affect future learning.',
+                                iconBackground:
+                                    secondarySurface,
+                                iconColor:
+                                    AppTheme.warningOrange,
+                                onTap: () {
+                                  _showComingSoon(
+                                    context,
+                                    'What If I Skip?',
+                                    isDark,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Column(
+                      children: [
+                        _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
+                          icon: Icons.auto_awesome_rounded,
+                          title: 'AI Summary',
+                          subtitle:
+                              'Get a simple and concise summary of this topic.',
+                          iconBackground:
+                              AppTheme.primaryPurple,
+                          iconColor: Colors.white,
+                          onTap: () {
+                            _showComingSoon(
+                              context,
+                              'AI Summary',
+                              isDark,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
+                          icon: Icons.auto_graph_rounded,
+                          title: 'AI Visual Explanation',
+                          subtitle:
+                              'Understand concepts through visual explanations.',
+                          iconBackground: secondarySurface,
+                          iconColor:
+                              AppTheme.gradientPurpleEnd,
+                          onTap: () {
+                            _showComingSoon(
+                              context,
+                              'AI Visual Explanation',
+                              isDark,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
+                          icon: Icons.chat_bubble_rounded,
+                          title: 'AI Doubt Solver',
+                          subtitle:
+                              'Ask questions and clear your doubts with AI.',
+                          iconBackground: secondarySurface,
+                          iconColor:
+                              AppTheme.primaryPurple,
+                          onTap: () {
+                            _showComingSoon(
+                              context,
+                              'AI Doubt Solver',
+                              isDark,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
+                          icon:
+                              Icons.warning_amber_rounded,
+                          title: 'What If I Skip?',
+                          subtitle:
+                              'See how skipping this topic can affect future learning.',
+                          iconBackground: secondarySurface,
+                          iconColor:
+                              AppTheme.warningOrange,
+                          onTap: () {
+                            _showComingSoon(
+                              context,
+                              'What If I Skip?',
+                              isDark,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                  const SizedBox(height: 32),
+
+                  // =================================================
+                  // STUDY RESOURCES
+                  // =================================================
+
+                  _buildSectionHeader(
+                    icon: Icons.menu_book_rounded,
+                    title: 'Study Resources',
+                    subtitle:
+                        'Use additional resources to strengthen your understanding.',
+                    count: '3 Resources',
+                    mainText: mainText,
+                    secondaryText: secondaryText,
+                    isDark: isDark,
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  if (isWide)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildExploreCard(
+                            isDark: isDark,
+                            cardColor: cardColor,
+                            borderColor: borderColor,
+                            mainText: mainText,
+                            secondaryText: secondaryText,
+                            icon: Icons.description_rounded,
+                            title: 'Generated Notes',
+                            subtitle:
+                                'Read topic-specific notes prepared for learning.',
+                            iconBackground:
+                                secondarySurface,
+                            iconColor:
+                                AppTheme.successGreen,
+                            onTap: () {
+                              _showComingSoon(
+                                context,
+                                'Generated Notes',
+                                isDark,
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: _buildExploreCard(
+                            isDark: isDark,
+                            cardColor: cardColor,
+                            borderColor: borderColor,
+                            mainText: mainText,
+                            secondaryText: secondaryText,
+                            icon: Icons.psychology_rounded,
+                            title: 'Quiz',
+                            subtitle:
+                                'Test your understanding with topic-based questions.',
+                            iconBackground:
+                                secondarySurface,
+                            iconColor:
+                                AppTheme.gradientPurpleEnd,
+                            onTap: () {
+                              _showComingSoon(
+                                context,
+                                'Quiz',
+                                isDark,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Column(
+                      children: [
+                        _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
+                          icon: Icons.description_rounded,
+                          title: 'Generated Notes',
+                          subtitle:
+                              'Read topic-specific notes prepared for learning.',
+                          iconBackground: secondarySurface,
+                          iconColor:
+                              AppTheme.successGreen,
+                          onTap: () {
+                            _showComingSoon(
+                              context,
+                              'Generated Notes',
+                              isDark,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
+                          icon: Icons.psychology_rounded,
+                          title: 'Quiz',
+                          subtitle:
+                              'Test your understanding with topic-based questions.',
+                          iconBackground: secondarySurface,
+                          iconColor:
+                              AppTheme.gradientPurpleEnd,
+                          onTap: () {
+                            _showComingSoon(
+                              context,
+                              'Quiz',
+                              isDark,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                  const SizedBox(height: 14),
+
+                  _buildExploreCard(
+                    isDark: isDark,
+                    cardColor: cardColor,
+                    borderColor: borderColor,
+                    mainText: mainText,
+                    secondaryText: secondaryText,
+                    icon: Icons.play_circle_fill_rounded,
+                    title: 'YouTube Recommended Videos',
+                    subtitle:
+                        'Watch recommended videos to explore the topic further.',
+                    iconBackground: secondarySurface,
+                    iconColor: AppTheme.warningOrange,
+                    onTap: () {
+                      _showComingSoon(
+                        context,
+                        'YouTube Recommended Videos',
+                        isDark,
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 34),
+
+                  // =================================================
+                  // PREREQUISITES
+                  // =================================================
+
+                  Text(
+                    'Prerequisites',
+                    style: TextStyle(
+                      color: mainText,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.15,
+                      height: 1.2,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  if (prerequisites.isEmpty)
+                    _emptyCard(
+                      'This topic has no prerequisites.',
+                      cardColor,
+                      borderColor,
+                      secondaryText,
+                    )
+                  else
+                    ...prerequisites.map(
+                      (topic) => _topicCard(
+                        context: context,
+                        topic: topic,
+                        icon: Icons.arrow_upward_rounded,
+                        iconColor: AppTheme.successGreen,
+                        backgroundColor: secondarySurface,
+                        cardColor: cardColor,
+                        borderColor: borderColor,
+                        mainText: mainText,
+                        secondaryText: secondaryText,
+                      ),
+                    ),
+
+                  const SizedBox(height: 32),
+
+                  // =================================================
+                  // POST REQUISITES
+                  // =================================================
+
+                  Text(
+                    'Post requisites',
+                    style: TextStyle(
+                      color: mainText,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.15,
+                      height: 1.2,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    'This topic is useful in these further topics:',
+                    style: TextStyle(
+                      color: secondaryText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  if (usedInTopics.isEmpty)
+                    _emptyCard(
+                      'This topic is not directly used in another topic yet.',
+                      cardColor,
+                      borderColor,
+                      secondaryText,
+                    )
+                  else
+                    ...usedInTopics.map(
+                      (topic) => _topicCard(
+                        context: context,
+                        topic: topic,
+                        icon: Icons.arrow_downward_rounded,
+                        iconColor: AppTheme.warningOrange,
+                        backgroundColor: secondarySurface,
+                        cardColor: cardColor,
+                        borderColor: borderColor,
+                        mainText: mainText,
+                        secondaryText: secondaryText,
+                      ),
+                    ),
+
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // =============================================================
+  // CURRENT TOPIC HEADER
+  // =============================================================
+
+  Widget _buildTopicHeader({
+    required bool isDark,
+    required Color secondarySurface,
+    required Color mainText,
+    required Color secondaryText,
+  }) {
+    final dividerColor = isDark
+        ? const Color(0xFF293253)
+        : const Color(0xFFE8E6F0);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 22,
+      ),
+      decoration: BoxDecoration(
+        color: secondarySurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.primaryPurple.withValues(
+            alpha: 0.65,
+          ),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryPurple,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.menu_book_rounded,
+              color: Colors.white,
+              size: 27,
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CURRENT TOPIC',
+                  style: TextStyle(
+                    color: AppTheme.gradientPurpleEnd,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.7,
+                    height: 1.2,
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  selectedTopic.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: mainText,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.2,
+                    height: 1.2,
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Subject: ',
+                        style: TextStyle(
+                          color: secondaryText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          height: 1.35,
                         ),
                       ),
-
-                      const SizedBox(width: 12),
-
-                      const Text(
-                        'AI Explanation',
-
-                        style: TextStyle(
-                          fontSize: 21,
-                          fontWeight:
-                              FontWeight.bold,
-                          color:
-                              Color(0xFF252238),
+                      TextSpan(
+                        text: subject,
+                        style: const TextStyle(
+                          color: AppTheme.gradientPurpleEnd,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
                         ),
                       ),
                     ],
                   ),
+                ),
 
-                  const SizedBox(height: 16),
+                const SizedBox(height: 13),
 
-                  const Text(
-                    'AI-generated summarized explanation '
-                    'with examples and visual explanations '
-                    'will appear here.',
+                Container(
+                  width: 240,
+                  height: 1,
+                  color: dividerColor,
+                ),
 
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.5,
-                      color: Color(0xFF555555),
-                    ),
+                const SizedBox(height: 11),
+
+                Text(
+                  'Choose how you want to learn this topic.',
+                  style: TextStyle(
+                    color: secondaryText,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    height: 1.4,
                   ),
+                ),
+              ],
+            ),
+          ),
 
-                  const SizedBox(height: 20),
+          const SizedBox(width: 16),
 
-                  SizedBox(
-                    width: double.infinity,
+          const Column(
+            children: [
+              Icon(
+                Icons.lightbulb_rounded,
+                color: AppTheme.warningOrange,
+                size: 31,
+              ),
+              SizedBox(height: 4),
+              Icon(
+                Icons.auto_awesome,
+                color: AppTheme.primaryPurple,
+                size: 18,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-                    height: 48,
+  // =============================================================
+  // SECTION HEADER
+  // =============================================================
 
-                    child: ElevatedButton.icon(
-                      style:
-                          ElevatedButton.styleFrom(
-                        backgroundColor:
-                            const Color(
-                          0xFF6C63A8,
-                        ),
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String count,
+    required Color mainText,
+    required Color secondaryText,
+    required bool isDark,
+  }) {
+    final surfaceColor = isDark
+        ? AppTheme.darkSecondary
+        : AppTheme.lightSecondary;
 
-                        foregroundColor:
-                            Colors.white,
-
-                        elevation: 0,
-
-                        shape:
-                            RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(
-                            12,
-                          ),
-                        ),
-                      ),
-
-                      onPressed: () {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'AI explanation will be connected later.',
-                            ),
-                          ),
-                        );
-                      },
-
-                      icon: const Icon(
-                        Icons.play_circle_outline,
-                      ),
-
-                      label: const Text(
-                        'Start AI Explanation',
-                      ),
-                    ),
-                  ),
-                ],
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: AppTheme.primaryPurple.withValues(
+                alpha: 0.45,
               ),
             ),
+          ),
+          child: Icon(
+            icon,
+            color: AppTheme.gradientPurpleEnd,
+            size: 19,
+          ),
+        ),
 
-            const SizedBox(height: 28),
+        const SizedBox(width: 10),
 
-            // ==================================================
-            // PREREQUISITES
-            // ==================================================
-
-            const Text(
-              'Prerequisites',
-
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF252238),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            if (prerequisites.isEmpty)
-              _emptyCard(
-                'This topic has no prerequisites.',
-              )
-            else
-              ...prerequisites.map(
-                (topic) => _topicCard(
-                  context: context,
-                  topic: topic,
-                  icon:
-                      Icons.arrow_upward_rounded,
-                  iconColor:
-                      const Color(0xFF4D8754),
-                  backgroundColor:
-                      const Color(0xFFE8F5E9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: mainText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.1,
+                  height: 1.15,
                 ),
               ),
 
-            const SizedBox(height: 28),
+              const SizedBox(height: 4),
 
-            // ==================================================
-            // USED IN
-            // ==================================================
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: secondaryText,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
 
-            const Text(
-              'Post requisites',
+        const SizedBox(width: 10),
 
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF252238),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 11,
+            vertical: 7,
+          ),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: AppTheme.primaryPurple.withValues(
+                alpha: 0.45,
               ),
             ),
-
-            const SizedBox(height: 6),
-
-            const Text(
-              'This topic is useful in these further topics:',
-
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+          ),
+          child: Text(
+            count,
+            style: const TextStyle(
+              color: AppTheme.gradientPurpleEnd,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              height: 1.1,
             ),
+          ),
+        ),
+      ],
+    );
+  }
 
-            const SizedBox(height: 10),
+  // =============================================================
+  // EXPLORE CARD
+  // =============================================================
 
-            if (usedInTopics.isEmpty)
-              _emptyCard(
-                'This topic is not directly used in another topic yet.',
-              )
-            else
-              ...usedInTopics.map(
-                (topic) => _topicCard(
-                  context: context,
-                  topic: topic,
-                  icon:
-                      Icons.arrow_downward_rounded,
-                  iconColor:
-                      const Color(0xFFB47725),
-                  backgroundColor:
-                      const Color(0xFFFFF2E1),
+  Widget _buildExploreCard({
+    required bool isDark,
+    required Color cardColor,
+    required Color borderColor,
+    required Color mainText,
+    required Color secondaryText,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color iconBackground,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(
+            minHeight: 124,
+          ),
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: borderColor,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: 22,
                 ),
               ),
 
-            const SizedBox(height: 28),
+              const SizedBox(width: 13),
 
-            // ==================================================
-            // EXPLORE FURTHER
-            // ==================================================
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: mainText,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -0.05,
+                          height: 1.22,
+                        ),
+                      ),
 
-            const Text(
-              'Explore Further',
+                      const SizedBox(height: 7),
 
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF252238),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: secondaryText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
 
-            const SizedBox(height: 14),
+              const SizedBox(width: 9),
 
-            // --------------------------------------------------
-            // NOTES
-            // --------------------------------------------------
-
-            _exploreCard(
-              context: context,
-
-              icon: Icons.description_outlined,
-
-              title: 'Notes',
-
-              subtitle:
-                  'Read detailed notes about this topic',
-            ),
-
-            const SizedBox(height: 10),
-
-            // --------------------------------------------------
-            // YOUTUBE
-            // --------------------------------------------------
-
-            _exploreCard(
-              context: context,
-
-              icon: Icons.play_circle_outline,
-
-              title:
-                  'YouTube Recommendations',
-
-              subtitle:
-                  'Watch recommended videos about this topic',
-            ),
-
-            const SizedBox(height: 30),
-          ],
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: secondaryText,
+                  size: 15,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -382,70 +1004,81 @@ class TopicDetailsScreen extends StatelessWidget {
     required IconData icon,
     required Color iconColor,
     required Color backgroundColor,
+    required Color cardColor,
+    required Color borderColor,
+    required Color mainText,
+    required Color secondaryText,
   }) {
     return Container(
-      margin:
-          const EdgeInsets.only(bottom: 8),
-
+      margin: const EdgeInsets.only(bottom: 9),
       decoration: BoxDecoration(
-        color: Colors.white,
-
-        borderRadius:
-            BorderRadius.circular(14),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: borderColor,
+        ),
       ),
-
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 5,
-        ),
-
-        leading: Container(
-          width: 42,
-          height: 42,
-
-          decoration: BoxDecoration(
-            color: backgroundColor,
-
-            borderRadius:
-                BorderRadius.circular(11),
-          ),
-
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: 21,
-          ),
-        ),
-
-        title: Text(
-          topic.name,
-
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF252238),
-          ),
-        ),
-
-        trailing: const Icon(
-          Icons.arrow_forward_ios_rounded,
-          size: 16,
-          color: Colors.grey,
-        ),
-
-        onTap: () {
-          Navigator.push(
-            context,
-
-            MaterialPageRoute(
-              builder: (context) =>
-                  _GraphNavigationScreen(
-                selectedTopic: topic,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    _GraphNavigationScreen(
+                  selectedTopic: topic,
+                ),
               ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 11,
             ),
-          );
-        },
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: iconColor,
+                    size: 20,
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: Text(
+                    topic.name,
+                    style: TextStyle(
+                      color: mainText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: secondaryText,
+                  size: 15,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -456,117 +1089,74 @@ class TopicDetailsScreen extends StatelessWidget {
 
   static Widget _emptyCard(
     String message,
+    Color cardColor,
+    Color borderColor,
+    Color secondaryText,
   ) {
     return Container(
       width: double.infinity,
-
-      padding: const EdgeInsets.all(16),
-
+      padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: Colors.white,
-
-        borderRadius:
-            BorderRadius.circular(14),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: borderColor,
+        ),
       ),
-
       child: Text(
         message,
-
-        style: const TextStyle(
-          color: Colors.grey,
+        style: TextStyle(
+          color: secondaryText,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 1.4,
         ),
       ),
     );
   }
 
   // =============================================================
-  // EXPLORE CARD
+  // COMING SOON
   // =============================================================
 
-  static Widget _exploreCard({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+  static void _showComingSoon(
+    BuildContext context,
+    String feature,
+    bool isDark,
+  ) {
+    final backgroundColor = isDark
+        ? AppTheme.darkSecondary
+        : AppTheme.lightSecondary;
 
-        borderRadius:
-            BorderRadius.circular(14),
-      ),
+    final textColor = isDark
+        ? AppTheme.darkMainText
+        : AppTheme.lightMainText;
 
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 6,
-        ),
-
-        leading: Container(
-          width: 44,
-          height: 44,
-
-          decoration: BoxDecoration(
-            color: const Color(0xFFEDEBFA),
-
-            borderRadius:
-                BorderRadius.circular(11),
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: backgroundColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-
-          child: Icon(
-            icon,
-            color: const Color(0xFF6C63A8),
-          ),
-        ),
-
-        title: Text(
-          title,
-
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF252238),
-          ),
-        ),
-
-        subtitle: Text(
-          subtitle,
-
-          style: const TextStyle(
-            color: Colors.grey,
-          ),
-        ),
-
-        trailing: const Icon(
-          Icons.arrow_forward_ios_rounded,
-          size: 16,
-          color: Colors.grey,
-        ),
-
-        onTap: () {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(
-            SnackBar(
-              content: Text(
-                '$title will be connected later.',
-              ),
+          content: Text(
+            '$feature will open here.',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
             ),
-          );
-        },
-      ),
-    );
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 }
 
-
 // =============================================================
-// SMALL NAVIGATION SCREEN
-// =============================================================
-//
-// This lets the prerequisite / Used In cards open
-// the selected topic's graph without creating
-// circular imports between screens.
+// GRAPH NAVIGATION
 // =============================================================
 
 class _GraphNavigationScreen extends StatelessWidget {
@@ -584,7 +1174,6 @@ class _GraphNavigationScreen extends StatelessWidget {
   }
 }
 
-
 // =============================================================
 // GRAPH WRAPPER
 // =============================================================
@@ -599,8 +1188,10 @@ class _GraphScreenWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.lightBackground,
       body: PrerequisiteGraphScreen(
         selectedTopic: selectedTopic,
+        subject: selectedTopic.subject,
       ),
     );
   }
