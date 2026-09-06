@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'settings_screen.dart';
 
 import '../data/syllabus_data.dart';
 import 'graph_screen.dart';
 
 class SubjectScreen extends StatefulWidget {
-  const SubjectScreen({super.key});
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeChanged;
+
+  const SubjectScreen({
+    super.key,
+    required this.themeMode,
+    required this.onThemeChanged,
+  });
 
   @override
   State<SubjectScreen> createState() => _SubjectScreenState();
@@ -15,10 +23,6 @@ class _SubjectScreenState extends State<SubjectScreen> {
       TextEditingController();
 
   String searchText = '';
-
-  // ==========================================================
-  // SUBJECT LIST
-  // ==========================================================
 
   final List<String> subjects = [
     'C Programming',
@@ -37,6 +41,10 @@ class _SubjectScreenState extends State<SubjectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     final filteredSubjects = subjects.where((subject) {
       return subject.toLowerCase().contains(
             searchText.toLowerCase(),
@@ -44,27 +52,44 @@ class _SubjectScreenState extends State<SubjectScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FC),
+      backgroundColor: theme.scaffoldBackgroundColor,
 
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F7FC),
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
-
-        title: const Text(
+        title: Text(
           'LearnRoot',
           style: TextStyle(
-            color: Color(0xFF252238),
-            fontWeight: FontWeight.bold,
+            color: colorScheme.onSurface,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Settings',
+            icon: Icon(
+              Icons.settings_rounded,
+              color: colorScheme.onSurface,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SettingsScreen(
+                    themeMode: widget.themeMode,
+                    onThemeChanged: widget.onThemeChanged,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
 
       body: Column(
         children: [
-          // ====================================================
-          // SEARCH SUBJECT
-          // ====================================================
-
           Padding(
             padding: const EdgeInsets.fromLTRB(
               16,
@@ -72,56 +97,38 @@ class _SubjectScreenState extends State<SubjectScreen> {
               16,
               12,
             ),
-
             child: TextField(
               controller: searchController,
-
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+              ),
+              cursorColor: colorScheme.primary,
               decoration: InputDecoration(
                 hintText: 'Search subject...',
-
-                prefixIcon: const Icon(
+                prefixIcon: Icon(
                   Icons.search_rounded,
-                  color: Color(0xFF6C63A8),
+                  color: colorScheme.primary,
                 ),
-
                 suffixIcon: searchText.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.clear_rounded,
-                          color: Colors.grey,
+                          color: colorScheme.onSurface.withValues(
+                            alpha: isDark ? 0.55 : 0.50,
+                          ),
                         ),
                         onPressed: () {
                           searchController.clear();
-
                           setState(() {
                             searchText = '';
                           });
                         },
                       )
                     : null,
-
                 filled: true,
-                fillColor: Colors.white,
-
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF6C63A8),
-                    width: 1.5,
-                  ),
-                ),
               ),
-
               onChanged: (value) {
                 setState(() {
                   searchText = value;
@@ -130,32 +137,27 @@ class _SubjectScreenState extends State<SubjectScreen> {
             ),
           ),
 
-          // ====================================================
-          // SUBJECT LIST
-          // ====================================================
-
           Expanded(
             child: filteredSubjects.isEmpty
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment:
                           MainAxisAlignment.center,
-
                       children: [
                         Icon(
                           Icons.search_off_rounded,
                           size: 55,
-                          color: Colors.grey,
+                          color: colorScheme.onSurface.withValues(
+                            alpha: isDark ? 0.55 : 0.45,
+                          ),
                         ),
-
-                        SizedBox(height: 12),
-
+                        const SizedBox(height: 12),
                         Text(
                           'No matching subject found.',
                           style: TextStyle(
                             fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF252238),
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -165,87 +167,64 @@ class _SubjectScreenState extends State<SubjectScreen> {
                     padding: const EdgeInsets.only(
                       bottom: 20,
                     ),
-
-                    itemCount:
-                        filteredSubjects.length,
-
+                    itemCount: filteredSubjects.length,
                     itemBuilder: (context, index) {
                       final subject =
                           filteredSubjects[index];
 
                       return Container(
-                        margin:
-                            const EdgeInsets.symmetric(
+                        margin: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 6,
                         ),
-
-                        decoration:
-                            BoxDecoration(
-                          color: Colors.white,
-
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
                           borderRadius:
-                              BorderRadius.circular(
-                            14,
+                              BorderRadius.circular(14),
+                          border: Border.all(
+                            color:
+                                colorScheme.onSurface.withValues(
+                              alpha: isDark ? 0.05 : 0.08,
+                            ),
+                            width: 1,
                           ),
                         ),
-
                         child: ListTile(
                           contentPadding:
                               const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
                           ),
-
                           leading: Container(
                             width: 46,
                             height: 46,
-
-                            decoration:
-                                BoxDecoration(
-                              color:
-                                  const Color(
-                                0xFFEDEBFA,
-                              ),
-
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary
+                                  .withValues(alpha: 0.14),
                               borderRadius:
-                                  BorderRadius.circular(
-                                12,
-                              ),
+                                  BorderRadius.circular(12),
                             ),
-
-                            child: const Icon(
+                            child: Icon(
                               Icons.menu_book_rounded,
-                              color:
-                                  Color(0xFF6C63A8),
+                              color: colorScheme.primary,
                             ),
                           ),
-
                           title: Text(
                             subject,
-
-                            style:
-                                const TextStyle(
-                              fontWeight:
-                                  FontWeight.bold,
+                            style: TextStyle(
                               fontSize: 16,
-                              color:
-                                  Color(0xFF252238),
+                              fontWeight: FontWeight.w500,
+                              color: colorScheme.onSurface,
                             ),
                           ),
-
-                          trailing:
-                              const Icon(
-                            Icons
-                                .arrow_forward_ios_rounded,
+                          trailing: Icon(
+                            Icons.arrow_forward_ios_rounded,
                             size: 17,
-                            color: Colors.grey,
+                            color:
+                                colorScheme.onSurface.withValues(
+                              alpha: isDark ? 0.55 : 0.50,
+                            ),
                           ),
-
-                          // ==================================================
-                          // OPEN TOPICS FOR SELECTED SUBJECT
-                          // ==================================================
-
                           onTap: () {
                             final subjectTopics =
                                 syllabusTopics
@@ -259,15 +238,14 @@ class _SubjectScreenState extends State<SubjectScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                settings: const RouteSettings(
+                                settings:
+                                    const RouteSettings(
                                   name: '/topicList',
                                 ),
                                 builder: (_) =>
                                     GraphScreen(
-                                  subject:
-                                      subject,
-                                  topics:
-                                      subjectTopics,
+                                  subject: subject,
+                                  topics: subjectTopics,
                                 ),
                               ),
                             );
