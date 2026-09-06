@@ -1,10 +1,10 @@
-
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../data/syllabus_data.dart';
 import '../models/topic.dart';
+import '../../theme/app_theme.dart';
 import 'topic_details_screen.dart';
 
 // =============================================================
@@ -39,7 +39,33 @@ class _GraphScreenState extends State<GraphScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Only show topics belonging to the selected subject
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final backgroundColor = isDark
+        ? AppTheme.darkBackground
+        : AppTheme.lightBackground;
+
+    final cardColor = isDark
+        ? AppTheme.darkCard
+        : AppTheme.lightCard;
+
+    final secondarySurface = isDark
+        ? AppTheme.darkSecondary
+        : AppTheme.lightSecondary;
+
+    final mainText = isDark
+        ? AppTheme.darkMainText
+        : AppTheme.lightMainText;
+
+    final secondaryText = isDark
+        ? AppTheme.darkSecondaryText
+        : AppTheme.lightSecondaryText;
+
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : AppTheme.lightBorder;
+
     final filteredTopics = widget.topics.where((topic) {
       return topic.name
           .toLowerCase()
@@ -47,214 +73,290 @@ class _GraphScreenState extends State<GraphScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FC),
-
-      // =======================================================
-      // TOPIC LIST APP BAR
-      // =======================================================
+      extendBodyBehindAppBar: true,
+      backgroundColor: backgroundColor,
 
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F7FC),
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: mainText,
+            size: 24,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+
+        titleSpacing: 0,
 
         title: Text(
           widget.subject,
-          style: const TextStyle(
-            color: Color(0xFF252238),
-            fontWeight: FontWeight.bold,
+          style: TextStyle(
+            color: mainText,
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+            height: 1.2,
+            letterSpacing: -0.2,
           ),
         ),
       ),
 
-      body: Column(
-        children: [
+      body: Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+
           // =====================================================
-          // SEARCH BAR
+          // FINAL THEME BACKGROUNDS
           // =====================================================
 
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              12,
-            ),
-            child: TextField(
-              controller: searchController,
+          gradient: isDark
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF030C1D),
+                    Color(0xFF0E1532),
+                  ],
+                )
+              : AppTheme.lightBackgroundGradient,
+        ),
 
-              decoration: InputDecoration(
-                hintText: 'Search topic...',
+        child: SafeArea(
+          child: Column(
+            children: [
+              // =================================================
+              // SEARCH BAR
+              // =================================================
 
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFF6C63A8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                  12,
                 ),
+                child: TextField(
+                  controller: searchController,
 
-                suffixIcon: searchText.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(
-                          Icons.clear_rounded,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          searchController.clear();
-
-                          setState(() {
-                            searchText = '';
-                          });
-                        },
-                      )
-                    : null,
-
-                filled: true,
-                fillColor: Colors.white,
-
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF6C63A8),
-                    width: 1.5,
+                  style: TextStyle(
+                    color: mainText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
                   ),
+
+                  cursorColor: AppTheme.primaryPurple,
+
+                  decoration: InputDecoration(
+                    hintText: 'Search topic...',
+
+                    hintStyle: TextStyle(
+                      color: secondaryText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
+
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppTheme.primaryPurple,
+                      size: 22,
+                    ),
+
+                    suffixIcon: searchText.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.clear_rounded,
+                              color: secondaryText,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              searchController.clear();
+
+                              setState(() {
+                                searchText = '';
+                              });
+                            },
+                          )
+                        : null,
+
+                    filled: true,
+                    fillColor: secondarySurface,
+
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: borderColor,
+                        width: 1,
+                      ),
+                    ),
+
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primaryPurple,
+                        width: 1.5,
+                      ),
+                    ),
+
+                    contentPadding:
+                        const EdgeInsets.symmetric(
+                      vertical: 15,
+                      horizontal: 14,
+                    ),
+                  ),
+
+                  onChanged: (value) {
+                    setState(() {
+                      searchText = value;
+                    });
+                  },
                 ),
               ),
 
-              onChanged: (value) {
-                setState(() {
-                  searchText = value;
-                });
-              },
-            ),
-          ),
+              // =================================================
+              // TOPIC LIST
+              // =================================================
 
-          // =====================================================
-          // TOPIC LIST
-          // =====================================================
+              Expanded(
+                child: filteredTopics.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment:
+                              MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 55,
+                              color: secondaryText,
+                            ),
 
-          Expanded(
-            child: filteredTopics.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off_rounded,
-                          size: 55,
-                          color: Colors.grey,
+                            const SizedBox(height: 12),
+
+                            Text(
+                              'No matching topic found.',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: mainText,
+                                height: 1.2,
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Text(
+                              'Try searching for another topic.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: secondaryText,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
                         ),
-
-                        SizedBox(height: 12),
-
-                        Text(
-                          'No matching topic found.',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF252238),
-                          ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(
+                          bottom: 20,
                         ),
+                        itemCount: filteredTopics.length,
+                        itemBuilder: (context, index) {
+                          final topic = filteredTopics[index];
 
-                        SizedBox(height: 8),
-
-                        Text(
-                          'Try searching for another topic.',
-                          style: TextStyle(
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(
-                      bottom: 20,
-                    ),
-
-                    itemCount: filteredTopics.length,
-
-                    itemBuilder: (context, index) {
-                      final topic = filteredTopics[index];
-
-                      return Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius:
-                              BorderRadius.circular(14),
-                        ),
-
-                        child: ListTile(
-                          contentPadding:
-                              const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-
-                          leading: Container(
-                            width: 44,
-                            height: 44,
+                          return Container(
+                            margin:
+                                const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
 
                             decoration: BoxDecoration(
-                              color:
-                                  const Color(0xFFEDEBFA),
+                              color: cardColor,
                               borderRadius:
-                                  BorderRadius.circular(12),
+                                  BorderRadius.circular(14),
+                              border: Border.all(
+                                color: borderColor,
+                                width: 1,
+                              ),
                             ),
 
-                            child: const Icon(
-                              Icons.account_tree_rounded,
-                              color:
-                                  Color(0xFF6C63A8),
-                            ),
-                          ),
+                            child: ListTile(
+                              contentPadding:
+                                  const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
 
-                          title: Text(
-                            topic.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  Color(0xFF252238),
-                            ),
-                          ),
+                              leading: Container(
+                                width: 44,
+                                height: 44,
 
-                          trailing: const Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 17,
-                            color: Colors.grey,
-                          ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? AppTheme.darkSecondary
+                                      : AppTheme.lightSecondary,
+                                  borderRadius:
+                                      BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppTheme.primaryPurple
+                                        .withValues(alpha: 0.45),
+                                  ),
+                                ),
 
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    PrerequisiteGraphScreen(
-                                  selectedTopic: topic,
-                                  subject: widget.subject,
+                                child: const Icon(
+                                  Icons.account_tree_rounded,
+                                  color: AppTheme.primaryPurple,
+                                  size: 21,
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
+
+                              title: Text(
+                                topic.name,
+                                style: TextStyle(
+                                  color: mainText,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.25,
+                                ),
+                              ),
+
+                              trailing: Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 16,
+                                color: secondaryText,
+                              ),
+
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        PrerequisiteGraphScreen(
+                                      selectedTopic: topic,
+                                      subject: widget.subject,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -310,48 +412,100 @@ class PrerequisiteGraphScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final backgroundColor = isDark
+        ? AppTheme.darkBackground
+        : AppTheme.lightBackground;
+
+    final mainText = isDark
+        ? AppTheme.darkMainText
+        : AppTheme.lightMainText;
+
+    final secondaryText = isDark
+        ? AppTheme.darkSecondaryText
+        : AppTheme.lightSecondaryText;
+
+    // =========================================================
+    // THEME-AWARE GRAPH NODE COLORS
+    // =========================================================
+
+    final prerequisiteGreen = isDark
+        ? const Color(0xFF6E8F76)
+        : AppTheme.prerequisiteBorder;
+
+    final prerequisiteBackground = isDark
+        ? const Color(0xFF24352B)
+        : AppTheme.prerequisiteBackground;
+
+    final prerequisiteText = isDark
+        ? const Color(0xFFC4D8C9)
+        : AppTheme.prerequisiteText;
+
+    final postRequisiteOrange = isDark
+        ? const Color(0xFF9B7650)
+        : AppTheme.postRequisiteBorder;
+
+    final postRequisiteBackground = isDark
+        ? const Color(0xFF382C20)
+        : AppTheme.postRequisiteBackground;
+
+    final postRequisiteText = isDark
+        ? const Color(0xFFD8B98F)
+        : AppTheme.postRequisiteText;
+
+    final currentTopic = AppTheme.currentTopic;
+
     final prerequisites = prerequisiteTopics;
     final usedIn = usedInTopics;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FC),
+      extendBodyBehindAppBar: true,
+      backgroundColor: backgroundColor,
 
       // =======================================================
       // GRAPH SCREEN APP BAR
       // =======================================================
 
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8F7FC),
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
 
-        // LEFT SIDE → PREVIOUS GRAPH
         leading: IconButton(
-          icon: const Icon(
+          tooltip: 'Back',
+          icon: Icon(
             Icons.arrow_back_rounded,
-            color: Color(0xFF252238),
+            color: mainText,
+            size: 24,
           ),
-
           onPressed: () {
             Navigator.pop(context);
           },
         ),
 
+        titleSpacing: 0,
+
         title: Text(
           selectedTopic.name,
-          style: const TextStyle(
-            color: Color(0xFF252238),
-            fontWeight: FontWeight.bold,
+          style: TextStyle(
+            color: mainText,
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+            height: 1.2,
+            letterSpacing: -0.2,
           ),
         ),
 
-        // RIGHT SIDE → TOPIC LIST
         actions: [
           IconButton(
-            icon: const Icon(
+            tooltip: 'Close',
+            icon: Icon(
               Icons.close_rounded,
-              color: Color(0xFF252238),
+              color: mainText,
+              size: 23,
             ),
-
             onPressed: () {
               Navigator.popUntil(
                 context,
@@ -360,141 +514,186 @@ class PrerequisiteGraphScreen extends StatelessWidget {
               );
             },
           ),
+
+          const SizedBox(width: 4),
         ],
       ),
 
-      body: SafeArea(
-        child: Column(
-          children: [
-            // =================================================
-            // GRAPH AREA
-            // =================================================
+      // =======================================================
+      // BODY
+      // =======================================================
 
-            Expanded(
-              child: _GraphArea(
-                selectedTopic: selectedTopic,
-                prerequisiteTopics: prerequisites,
-                usedInTopics: usedIn,
+      body: Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+
+          // =====================================================
+          // FINAL GRAPH BACKGROUND GRADIENT
+          // =====================================================
+
+          gradient: isDark
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF030C1D),
+                    Color(0xFF0E1532),
+                  ],
+                )
+              : AppTheme.lightBackgroundGradient,
+        ),
+
+        child: SafeArea(
+          child: Column(
+            children: [
+              // =================================================
+              // GRAPH AREA
+              // =================================================
+
+              Expanded(
+                child: _GraphArea(
+                  selectedTopic: selectedTopic,
+                  prerequisiteTopics: prerequisites,
+                  usedInTopics: usedIn,
+                  lightPurple: currentTopic,
+                  prerequisiteGreen: prerequisiteGreen,
+                  prerequisiteBackground:
+                      prerequisiteBackground,
+                  prerequisiteText: prerequisiteText,
+                  postRequisiteOrange:
+                      postRequisiteOrange,
+                  postRequisiteBackground:
+                      postRequisiteBackground,
+                  postRequisiteText: postRequisiteText,
+                ),
               ),
-            ),
 
-            // =================================================
-            // EXPLORE SELECTED TOPIC
-            // =================================================
+              // =================================================
+              // EXPLORE SELECTED TOPIC
+              // =================================================
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                4,
-                16,
-                8,
-              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  4,
+                  16,
+                  8,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          AppTheme.primaryPurple,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
 
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(14),
+                      ),
+                    ),
 
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        const Color(0xFF6C63A8),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              TopicDetailsScreen(
+                            selectedTopic:
+                                selectedTopic,
+                            subject:
+                                selectedTopic.subject,
+                          ),
+                        ),
+                      );
+                    },
 
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(14),
+                    icon: const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 20,
+                    ),
+
+                    label: Text(
+                      'Explore ${selectedTopic.name}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        height: 1.2,
+                      ),
                     ),
                   ),
+                ),
+              ),
 
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            TopicDetailsScreen(
-                          selectedTopic: selectedTopic,
-                          subject: selectedTopic.subject,
+              // =================================================
+              // HOW TO READ
+              // =================================================
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  4,
+                  16,
+                  12,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: constraints.maxWidth,
+                        ),
+                        child: Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'How to read: ',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                color: secondaryText,
+                                height: 1.3,
+                              ),
+                            ),
+
+                            _LegendItem(
+                              color: prerequisiteGreen,
+                              text:
+                                  'Prerequisite — required concept',
+                              textColor: secondaryText,
+                            ),
+
+                            const SizedBox(width: 16),
+
+                            _LegendItem(
+                              color: currentTopic,
+                              text:
+                                  'Current Topic — selected topic',
+                              textColor: secondaryText,
+                            ),
+
+                            const SizedBox(width: 16),
+
+                            _LegendItem(
+                              color: postRequisiteOrange,
+                              text:
+                                  'Post requisite — where this topic is further used',
+                              textColor: secondaryText,
+                            ),
+                          ],
                         ),
                       ),
                     );
                   },
-
-                  icon: const Icon(
-                    Icons.auto_awesome_rounded,
-                  ),
-
-                  label: Text(
-                    'Explore ${selectedTopic.name}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
                 ),
               ),
-            ),
-
-            // =================================================
-            // HOW TO READ
-            // =================================================
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                4,
-                16,
-                12,
-              ),
-
-              child: SizedBox(
-                width: double.infinity,
-
-                child: Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
-
-                  mainAxisSize: MainAxisSize.min,
-
-                  children: [
-                    const Text(
-                      'How to read: ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF555555),
-                      ),
-                    ),
-
-                    _LegendItem(
-                      color:
-                          const Color(0xFF66A66B),
-                      text:
-                          'Prerequisite — required concept',
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    _LegendItem(
-                      color:
-                          const Color(0xFF6C63A8),
-                      text:
-                          'Current Topic — selected topic',
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    _LegendItem(
-                      color:
-                          const Color(0xFFE6A34A),
-                      text:
-                          'Post requisite — where this topic is further used',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -510,14 +709,50 @@ class _GraphArea extends StatelessWidget {
   final List<Topic> prerequisiteTopics;
   final List<Topic> usedInTopics;
 
+  final Color lightPurple;
+
+  final Color prerequisiteGreen;
+  final Color prerequisiteBackground;
+  final Color prerequisiteText;
+
+  final Color postRequisiteOrange;
+  final Color postRequisiteBackground;
+  final Color postRequisiteText;
+
   const _GraphArea({
     required this.selectedTopic,
     required this.prerequisiteTopics,
     required this.usedInTopics,
+    required this.lightPurple,
+    required this.prerequisiteGreen,
+    required this.prerequisiteBackground,
+    required this.prerequisiteText,
+    required this.postRequisiteOrange,
+    required this.postRequisiteBackground,
+    required this.postRequisiteText,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final mainText = isDark
+        ? AppTheme.darkMainText
+        : AppTheme.lightMainText;
+
+    final cardColor = isDark
+        ? AppTheme.darkCard
+        : AppTheme.lightCard;
+
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : AppTheme.lightBorder;
+
+    final graphLine = isDark
+        ? const Color(0xFF74798F)
+        : const Color(0xFF74798F);
+
     if (prerequisiteTopics.isEmpty &&
         usedInTopics.isEmpty) {
       return Center(
@@ -526,19 +761,20 @@ class _GraphArea extends StatelessWidget {
           padding: const EdgeInsets.all(24),
 
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius:
-                BorderRadius.circular(18),
+            color: cardColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: borderColor,
+            ),
           ),
 
           child: Column(
             mainAxisSize: MainAxisSize.min,
-
             children: [
-              const Icon(
+              Icon(
                 Icons.account_tree_rounded,
                 size: 55,
-                color: Color(0xFF6C63A8),
+                color: lightPurple,
               ),
 
               const SizedBox(height: 14),
@@ -546,22 +782,26 @@ class _GraphArea extends StatelessWidget {
               Text(
                 selectedTopic.name,
                 textAlign: TextAlign.center,
-
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 19,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF252238),
+                  fontWeight: FontWeight.w500,
+                  color: mainText,
+                  height: 1.25,
                 ),
               ),
 
               const SizedBox(height: 8),
 
-              const Text(
+              Text(
                 'No directly connected topics.',
                 textAlign: TextAlign.center,
-
                 style: TextStyle(
-                  color: Colors.grey,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: isDark
+                      ? AppTheme.darkSecondaryText
+                      : AppTheme.lightSecondaryText,
+                  height: 1.35,
                 ),
               ),
             ],
@@ -575,33 +815,35 @@ class _GraphArea extends StatelessWidget {
         return InteractiveViewer(
           minScale: 0.7,
           maxScale: 2.5,
-
-          boundaryMargin:
-              const EdgeInsets.all(100),
+          boundaryMargin: const EdgeInsets.all(100),
 
           child: SizedBox(
             width: constraints.maxWidth,
             height: constraints.maxHeight,
 
             child: CustomPaint(
-              painter:
-                  _PrerequisiteGraphPainter(
+              painter: _PrerequisiteGraphPainter(
                 prerequisiteCount:
                     prerequisiteTopics.length,
                 usedInCount:
                     usedInTopics.length,
+                graphLine: graphLine,
               ),
 
               child: Stack(
                 children: [
+                  // =================================================
                   // PREREQUISITES
+                  // =================================================
 
                   ..._buildPrerequisiteNodes(
                     context,
                     constraints,
                   ),
 
+                  // =================================================
                   // CURRENT TOPIC
+                  // =================================================
 
                   _positionedNode(
                     context: context,
@@ -619,7 +861,9 @@ class _GraphArea extends StatelessWidget {
                     width: 210,
                   ),
 
+                  // =================================================
                   // USED-IN TOPICS
+                  // =================================================
 
                   ..._buildUsedInNodes(
                     context,
@@ -733,37 +977,51 @@ class _GraphArea extends StatelessWidget {
     required double top,
     required double width,
   }) {
+    final bool isCurrent =
+        type == _NodeType.current;
+
     Color backgroundColor;
     Color borderColor;
     Color textColor;
 
-    final bool isCurrent =
-        type == _NodeType.current;
+    // =========================================================
+    // PREREQUISITE
+    // =========================================================
 
     if (type == _NodeType.prerequisite) {
       backgroundColor =
-          const Color(0xFFE8F5E9);
+          prerequisiteBackground;
 
       borderColor =
-          const Color(0xFF66A66B);
+          prerequisiteGreen;
 
       textColor =
-          const Color(0xFF356B3B);
+          prerequisiteText;
+
+      // =======================================================
+      // POST-REQUISITE
+      // =======================================================
+
     } else if (type == _NodeType.usedIn) {
       backgroundColor =
-          const Color(0xFFFFF2E1);
+          postRequisiteBackground;
 
       borderColor =
-          const Color(0xFFE6A34A);
+          postRequisiteOrange;
 
       textColor =
-          const Color(0xFF8A5A16);
+          postRequisiteText;
+
+      // =======================================================
+      // CURRENT TOPIC
+      // =======================================================
+
     } else {
       backgroundColor =
-          const Color(0xFF6C63A8);
+          lightPurple;
 
       borderColor =
-          const Color(0xFF6C63A8);
+          lightPurple;
 
       textColor =
           Colors.white;
@@ -775,8 +1033,7 @@ class _GraphArea extends StatelessWidget {
 
       child: GestureDetector(
         onTap: () {
-          if (topic.id ==
-              selectedTopic.id) {
+          if (topic.id == selectedTopic.id) {
             return;
           }
 
@@ -822,11 +1079,15 @@ class _GraphArea extends StatelessWidget {
               isCurrent ? 18 : 14,
             ),
 
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Colors.black12,
+                color:
+                    Colors.black.withValues(
+                  alpha: isCurrent ? 0.20 : 0.16,
+                ),
                 blurRadius: 8,
-                offset: Offset(0, 3),
+                offset:
+                    const Offset(0, 3),
               ),
             ],
           ),
@@ -838,9 +1099,11 @@ class _GraphArea extends StatelessWidget {
             style: TextStyle(
               color: textColor,
               fontSize:
-                  isCurrent ? 16 : 13,
+                  isCurrent ? 16 : 14,
               fontWeight:
-                  FontWeight.bold,
+                  FontWeight.w500,
+              height: 1.25,
+              letterSpacing: 0,
             ),
           ),
         ),
@@ -867,10 +1130,12 @@ class _PrerequisiteGraphPainter
     extends CustomPainter {
   final int prerequisiteCount;
   final int usedInCount;
+  final Color graphLine;
 
   _PrerequisiteGraphPainter({
     required this.prerequisiteCount,
     required this.usedInCount,
+    required this.graphLine,
   });
 
   @override
@@ -879,11 +1144,9 @@ class _PrerequisiteGraphPainter
     Size size,
   ) {
     final Paint linePaint = Paint()
-      ..color =
-          const Color(0xFFB5B0D4)
+      ..color = graphLine
       ..strokeWidth = 2.2
-      ..style =
-          PaintingStyle.stroke;
+      ..style = PaintingStyle.stroke;
 
     final double centerX =
         size.width * 0.5;
@@ -1013,8 +1276,7 @@ class _PrerequisiteGraphPainter
     final Paint arrowPaint = Paint()
       ..color = paint.color
       ..strokeWidth = 2.2
-      ..style =
-          PaintingStyle.stroke;
+      ..style = PaintingStyle.stroke;
 
     final Path arrowPath = Path();
 
@@ -1068,7 +1330,9 @@ class _PrerequisiteGraphPainter
     return oldDelegate.prerequisiteCount !=
             prerequisiteCount ||
         oldDelegate.usedInCount !=
-            usedInCount;
+            usedInCount ||
+        oldDelegate.graphLine !=
+            graphLine;
   }
 }
 
@@ -1079,18 +1343,18 @@ class _PrerequisiteGraphPainter
 class _LegendItem extends StatelessWidget {
   final Color color;
   final String text;
+  final Color textColor;
 
   const _LegendItem({
     required this.color,
     required this.text,
+    required this.textColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisSize:
-          MainAxisSize.min,
-
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 13,
@@ -1107,10 +1371,11 @@ class _LegendItem extends StatelessWidget {
 
         Text(
           text,
-          style: const TextStyle(
-            fontSize: 12,
-            color:
-                Color(0xFF555555),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+            color: textColor,
+            height: 1.3,
           ),
         ),
       ],

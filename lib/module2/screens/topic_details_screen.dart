@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 
 import '../data/syllabus_data.dart';
 import '../models/topic.dart';
@@ -14,26 +15,34 @@ class TopicDetailsScreen extends StatelessWidget {
     required this.subject,
   });
 
-  // =============================================================
-  // LEARNROOT THEME
-  // =============================================================
-
-  static const Color primaryPurple = Color(0xFF593AB9);
-  static const Color darkNavy = Color(0xFF030C1D);
-  static const Color secondaryNavy = Color(0xFF0E1532);
-  static const Color cardNavy = Color(0xFF151D3B);
-
-  static const Color lightText = Color(0xFFE8E5ED);
-  static const Color secondaryText = Color(0xFFAAB1C8);
-
-  static const Color successGreen = Color(0xFF35D07F);
-  static const Color warningOrange = Color(0xFFF4A62A);
-
   @override
   Widget build(BuildContext context) {
-    // ==========================================================
-    // FIND PREREQUISITES
-    // ==========================================================
+    final isDark =
+        Theme.of(context).brightness == Brightness.dark;
+
+    final backgroundColor = isDark
+        ? AppTheme.darkBackground
+        : AppTheme.lightBackground;
+
+    final secondarySurface = isDark
+        ? AppTheme.darkSecondary
+        : AppTheme.lightSecondary;
+
+    final cardColor = isDark
+        ? AppTheme.darkCard
+        : AppTheme.lightCard;
+
+    final borderColor = isDark
+        ? const Color(0xFF222D50)
+        : const Color(0xFFE8E6F0);
+
+    final mainText = isDark
+        ? AppTheme.darkMainText
+        : AppTheme.lightMainText;
+
+    final secondaryText = isDark
+        ? AppTheme.darkSecondaryText
+        : AppTheme.lightSecondaryText;
 
     final prerequisites = syllabusTopics
         .where(
@@ -41,10 +50,6 @@ class TopicDetailsScreen extends StatelessWidget {
               selectedTopic.prerequisites.contains(topic.id),
         )
         .toList();
-
-    // ==========================================================
-    // FIND TOPICS THAT USE THIS TOPIC
-    // ==========================================================
 
     final usedInTopics = syllabusTopics
         .where(
@@ -54,22 +59,25 @@ class TopicDetailsScreen extends StatelessWidget {
         .toList();
 
     return Scaffold(
-      backgroundColor: darkNavy,
+      backgroundColor: backgroundColor,
 
-      // ========================================================
+      // =========================================================
       // APP BAR
-      // ========================================================
-
+      // =========================================================
+      //
+      // The title "Explore Topic" has intentionally been removed.
+      // This prevents it from staying fixed while scrolling.
+      //
       appBar: AppBar(
-        backgroundColor: darkNavy,
+        backgroundColor: backgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
 
         leading: IconButton(
           tooltip: 'Back',
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_rounded,
-            color: lightText,
+            color: mainText,
             size: 23,
           ),
           onPressed: () {
@@ -79,32 +87,34 @@ class TopicDetailsScreen extends StatelessWidget {
 
         titleSpacing: 0,
 
-        title: const Text(
-          'Explore Topic',
-          style: TextStyle(
-            color: lightText,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.2,
-            height: 1.1,
-          ),
-        ),
+        // No Explore Topic title here.
+        title: const SizedBox.shrink(),
 
         actions: [
           IconButton(
             tooltip: 'Bookmark',
-            icon: const Icon(
+            icon: Icon(
               Icons.bookmark_border_rounded,
-              color: lightText,
+              color: mainText,
               size: 22,
             ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
+                SnackBar(
+                  backgroundColor: secondarySurface,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   content: Text(
                     'Bookmark feature coming later.',
+                    style: TextStyle(
+                      color: mainText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
-                  duration: Duration(seconds: 2),
+                  duration: const Duration(seconds: 2),
                 ),
               );
             },
@@ -113,9 +123,9 @@ class TopicDetailsScreen extends StatelessWidget {
         ],
       ),
 
-      // ========================================================
+      // =========================================================
       // BODY
-      // ========================================================
+      // =========================================================
 
       body: SafeArea(
         top: false,
@@ -133,17 +143,22 @@ class TopicDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ==================================================
+                  // =================================================
                   // CURRENT TOPIC HEADER
-                  // ==================================================
+                  // =================================================
 
-                  _buildTopicHeader(),
+                  _buildTopicHeader(
+                    isDark: isDark,
+                    secondarySurface: secondarySurface,
+                    mainText: mainText,
+                    secondaryText: secondaryText,
+                  ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
-                  // ==================================================
-                  // AI LEARNING SECTION
-                  // ==================================================
+                  // =================================================
+                  // AI LEARNING
+                  // =================================================
 
                   _buildSectionHeader(
                     icon: Icons.smart_toy_rounded,
@@ -151,49 +166,63 @@ class TopicDetailsScreen extends StatelessWidget {
                     subtitle:
                         'Learn this topic with intelligent AI-powered tools.',
                     count: '4 Tools',
+                    mainText: mainText,
+                    secondaryText: secondaryText,
+                    isDark: isDark,
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
                   if (isWide)
                     Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Column(
                             children: [
                               _buildExploreCard(
-                                icon: Icons.auto_awesome_rounded,
+                                isDark: isDark,
+                                cardColor: cardColor,
+                                borderColor: borderColor,
+                                mainText: mainText,
+                                secondaryText: secondaryText,
+                                icon:
+                                    Icons.auto_awesome_rounded,
                                 title: 'AI Summary',
                                 subtitle:
                                     'Get a simple and concise summary of this topic.',
                                 iconBackground:
-                                    const Color(0xFF593AB9),
+                                    AppTheme.primaryPurple,
                                 iconColor: Colors.white,
                                 onTap: () {
                                   _showComingSoon(
                                     context,
                                     'AI Summary',
+                                    isDark,
                                   );
                                 },
                               ),
-
-                              const SizedBox(height: 12),
-
+                              const SizedBox(height: 14),
                               _buildExploreCard(
-                                icon: Icons.chat_bubble_rounded,
+                                isDark: isDark,
+                                cardColor: cardColor,
+                                borderColor: borderColor,
+                                mainText: mainText,
+                                secondaryText: secondaryText,
+                                icon:
+                                    Icons.chat_bubble_rounded,
                                 title: 'AI Doubt Solver',
                                 subtitle:
                                     'Ask questions and clear your doubts with AI.',
                                 iconBackground:
-                                    const Color(0xFF104B63),
+                                    secondarySurface,
                                 iconColor:
-                                    const Color(0xFF38C5F4),
+                                    AppTheme.primaryPurple,
                                 onTap: () {
                                   _showComingSoon(
                                     context,
                                     'AI Doubt Solver',
+                                    isDark,
                                   );
                                 },
                               ),
@@ -201,43 +230,56 @@ class TopicDetailsScreen extends StatelessWidget {
                           ),
                         ),
 
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
 
                         Expanded(
                           child: Column(
                             children: [
                               _buildExploreCard(
-                                icon: Icons.auto_graph_rounded,
-                                title: 'AI Visual Explanation',
+                                isDark: isDark,
+                                cardColor: cardColor,
+                                borderColor: borderColor,
+                                mainText: mainText,
+                                secondaryText: secondaryText,
+                                icon:
+                                    Icons.auto_graph_rounded,
+                                title:
+                                    'AI Visual Explanation',
                                 subtitle:
                                     'Understand concepts through visual explanations.',
                                 iconBackground:
-                                    const Color(0xFF4A214F),
+                                    secondarySurface,
                                 iconColor:
-                                    const Color(0xFFE56BD0),
+                                    AppTheme.gradientPurpleEnd,
                                 onTap: () {
                                   _showComingSoon(
                                     context,
                                     'AI Visual Explanation',
+                                    isDark,
                                   );
                                 },
                               ),
-
-                              const SizedBox(height: 12),
-
+                              const SizedBox(height: 14),
                               _buildExploreCard(
+                                isDark: isDark,
+                                cardColor: cardColor,
+                                borderColor: borderColor,
+                                mainText: mainText,
+                                secondaryText: secondaryText,
                                 icon:
                                     Icons.warning_amber_rounded,
                                 title: 'What If I Skip?',
                                 subtitle:
                                     'See how skipping this topic can affect future learning.',
                                 iconBackground:
-                                    const Color(0xFF5A3A08),
-                                iconColor: warningOrange,
+                                    secondarySurface,
+                                iconColor:
+                                    AppTheme.warningOrange,
                                 onTap: () {
                                   _showComingSoon(
                                     context,
                                     'What If I Skip?',
+                                    isDark,
                                   );
                                 },
                               ),
@@ -250,85 +292,101 @@ class TopicDetailsScreen extends StatelessWidget {
                     Column(
                       children: [
                         _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
                           icon: Icons.auto_awesome_rounded,
                           title: 'AI Summary',
                           subtitle:
                               'Get a simple and concise summary of this topic.',
                           iconBackground:
-                              const Color(0xFF593AB9),
+                              AppTheme.primaryPurple,
                           iconColor: Colors.white,
                           onTap: () {
                             _showComingSoon(
                               context,
                               'AI Summary',
+                              isDark,
                             );
                           },
                         ),
-
-                        const SizedBox(height: 12),
-
+                        const SizedBox(height: 14),
                         _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
                           icon: Icons.auto_graph_rounded,
                           title: 'AI Visual Explanation',
                           subtitle:
                               'Understand concepts through visual explanations.',
-                          iconBackground:
-                              const Color(0xFF4A214F),
+                          iconBackground: secondarySurface,
                           iconColor:
-                              const Color(0xFFE56BD0),
+                              AppTheme.gradientPurpleEnd,
                           onTap: () {
                             _showComingSoon(
                               context,
                               'AI Visual Explanation',
+                              isDark,
                             );
                           },
                         ),
-
-                        const SizedBox(height: 12),
-
+                        const SizedBox(height: 14),
                         _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
                           icon: Icons.chat_bubble_rounded,
                           title: 'AI Doubt Solver',
                           subtitle:
                               'Ask questions and clear your doubts with AI.',
-                          iconBackground:
-                              const Color(0xFF104B63),
+                          iconBackground: secondarySurface,
                           iconColor:
-                              const Color(0xFF38C5F4),
+                              AppTheme.primaryPurple,
                           onTap: () {
                             _showComingSoon(
                               context,
                               'AI Doubt Solver',
+                              isDark,
                             );
                           },
                         ),
-
-                        const SizedBox(height: 12),
-
+                        const SizedBox(height: 14),
                         _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
                           icon:
                               Icons.warning_amber_rounded,
                           title: 'What If I Skip?',
                           subtitle:
                               'See how skipping this topic can affect future learning.',
-                          iconBackground:
-                              const Color(0xFF5A3A08),
-                          iconColor: warningOrange,
+                          iconBackground: secondarySurface,
+                          iconColor:
+                              AppTheme.warningOrange,
                           onTap: () {
                             _showComingSoon(
                               context,
                               'What If I Skip?',
+                              isDark,
                             );
                           },
                         ),
                       ],
                     ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 32),
 
-                  // ==================================================
-                  // STUDY RESOURCES SECTION
-                  // ==================================================
+                  // =================================================
+                  // STUDY RESOURCES
+                  // =================================================
 
                   _buildSectionHeader(
                     icon: Icons.menu_book_rounded,
@@ -336,49 +394,62 @@ class TopicDetailsScreen extends StatelessWidget {
                     subtitle:
                         'Use additional resources to strengthen your understanding.',
                     count: '3 Resources',
+                    mainText: mainText,
+                    secondaryText: secondaryText,
+                    isDark: isDark,
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
                   if (isWide)
                     Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: _buildExploreCard(
+                            isDark: isDark,
+                            cardColor: cardColor,
+                            borderColor: borderColor,
+                            mainText: mainText,
+                            secondaryText: secondaryText,
                             icon: Icons.description_rounded,
                             title: 'Generated Notes',
                             subtitle:
                                 'Read topic-specific notes prepared for learning.',
                             iconBackground:
-                                const Color(0xFF07533E),
-                            iconColor: successGreen,
+                                secondarySurface,
+                            iconColor:
+                                AppTheme.successGreen,
                             onTap: () {
                               _showComingSoon(
                                 context,
                                 'Generated Notes',
+                                isDark,
                               );
                             },
                           ),
                         ),
-
-                        const SizedBox(width: 12),
-
+                        const SizedBox(width: 14),
                         Expanded(
                           child: _buildExploreCard(
+                            isDark: isDark,
+                            cardColor: cardColor,
+                            borderColor: borderColor,
+                            mainText: mainText,
+                            secondaryText: secondaryText,
                             icon: Icons.psychology_rounded,
                             title: 'Quiz',
                             subtitle:
                                 'Test your understanding with topic-based questions.',
                             iconBackground:
-                                const Color(0xFF352477),
+                                secondarySurface,
                             iconColor:
-                                const Color(0xFFB39DFF),
+                                AppTheme.gradientPurpleEnd,
                             onTap: () {
                               _showComingSoon(
                                 context,
                                 'Quiz',
+                                isDark,
                               );
                             },
                           ),
@@ -389,78 +460,87 @@ class TopicDetailsScreen extends StatelessWidget {
                     Column(
                       children: [
                         _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
                           icon: Icons.description_rounded,
                           title: 'Generated Notes',
                           subtitle:
                               'Read topic-specific notes prepared for learning.',
-                          iconBackground:
-                              const Color(0xFF07533E),
-                          iconColor: successGreen,
+                          iconBackground: secondarySurface,
+                          iconColor:
+                              AppTheme.successGreen,
                           onTap: () {
                             _showComingSoon(
                               context,
                               'Generated Notes',
+                              isDark,
                             );
                           },
                         ),
-
-                        const SizedBox(height: 12),
-
+                        const SizedBox(height: 14),
                         _buildExploreCard(
+                          isDark: isDark,
+                          cardColor: cardColor,
+                          borderColor: borderColor,
+                          mainText: mainText,
+                          secondaryText: secondaryText,
                           icon: Icons.psychology_rounded,
                           title: 'Quiz',
                           subtitle:
                               'Test your understanding with topic-based questions.',
-                          iconBackground:
-                              const Color(0xFF352477),
+                          iconBackground: secondarySurface,
                           iconColor:
-                              const Color(0xFFB39DFF),
+                              AppTheme.gradientPurpleEnd,
                           onTap: () {
                             _showComingSoon(
                               context,
                               'Quiz',
+                              isDark,
                             );
                           },
                         ),
                       ],
                     ),
 
-                  const SizedBox(height: 12),
-
-                  // ==================================================
-                  // YOUTUBE
-                  // ==================================================
+                  const SizedBox(height: 14),
 
                   _buildExploreCard(
+                    isDark: isDark,
+                    cardColor: cardColor,
+                    borderColor: borderColor,
+                    mainText: mainText,
+                    secondaryText: secondaryText,
                     icon: Icons.play_circle_fill_rounded,
                     title: 'YouTube Recommended Videos',
                     subtitle:
                         'Watch recommended videos to explore the topic further.',
-                    iconBackground:
-                        const Color(0xFF642438),
-                    iconColor:
-                        const Color(0xFFFF4D61),
+                    iconBackground: secondarySurface,
+                    iconColor: AppTheme.warningOrange,
                     onTap: () {
                       _showComingSoon(
                         context,
                         'YouTube Recommended Videos',
+                        isDark,
                       );
                     },
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 34),
 
-                  // ==================================================
+                  // =================================================
                   // PREREQUISITES
-                  // ==================================================
+                  // =================================================
 
-                  const Text(
+                  Text(
                     'Prerequisites',
                     style: TextStyle(
-                      color: lightText,
-                      fontSize: 21,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.25,
+                      color: mainText,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.15,
                       height: 1.2,
                     ),
                   ),
@@ -470,6 +550,9 @@ class TopicDetailsScreen extends StatelessWidget {
                   if (prerequisites.isEmpty)
                     _emptyCard(
                       'This topic has no prerequisites.',
+                      cardColor,
+                      borderColor,
+                      secondaryText,
                     )
                   else
                     ...prerequisites.map(
@@ -477,38 +560,41 @@ class TopicDetailsScreen extends StatelessWidget {
                         context: context,
                         topic: topic,
                         icon: Icons.arrow_upward_rounded,
-                        iconColor: successGreen,
-                        backgroundColor:
-                            const Color(0xFF07533E),
+                        iconColor: AppTheme.successGreen,
+                        backgroundColor: secondarySurface,
+                        cardColor: cardColor,
+                        borderColor: borderColor,
+                        mainText: mainText,
+                        secondaryText: secondaryText,
                       ),
                     ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 32),
 
-                  // ==================================================
+                  // =================================================
                   // POST REQUISITES
-                  // ==================================================
+                  // =================================================
 
-                  const Text(
+                  Text(
                     'Post requisites',
                     style: TextStyle(
-                      color: lightText,
-                      fontSize: 21,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.25,
+                      color: mainText,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.15,
                       height: 1.2,
                     ),
                   ),
 
-                  const SizedBox(height: 7),
+                  const SizedBox(height: 8),
 
-                  const Text(
+                  Text(
                     'This topic is useful in these further topics:',
                     style: TextStyle(
                       color: secondaryText,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      height: 1.45,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
                     ),
                   ),
 
@@ -517,6 +603,9 @@ class TopicDetailsScreen extends StatelessWidget {
                   if (usedInTopics.isEmpty)
                     _emptyCard(
                       'This topic is not directly used in another topic yet.',
+                      cardColor,
+                      borderColor,
+                      secondaryText,
                     )
                   else
                     ...usedInTopics.map(
@@ -524,9 +613,12 @@ class TopicDetailsScreen extends StatelessWidget {
                         context: context,
                         topic: topic,
                         icon: Icons.arrow_downward_rounded,
-                        iconColor: warningOrange,
-                        backgroundColor:
-                            const Color(0xFF5A3A08),
+                        iconColor: AppTheme.warningOrange,
+                        backgroundColor: secondarySurface,
+                        cardColor: cardColor,
+                        borderColor: borderColor,
+                        mainText: mainText,
+                        secondaryText: secondaryText,
                       ),
                     ),
 
@@ -544,32 +636,40 @@ class TopicDetailsScreen extends StatelessWidget {
   // CURRENT TOPIC HEADER
   // =============================================================
 
-  Widget _buildTopicHeader() {
+  Widget _buildTopicHeader({
+    required bool isDark,
+    required Color secondarySurface,
+    required Color mainText,
+    required Color secondaryText,
+  }) {
+    final dividerColor = isDark
+        ? const Color(0xFF293253)
+        : const Color(0xFFE8E6F0);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
         horizontal: 20,
-        vertical: 20,
+        vertical: 22,
       ),
       decoration: BoxDecoration(
-        color: secondaryNavy,
+        color: secondarySurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: primaryPurple.withValues(alpha: 0.65),
+          color: AppTheme.primaryPurple.withValues(
+            alpha: 0.65,
+          ),
           width: 1,
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // -------------------------------------------------------
-          // TOPIC ICON
-          // -------------------------------------------------------
-
           Container(
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: primaryPurple,
+              color: AppTheme.primaryPurple,
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
@@ -581,85 +681,80 @@ class TopicDetailsScreen extends StatelessWidget {
 
           const SizedBox(width: 16),
 
-          // -------------------------------------------------------
-          // TOPIC INFORMATION
-          // -------------------------------------------------------
-
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'CURRENT TOPIC',
                   style: TextStyle(
-                    color: Color(0xFFB39DFF),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
+                    color: AppTheme.gradientPurpleEnd,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.7,
                     height: 1.2,
                   ),
                 ),
 
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
 
                 Text(
                   selectedTopic.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: lightText,
+                  style: TextStyle(
+                    color: mainText,
                     fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.35,
-                    height: 1.15,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.2,
+                    height: 1.2,
                   ),
                 ),
 
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
 
                 RichText(
                   text: TextSpan(
                     children: [
-                      const TextSpan(
+                      TextSpan(
                         text: 'Subject: ',
                         style: TextStyle(
                           color: secondaryText,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          height: 1.3,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          height: 1.35,
                         ),
                       ),
                       TextSpan(
                         text: subject,
                         style: const TextStyle(
-                          color: Color(0xFFB39DFF),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          height: 1.3,
+                          color: AppTheme.gradientPurpleEnd,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 13),
 
                 Container(
                   width: 240,
                   height: 1,
-                  color: const Color(0xFF293253),
+                  color: dividerColor,
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 11),
 
-                const Text(
+                Text(
                   'Choose how you want to learn this topic.',
                   style: TextStyle(
                     color: secondaryText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    height: 1.45,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    height: 1.4,
                   ),
                 ),
               ],
@@ -668,21 +763,17 @@ class TopicDetailsScreen extends StatelessWidget {
 
           const SizedBox(width: 16),
 
-          // -------------------------------------------------------
-          // DECORATIVE LEARNING ICON
-          // -------------------------------------------------------
-
           const Column(
             children: [
               Icon(
                 Icons.lightbulb_rounded,
-                color: warningOrange,
+                color: AppTheme.warningOrange,
                 size: 31,
               ),
               SizedBox(height: 4),
               Icon(
                 Icons.auto_awesome,
-                color: primaryPurple,
+                color: AppTheme.primaryPurple,
                 size: 18,
               ),
             ],
@@ -701,24 +792,32 @@ class TopicDetailsScreen extends StatelessWidget {
     required String title,
     required String subtitle,
     required String count,
+    required Color mainText,
+    required Color secondaryText,
+    required bool isDark,
   }) {
+    final surfaceColor = isDark
+        ? AppTheme.darkSecondary
+        : AppTheme.lightSecondary;
+
     return Row(
-      crossAxisAlignment:
-          CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFF17103B),
+            color: surfaceColor,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: primaryPurple.withValues(alpha: 0.45),
+              color: AppTheme.primaryPurple.withValues(
+                alpha: 0.45,
+              ),
             ),
           ),
           child: Icon(
             icon,
-            color: const Color(0xFFB39DFF),
+            color: AppTheme.gradientPurpleEnd,
             size: 19,
           ),
         ),
@@ -727,37 +826,35 @@ class TopicDetailsScreen extends StatelessWidget {
 
         Expanded(
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: lightText,
+                style: TextStyle(
+                  color: mainText,
                   fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.2,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.1,
                   height: 1.15,
                 ),
               ),
 
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
 
               Text(
                 subtitle,
-                style: const TextStyle(
+                style: TextStyle(
                   color: secondaryText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
                   height: 1.35,
-                  letterSpacing: 0.05,
                 ),
               ),
             ],
           ),
         ),
 
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
 
         Container(
           padding: const EdgeInsets.symmetric(
@@ -765,18 +862,20 @@ class TopicDetailsScreen extends StatelessWidget {
             vertical: 7,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFF100B2B),
+            color: surfaceColor,
             borderRadius: BorderRadius.circular(9),
             border: Border.all(
-              color: primaryPurple.withValues(alpha: 0.45),
+              color: AppTheme.primaryPurple.withValues(
+                alpha: 0.45,
+              ),
             ),
           ),
           child: Text(
             count,
             style: const TextStyle(
-              color: Color(0xFFB39DFF),
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
+              color: AppTheme.gradientPurpleEnd,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
               height: 1.1,
             ),
           ),
@@ -790,6 +889,11 @@ class TopicDetailsScreen extends StatelessWidget {
   // =============================================================
 
   Widget _buildExploreCard({
+    required bool isDark,
+    required Color cardColor,
+    required Color borderColor,
+    required Color mainText,
+    required Color secondaryText,
     required IconData icon,
     required String title,
     required String subtitle,
@@ -805,25 +909,20 @@ class TopicDetailsScreen extends StatelessWidget {
         child: Container(
           width: double.infinity,
           constraints: const BoxConstraints(
-            minHeight: 118,
+            minHeight: 124,
           ),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: cardNavy,
+            color: cardColor,
             borderRadius: BorderRadius.circular(13),
             border: Border.all(
-              color: const Color(0xFF222D50),
+              color: borderColor,
               width: 1,
             ),
           ),
           child: Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ---------------------------------------------------
-              // ICON
-              // ---------------------------------------------------
-
               Container(
                 width: 44,
                 height: 44,
@@ -838,16 +937,11 @@ class TopicDetailsScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(width: 12),
-
-              // ---------------------------------------------------
-              // TEXT
-              // ---------------------------------------------------
+              const SizedBox(width: 13),
 
               Expanded(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.only(top: 1),
+                  padding: const EdgeInsets.only(top: 1),
                   child: Column(
                     crossAxisAlignment:
                         CrossAxisAlignment.start,
@@ -856,27 +950,26 @@ class TopicDetailsScreen extends StatelessWidget {
                         title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: lightText,
+                        style: TextStyle(
+                          color: mainText,
                           fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.15,
-                          height: 1.2,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -0.05,
+                          height: 1.22,
                         ),
                       ),
 
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 7),
 
                       Text(
                         subtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: secondaryText,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
                           height: 1.4,
-                          letterSpacing: 0.05,
                         ),
                       ),
                     ],
@@ -884,17 +977,13 @@ class TopicDetailsScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(width: 8),
+              const SizedBox(width: 9),
 
-              // ---------------------------------------------------
-              // ARROW
-              // ---------------------------------------------------
-
-              const Padding(
-                padding: EdgeInsets.only(top: 3),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
                 child: Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: Color(0xFF9DA7C3),
+                  color: secondaryText,
                   size: 15,
                 ),
               ),
@@ -915,14 +1004,18 @@ class TopicDetailsScreen extends StatelessWidget {
     required IconData icon,
     required Color iconColor,
     required Color backgroundColor,
+    required Color cardColor,
+    required Color borderColor,
+    required Color mainText,
+    required Color secondaryText,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 9),
       decoration: BoxDecoration(
-        color: cardNavy,
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF222D50),
+          color: borderColor,
         ),
       ),
       child: Material(
@@ -943,7 +1036,7 @@ class TopicDetailsScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: 10,
+              vertical: 11,
             ),
             child: Row(
               children: [
@@ -952,8 +1045,7 @@ class TopicDetailsScreen extends StatelessWidget {
                   height: 42,
                   decoration: BoxDecoration(
                     color: backgroundColor,
-                    borderRadius:
-                        BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     icon,
@@ -967,19 +1059,20 @@ class TopicDetailsScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     topic.name,
-                    style: const TextStyle(
-                      color: lightText,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      height: 1.25,
-                      letterSpacing: -0.05,
+                    style: TextStyle(
+                      color: mainText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      height: 1.3,
                     ),
                   ),
                 ),
 
-                const Icon(
+                const SizedBox(width: 8),
+
+                Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: Color(0xFF9DA7C3),
+                  color: secondaryText,
                   size: 15,
                 ),
               ],
@@ -994,23 +1087,28 @@ class TopicDetailsScreen extends StatelessWidget {
   // EMPTY CARD
   // =============================================================
 
-  static Widget _emptyCard(String message) {
+  static Widget _emptyCard(
+    String message,
+    Color cardColor,
+    Color borderColor,
+    Color secondaryText,
+  ) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: cardNavy,
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF222D50),
+          color: borderColor,
         ),
       ),
       child: Text(
         message,
-        style: const TextStyle(
+        style: TextStyle(
           color: secondaryText,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
           height: 1.4,
         ),
       ),
@@ -1018,28 +1116,37 @@ class TopicDetailsScreen extends StatelessWidget {
   }
 
   // =============================================================
-  // COMING SOON / PLACEHOLDER
+  // COMING SOON
   // =============================================================
 
   static void _showComingSoon(
     BuildContext context,
     String feature,
+    bool isDark,
   ) {
+    final backgroundColor = isDark
+        ? AppTheme.darkSecondary
+        : AppTheme.lightSecondary;
+
+    final textColor = isDark
+        ? AppTheme.darkMainText
+        : AppTheme.lightMainText;
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          backgroundColor: secondaryNavy,
+          backgroundColor: backgroundColor,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
           content: Text(
             '$feature will open here.',
-            style: const TextStyle(
-              color: lightText,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
             ),
           ),
           duration: const Duration(seconds: 2),
@@ -1049,10 +1156,7 @@ class TopicDetailsScreen extends StatelessWidget {
 }
 
 // =============================================================
-// SMALL NAVIGATION SCREEN
-// =============================================================
-//
-// Preserves the existing prerequisite / Used In behavior.
+// GRAPH NAVIGATION
 // =============================================================
 
 class _GraphNavigationScreen extends StatelessWidget {
@@ -1084,7 +1188,7 @@ class _GraphScreenWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF030C1D),
+      backgroundColor: AppTheme.lightBackground,
       body: PrerequisiteGraphScreen(
         selectedTopic: selectedTopic,
         subject: selectedTopic.subject,
