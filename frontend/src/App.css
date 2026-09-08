@@ -1317,62 +1317,7 @@ footer p {
   flex-direction: column;
 }
 
-/* ============================================================
-   VIDEO VISUAL
-   ============================================================ */
 
-.video-visual {
-  text-align: center;
-
-  padding: 20px 15px 25px;
-
-  border-bottom:
-    1px solid var(--lr-border);
-}
-
-.video-circle {
-  width: 75px;
-  height: 75px;
-
-  display: grid;
-
-  place-items: center;
-
-  margin: 0 auto 15px;
-
-  border-radius: 50%;
-
-  background:
-    linear-gradient(
-      135deg,
-      #5239AC,
-      #7F56A1
-    );
-
-  font-size: 34px;
-
-  box-shadow:
-    0 12px 30px
-    rgba(82, 57, 172, 0.3);
-}
-
-.video-visual h3 {
-  margin: 0 0 7px;
-
-  font-size: 20px;
-}
-
-.video-visual p {
-  margin: 0 auto;
-
-  max-width: 430px;
-
-  color: var(--lr-text-secondary);
-
-  font-size: 13px;
-
-  line-height: 1.6;
-}
 
 /* ============================================================
    VIDEO LIST
@@ -1460,7 +1405,11 @@ footer p {
 }
 
 .video-resource-info a {
-  color: #b6a8ed;
+  display: inline-block;
+  padding: 7px 11px;
+  border-radius: 8px;
+  background: #5239AC;
+  color: var(--lr-text);
 
   font-size: 12px;
 
@@ -1470,9 +1419,9 @@ footer p {
 }
 
 .video-resource-info a:hover {
+  background: #7F56A1;
   color: var(--lr-text);
-
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 /* ============================================================
@@ -1508,42 +1457,7 @@ footer p {
   line-height: 1.5;
 }
 
-/* ============================================================
-   VIEW VIDEOS
-   ============================================================ */
 
-.video-view-btn {
-  width: 100%;
-
-  margin-top: 17px;
-
-  border: 0;
-
-  border-radius: 11px;
-
-  padding: 13px;
-
-  background:
-    linear-gradient(
-      135deg,
-      #5239AC,
-      #7F56A1
-    );
-
-  color: var(--lr-text);
-
-  font-weight: 700;
-
-  transition: 0.2s ease;
-}
-
-.video-view-btn:hover {
-  transform: translateY(-2px);
-
-  box-shadow:
-    0 10px 25px
-    rgba(82, 57, 172, 0.3);
-}
 
 /* ============================================================
    CONTINUE LEARNING

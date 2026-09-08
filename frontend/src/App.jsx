@@ -19,9 +19,10 @@ function App() {
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // =========================
+  // =========================================================
   // LOAD TOPICS
-  // =========================
+  // =========================================================
+
   const loadTopics = async () => {
     try {
       const response = await fetch(`${API}/topics`);
@@ -38,9 +39,10 @@ function App() {
     }
   };
 
-  // =========================
+  // =========================================================
   // LOAD WEAK TOPICS
-  // =========================
+  // =========================================================
+
   const loadWeakTopics = async () => {
     try {
       const response = await fetch(`${API}/weak-topics`);
@@ -81,9 +83,10 @@ function App() {
     }
   };
 
-  // =========================
+  // =========================================================
   // LOAD ANALYTICS
-  // =========================
+  // =========================================================
+
   const loadAnalytics = async () => {
     try {
       const response = await fetch(`${API}/analytics`);
@@ -97,15 +100,20 @@ function App() {
     }
   };
 
+  // =========================================================
+  // INITIAL LOAD
+  // =========================================================
+
   useEffect(() => {
     loadTopics();
     loadWeakTopics();
     loadAnalytics();
   }, []);
 
-  // =========================
+  // =========================================================
   // LOAD RESOURCES
-  // =========================
+  // =========================================================
+
   const loadResources = async (topicId) => {
     try {
       setResourcesLoading(true);
@@ -135,9 +143,10 @@ function App() {
     }
   };
 
-  // =========================
+  // =========================================================
   // START QUIZ
-  // =========================
+  // =========================================================
+
   const startQuiz = async (topic) => {
     try {
       setLoading(true);
@@ -165,8 +174,7 @@ function App() {
         setQuestions(data.questions);
       } else {
         setMessage(
-          data.message ||
-            "Unable to load quiz questions."
+          data.message || "Unable to load quiz questions."
         );
       }
     } catch (error) {
@@ -177,9 +185,10 @@ function App() {
     }
   };
 
-  // =========================
+  // =========================================================
   // SELECT ANSWER
-  // =========================
+  // =========================================================
+
   const selectAnswer = (quizId, answer) => {
     if (result) {
       return;
@@ -191,9 +200,10 @@ function App() {
     }));
   };
 
-  // =========================
+  // =========================================================
   // GENERATE SMART NOTES
-  // =========================
+  // =========================================================
+
   const generateAINotes = async (topicId) => {
     try {
       setNotesLoading(true);
@@ -221,8 +231,7 @@ function App() {
         setAiNotes(data.notes);
       } else {
         setMessage(
-          data.message ||
-            "Unable to load Smart Notes."
+          data.message || "Unable to load Smart Notes."
         );
       }
     } catch (error) {
@@ -236,9 +245,10 @@ function App() {
     }
   };
 
-  // =========================
+  // =========================================================
   // SUBMIT QUIZ
-  // =========================
+  // =========================================================
+
   const submitQuiz = async () => {
     if (!selectedTopic) {
       return;
@@ -260,11 +270,9 @@ function App() {
         `${API}/submit-quiz`,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
             topic_id: selectedTopic.topic_id,
             answers: answers,
@@ -286,22 +294,21 @@ function App() {
         await loadAnalytics();
       } else {
         setMessage(
-          data.message ||
-            "Quiz submission failed."
+          data.message || "Quiz submission failed."
         );
       }
     } catch (error) {
       console.error("Submit Quiz Error:", error);
-
       setMessage("Unable to submit quiz.");
     } finally {
       setLoading(false);
     }
   };
 
-  // =========================
+  // =========================================================
   // GET OPTION TEXT
-  // =========================
+  // =========================================================
+
   const getOptionText = (question, option) => {
     if (!question) {
       return "";
@@ -326,9 +333,10 @@ function App() {
     return "";
   };
 
-  // =========================
+  // =========================================================
   // ANSWER COLOR
-  // =========================
+  // =========================================================
+
   const getAnswerClass = (question, option) => {
     if (!result) {
       return "";
@@ -361,9 +369,10 @@ function App() {
     return "";
   };
 
-  // =========================
+  // =========================================================
   // RENDER SMART NOTES
-  // =========================
+  // =========================================================
+
   const renderAINotes = (notes) => {
     if (!notes) {
       return null;
@@ -428,11 +437,10 @@ function App() {
         trimmedLine.startsWith("* ") ||
         trimmedLine.startsWith("• ")
       ) {
-        const bulletText =
-          trimmedLine.replace(
-            /^[-*•]\s/,
-            ""
-          );
+        const bulletText = trimmedLine.replace(
+          /^[-*•]\s/,
+          ""
+        );
 
         return (
           <div
@@ -473,9 +481,10 @@ function App() {
     });
   };
 
-  // =========================
+  // =========================================================
   // RESOURCE ICON
-  // =========================
+  // =========================================================
+
   const getResourceIcon = (type) => {
     if (!type) {
       return "📚";
@@ -484,42 +493,33 @@ function App() {
     const resourceType =
       String(type).toLowerCase();
 
-    if (
-      resourceType.includes("video")
-    ) {
+    if (resourceType.includes("video")) {
       return "🎥";
     }
 
-    if (
-      resourceType.includes("note")
-    ) {
+    if (resourceType.includes("note")) {
       return "📖";
     }
 
-    if (
-      resourceType.includes("pdf")
-    ) {
+    if (resourceType.includes("pdf")) {
       return "📄";
     }
 
-    if (
-      resourceType.includes("link")
-    ) {
+    if (resourceType.includes("link")) {
       return "🔗";
     }
 
-    if (
-      resourceType.includes("book")
-    ) {
+    if (resourceType.includes("book")) {
       return "📚";
     }
 
     return "📘";
   };
 
-  // =========================
+  // =========================================================
   // GO HOME
-  // =========================
+  // =========================================================
+
   const goHome = () => {
     setSelectedTopic(null);
     setQuestions([]);
@@ -535,10 +535,10 @@ function App() {
     loadWeakTopics();
     loadAnalytics();
   };
-
-  // =========================
+  // =========================================================
   // GROUP TOPICS
-  // =========================
+  // =========================================================
+
   const groupedTopics = topics.reduce(
     (groups, topic) => {
       if (!groups[topic.subject]) {
@@ -552,9 +552,10 @@ function App() {
     {}
   );
 
-  // =========================
+  // =========================================================
   // FILTER VIDEO RESOURCES
-  // =========================
+  // =========================================================
+
   const videoResources = resources.filter(
     (resource) => {
       const type = String(
@@ -575,6 +576,8 @@ function App() {
     return (
       <div className="app">
 
+        {/* HEADER */}
+
         <header className="header">
           <div>
             <h1>🌱 LearnRoot</h1>
@@ -588,14 +591,17 @@ function App() {
 
         <main className="container">
 
+          {/* MESSAGE */}
+
           {message && (
             <div className="message">
               {message}
             </div>
           )}
 
-          <section className="welcome">
+          {/* WELCOME */}
 
+          <section className="welcome">
             <h2>
               📚 Your Learning Path
             </h2>
@@ -606,9 +612,20 @@ function App() {
               available.
             </p>
 
+            <div className="learning-path-info">
+              <span>
+                📚 {topics.length} Topics
+              </span>
+
+              <span>
+                🎯 AI-Powered Quizzes
+              </span>
+            </div>
           </section>
 
-          {/* ANALYTICS */}
+          {/* =================================================
+              ANALYTICS
+          ================================================= */}
 
           {analytics && (
             <section className="analytics-section">
@@ -625,7 +642,6 @@ function App() {
               <div className="analytics-grid">
 
                 <div className="analytics-card">
-
                   <div className="analytics-icon">
                     📝
                   </div>
@@ -641,11 +657,9 @@ function App() {
                   <p>
                     Quiz attempts completed
                   </p>
-
                 </div>
 
                 <div className="analytics-card">
-
                   <div className="analytics-icon">
                     📈
                   </div>
@@ -661,11 +675,9 @@ function App() {
                   <p>
                     Overall quiz average
                   </p>
-
                 </div>
 
                 <div className="analytics-card">
-
                   <div className="analytics-icon">
                     🏆
                   </div>
@@ -681,11 +693,9 @@ function App() {
                   <p>
                     Highest quiz score
                   </p>
-
                 </div>
 
                 <div className="analytics-card">
-
                   <div className="analytics-icon">
                     ✅
                   </div>
@@ -703,7 +713,6 @@ function App() {
                   <p>
                     Topics completed
                   </p>
-
                 </div>
 
               </div>
@@ -744,7 +753,9 @@ function App() {
             </section>
           )}
 
-          {/* WEAK TOPICS */}
+          {/* =================================================
+              WEAK TOPICS
+          ================================================= */}
 
           {weakTopics.length > 0 && (
             <section className="weak-section">
@@ -838,11 +849,9 @@ function App() {
                             "--score": score,
                           }}
                         >
-
                           <div className="score-circle-inner">
                             {score.toFixed(0)}%
                           </div>
-
                         </div>
 
                         <div className="score-info">
@@ -876,7 +885,6 @@ function App() {
                           }
                         }}
                       >
-
                         <span>
                           Review Topic
                         </span>
@@ -884,7 +892,6 @@ function App() {
                         <span className="review-arrow">
                           →
                         </span>
-
                       </button>
 
                     </div>
@@ -920,7 +927,9 @@ function App() {
             </section>
           )}
 
-          {/* SUBJECTS AND TOPICS */}
+          {/* =================================================
+              SUBJECTS AND TOPICS
+          ================================================= */}
 
           {Object.keys(groupedTopics).map(
             (subject) => (
@@ -931,49 +940,73 @@ function App() {
 
                 <div className="subject-title">
 
-                  <h2>
-                    {subject}
-                  </h2>
+                  <div>
+
+                    <h2>
+                      {subject}
+                    </h2>
+
+                    <span className="subject-topic-count">
+                      {groupedTopics[subject].length} topics
+                    </span>
+
+                  </div>
 
                 </div>
 
                 <div className="topic-grid">
 
                   {groupedTopics[subject].map(
-                    (topic) => (
+                    (topic) => {
 
-                      <div
-                        className="topic-card unlocked"
-                        key={topic.topic_id}
-                      >
-
-                        <div className="topic-number">
-                          Topic{" "}
-                          {topic.topic_order}
-                        </div>
-
-                        <h3>
-                          📖{" "}
-                          {topic.topic_name}
-                        </h3>
-
-                        <div className="topic-status">
-                          {topic.completed
-                            ? "✅ Completed"
-                            : "📚 Available"}
-                        </div>
-
-                        <button
-                          onClick={() =>
-                            startQuiz(topic)
-                          }
+                      return (
+                        <div
+                          className="topic-card unlocked"
+                          key={topic.topic_id}
                         >
-                          Start Quiz →
-                        </button>
 
-                      </div>
+                          {/* TOPIC NUMBER */}
 
-                    )
+                          <div className="topic-number">
+                            Topic{" "}
+                            {topic.topic_order}
+                          </div>
+
+                          {/* TOPIC TITLE */}
+
+                          <h3>
+                            📖{" "}
+                            {topic.topic_name}
+                          </h3>
+
+                          {/* TOPIC CODE */}
+
+                          {topic.topic_code && (
+                            <div className="topic-code">
+                              {topic.topic_code}
+                            </div>
+                          )}
+
+                          {/* STATUS */}
+
+                          <div className="topic-status">
+                            {topic.completed
+                              ? "✅ Completed"
+                              : "📚 Available"}
+                          </div>
+                  {/* START QUIZ */}
+
+                          <button
+                            onClick={() =>
+                              startQuiz(topic)
+                            }
+                          >
+                            Start Quiz →
+                          </button>
+
+                        </div>
+                      );
+                    }
                   )}
 
                 </div>
@@ -984,13 +1017,13 @@ function App() {
 
         </main>
 
-        <footer>
+        {/* FOOTER */}
 
+        <footer>
           <p>
             🌱 LearnRoot — Your Personalized
             Learning Platform
           </p>
-
         </footer>
 
       </div>
@@ -1006,11 +1039,9 @@ function App() {
       <div className="app">
 
         <header className="header">
-
           <h1>
             🌱 LearnRoot
           </h1>
-
         </header>
 
         <main className="container">
@@ -1046,7 +1077,6 @@ function App() {
               </div>
 
             </div>
-
             {message && (
               <div className="message">
                 {message}
@@ -1071,6 +1101,7 @@ function App() {
             {!loading &&
               questions.map(
                 (question, index) => (
+
                   <div
                     className="question-card"
                     key={question.quiz_id}
@@ -1090,6 +1121,8 @@ function App() {
                         {question.difficulty}
                       </span>
                     )}
+
+                    {/* OPTION A */}
 
                     <label
                       className={getAnswerClass(
@@ -1120,6 +1153,8 @@ function App() {
 
                     </label>
 
+                    {/* OPTION B */}
+
                     <label
                       className={getAnswerClass(
                         question,
@@ -1149,6 +1184,8 @@ function App() {
 
                     </label>
 
+                    {/* OPTION C */}
+
                     <label
                       className={getAnswerClass(
                         question,
@@ -1177,6 +1214,8 @@ function App() {
                       </span>
 
                     </label>
+
+                    {/* OPTION D */}
 
                     <label
                       className={getAnswerClass(
@@ -1213,6 +1252,7 @@ function App() {
 
             {!loading &&
               questions.length > 0 && (
+
                 <button
                   className="submit-button"
                   onClick={submitQuiz}
@@ -1222,6 +1262,7 @@ function App() {
                     ? "Submitting..."
                     : "Submit Quiz"}
                 </button>
+
               )}
 
           </section>
@@ -1251,7 +1292,9 @@ function App() {
 
         <section className="result-section">
 
-          {/* SCORE */}
+          {/* =================================================
+              SCORE
+          ================================================= */}
 
           <div className="result-card">
 
@@ -1299,7 +1342,9 @@ function App() {
 
           </div>
 
-          {/* QUIZ REVIEW */}
+          {/* =================================================
+              QUIZ REVIEW
+          ================================================= */}
 
           {result.solutions &&
             result.solutions.length > 0 && (
@@ -1322,10 +1367,13 @@ function App() {
                       questions.find(
                         (q) =>
                           Number(q.quiz_id) ===
-                          Number(solution.quiz_id)
+                          Number(
+                            solution.quiz_id
+                          )
                       );
 
                     return (
+
                       <div
                         className={`solution-card ${
                           solution.is_correct
@@ -1344,6 +1392,7 @@ function App() {
                         </h3>
 
                         <p>
+
                           <strong>
                             Your Answer:
                           </strong>{" "}
@@ -1354,9 +1403,11 @@ function App() {
                                 solution.student_answer
                               )
                             : "Not answered"}
+
                         </p>
 
                         <p>
+
                           <strong>
                             Correct Answer:
                           </strong>{" "}
@@ -1365,19 +1416,23 @@ function App() {
                             currentQuestion,
                             solution.correct_answer
                           )}
+
                         </p>
 
                         {solution.solution && (
                           <p>
+
                             <strong>
                               Explanation:
                             </strong>{" "}
 
                             {solution.solution}
+
                           </p>
                         )}
 
                       </div>
+
                     );
                   }
                 )}
@@ -1391,7 +1446,9 @@ function App() {
 
           <div className="learning-area">
 
-            {/* SMART NOTES */}
+            {/* =================================================
+                SMART NOTES
+            ================================================= */}
 
             <div className="learning-column">
 
@@ -1448,9 +1505,7 @@ function App() {
                 ) : (
 
                   <div className="ai-notes-content">
-
                     {renderAINotes(aiNotes)}
-
                   </div>
 
                 )}
@@ -1459,54 +1514,42 @@ function App() {
 
             </div>
 
-            {/* VIDEO RESOURCES */}
+            {/* =================================================
+                VIDEO RESOURCES
+            ================================================= */}
 
             <div className="learning-column">
 
               <div className="learning-heading">
 
                 <h2>
-                  🎥 Video Resources
+                  🎥 Recommended Videos
                 </h2>
 
                 <p>
-                  Watch videos to better understand
-                  this topic.
+                  Recommended YouTube videos for this topic.
                 </p>
 
               </div>
 
               <div className="video-learning-card">
 
-                <div className="video-visual">
-
-                  <div className="video-circle">
-                    🎬
-                  </div>
-
-                  <h3>
-                    Learn Through Video
-                  </h3>
-
-                  <p>
-                    Visual explanations can make
-                    difficult concepts easier to understand.
-                  </p>
-
-                </div>
-
                 <div className="video-list">
 
                   {resourcesLoading && (
+
                     <div className="video-empty-state">
 
-                      <span>🎥</span>
+                      <span>
+                        🎥
+                      </span>
 
                       <p>
                         Loading video resources...
                       </p>
 
                     </div>
+
                   )}
 
                   {!resourcesLoading &&
@@ -1542,6 +1585,7 @@ function App() {
                           "";
 
                         return (
+
                           <div
                             className="video-resource-item"
                             key={
@@ -1569,50 +1613,26 @@ function App() {
                               </h3>
 
                               {videoLink && (
+
                                 <a
                                   href={videoLink}
                                   target="_blank"
                                   rel="noreferrer"
                                 >
-                                  Open Video →
+                                  Watch on YouTube ↗
                                 </a>
+
                               )}
 
                             </div>
 
                           </div>
+
                         );
                       }
                     )}
 
                 </div>
-
-                {videoResources.length > 0 && (
-                  <button
-                    className="video-view-btn"
-                    onClick={() => {
-
-                      const video =
-                        videoResources[0];
-
-                      const videoLink =
-                        video?.resource_link ||
-                        video?.url ||
-                        video?.link ||
-                        "";
-
-                      if (videoLink) {
-                        window.open(
-                          videoLink,
-                          "_blank"
-                        );
-                      }
-
-                    }}
-                  >
-                    🎥 View Videos
-                  </button>
-                )}
 
               </div>
 
@@ -1620,7 +1640,9 @@ function App() {
 
           </div>
 
-          {/* CONTINUE */}
+          {/* =================================================
+              CONTINUE
+          ================================================= */}
 
           <div className="continue-learning">
 
