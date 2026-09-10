@@ -115,17 +115,18 @@ class _GraphScreenState extends State<GraphScreen> {
           // FINAL THEME BACKGROUNDS
           // =====================================================
 
-          gradient: isDark
+           gradient: isDark
               ? const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFF030C1D),
-                    Color(0xFF0E1532),
+                   Color(0xFF8000FF), // Deep purple
+                   Color(0xFFB266FF), // Soft lavender
                   ],
                 )
               : AppTheme.lightBackgroundGradient,
         ),
+
 
         child: SafeArea(
           child: Column(
@@ -432,8 +433,8 @@ class PrerequisiteGraphScreen extends StatelessWidget {
     // =========================================================
 
     final prerequisiteGreen = isDark
-        ? const Color(0xFF6E8F76)
-        : AppTheme.prerequisiteBorder;
+    ? const Color(0xFF66A66B)
+    : AppTheme.prerequisiteBorder;
 
     final prerequisiteBackground = isDark
         ? const Color(0xFF24352B)
@@ -444,7 +445,7 @@ class PrerequisiteGraphScreen extends StatelessWidget {
         : AppTheme.prerequisiteText;
 
     final postRequisiteOrange = isDark
-        ? const Color(0xFF9B7650)
+        ? const Color(0xFFE6A34A)
         : AppTheme.postRequisiteBorder;
 
     final postRequisiteBackground = isDark
@@ -455,7 +456,7 @@ class PrerequisiteGraphScreen extends StatelessWidget {
         ? const Color(0xFFD8B98F)
         : AppTheme.postRequisiteText;
 
-    final currentTopic = AppTheme.currentTopic;
+    final currentTopic = const Color.fromARGB(255, 108, 94, 203);
 
     final prerequisites = prerequisiteTopics;
     final usedIn = usedInTopics;
@@ -582,51 +583,53 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                 child: SizedBox(
                   width: double.infinity,
                   height: 54,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          AppTheme.primaryPurple,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(14),
-                      ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(14),
                     ),
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        elevation: 0,
+                        padding: EdgeInsets.zero,
 
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              TopicDetailsScreen(
-                            selectedTopic:
-                                selectedTopic,
-                            subject:
-                                selectedTopic.subject,
-                          ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                      );
-                    },
+                      ),
 
-                    icon: const Icon(
-                      Icons.auto_awesome_rounded,
-                      size: 20,
-                    ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TopicDetailsScreen(
+                              selectedTopic: selectedTopic,
+                              subject: selectedTopic.subject,
+                            ),
+                          ),
+                        );
+                      },
 
-                    label: Text(
-                      'Explore ${selectedTopic.name}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        height: 1.2,
+                      icon: const Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 20,
+                      ),
+
+                      label: Text(
+                        'Explore ${selectedTopic.name}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-
               // =================================================
               // HOW TO READ
               // =================================================
@@ -1067,7 +1070,10 @@ class _GraphArea extends StatelessWidget {
           ),
 
           decoration: BoxDecoration(
-            color: backgroundColor,
+            gradient: isCurrent
+                ? AppTheme.primaryGradient
+                : null,
+            color: isCurrent ? null : backgroundColor,
 
             border: Border.all(
               color: borderColor,
