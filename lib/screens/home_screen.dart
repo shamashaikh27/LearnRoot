@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'profile_screen.dart';
 import 'subject_screen.dart';
+import '../module2/screens/subject_screen.dart' as module2;
 
 class HomeScreen extends StatefulWidget {
   final Function(ThemeMode) onThemeChanged;
@@ -450,13 +451,49 @@ Widget _buildMenuItem(
         borderRadius: BorderRadius.circular(12),
 
         onTap: () {
-          setState(() {
-            selectedMenu = index;
-          });
+          if (index == 2) {
+    if (closeDrawer) {
+      Navigator.of(context).pop();
 
-          if (closeDrawer) {
-            Navigator.of(context).pop();
-          }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => module2.SubjectScreen(
+              themeMode: widget.isDarkMode
+                  ? ThemeMode.dark
+                  : ThemeMode.light,
+              onThemeChanged: widget.onThemeChanged,
+            ),
+          ),
+        );
+      });
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => module2.SubjectScreen(
+            themeMode: widget.isDarkMode
+                ? ThemeMode.dark
+                : ThemeMode.light,
+            onThemeChanged: widget.onThemeChanged,
+          ),
+        ),
+      );
+    }
+
+    return;
+  }
+
+  setState(() {
+    selectedMenu = index;
+  });
+
+  if (closeDrawer) {
+    Navigator.of(context).pop();
+  }
         },
 
         child: AnimatedContainer(

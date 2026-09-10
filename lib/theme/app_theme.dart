@@ -428,3 +428,44 @@ class LearnRootTheme {
     ),
   );
 }
+
+class AppTheme {
+  static const Color primaryPurple = Color(0xFF593AB9);
+  static const Color gradientPurpleEnd = Color(0xFF7B61D1);
+
+  static const Color darkBackground = Color(0xFF030C1D);
+  static const Color darkCard = Color(0xFF151D3B);
+  static const Color darkSecondary = Color(0xFF0E1532);
+  static const Color darkMainText = Color(0xFFE5E0E7);
+  static const Color darkSecondaryText = Color(0xFF99A1BD);
+
+  static const Color lightBackground = Color(0xFFF8F7FC);
+  static const Color lightCard = Color(0xFFFFFFFF);
+  static const Color lightSecondary = Color(0xFFF1EFF8);
+  static const Color lightMainText = Color(0xFF25233A);
+  static const Color lightSecondaryText = Color(0xFF6F7185);
+  static const Color lightBorder = Color(0xFFE8E6F0);
+
+  static const Color prerequisiteBorder = Color(0xFF66A66B);
+  static const Color prerequisiteBackground = Color(0xFFE8F5E9);
+  static const Color prerequisiteText = Color(0xFF356B3B);
+
+  static const Color postRequisiteBorder = Color(0xFFE6A34A);
+  static const Color postRequisiteBackground = Color(0xFFFFF2E1);
+  static const Color postRequisiteText = Color(0xFF8A5A16);
+
+  static const Color currentTopic = Color(0xFF6C63A8);
+
+  static const Color warningOrange = Color(0xFFF4A62A);
+  static const Color successGreen = Color(0xFF35D07F);
+
+  static const LinearGradient lightBackgroundGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFFF8F7FC),
+      Color(0xFFF0EBFA),
+      Color(0xFFE5DCF7),
+    ],
+  );
+}
