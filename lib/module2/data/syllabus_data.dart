@@ -1,316 +1,333 @@
 import '../models/topic.dart';
 
+Topic _dsTopic(
+  int id,
+  String name,
+  List<int> prerequisites,
+) {
+  return Topic(
+    id: 'ds_$id',
+    name: name,
+    subject: 'Data Structures',
+    prerequisites: prerequisites.map((p) => 'ds_$p').toList(),
+  );
+}
+
 final List<Topic> syllabusTopics = [
-  // 1. Introduction
-  Topic(
-    id: 'ds_intro',
-    name: 'Introduction to Data Structures',
-    subject: 'Data Structures',
-  ),
+  // UNIT 1: C PROGRAMMING FOUNDATIONS
+  _dsTopic(1, 'Introduction to C', []),
+  _dsTopic(2, 'Data Types & Variables in C', [1]),
+  _dsTopic(3, 'Constants & Literals', [2]),
+  _dsTopic(4, 'Operators & Expressions', [2]),
+  _dsTopic(5, 'Type Conversion & Casting', [4]),
+  _dsTopic(6, 'Input & Output Operations', [2]),
+  _dsTopic(7, 'Decision Control (if, if-else)', [4]),
+  _dsTopic(8, 'Switch Statement', [7]),
+  _dsTopic(9, 'Nested Conditionals', [7]),
+  _dsTopic(10, 'Loop Control (while, do-while)', [7]),
+  _dsTopic(11, 'Iterative Statements (for loop)', [10]),
+  _dsTopic(12, 'Nested Loops & Break/Continue', [11]),
+  _dsTopic(13, 'Functions & Function Calls', [11]),
+  _dsTopic(14, 'Scope, Storage Classes & Lifetime', [13]),
+  _dsTopic(15, 'Pointers & Memory Addresses', [2]),
+  _dsTopic(16, 'Pointer Arithmetic', [15]),
+  _dsTopic(17, 'Pointers to Pointers', [15]),
+  _dsTopic(18, 'Functions Returning Pointers', [13, 15]),
+  _dsTopic(19, 'Function Pointers', [18]),
+  _dsTopic(20, 'Static & Dynamic Memory Allocation', [15]),
+  _dsTopic(21, 'Dynamic Memory (malloc, calloc, realloc, free)', [20]),
+  _dsTopic(22, 'Recursion', [13]),
 
-  // 2. Types
-  Topic(
-    id: 'ds_types',
-    name: 'Types of Data Structures',
-    subject: 'Data Structures',
-    prerequisites: ['ds_intro'],
-  ),
+  // UNIT 2: DATA STRUCTURES & ALGORITHMS FUNDAMENTALS
+  _dsTopic(23, 'Basic Terminology of Data Structures', [1]),
+  _dsTopic(24, 'Classification of Data Structures', [23]),
+  _dsTopic(25, 'Operations on Data Structures', [24]),
+  _dsTopic(26, 'Abstract Data Types (ADTs)', [24]),
+  _dsTopic(27, 'Introduction to Algorithms', [23]),
+  _dsTopic(28, 'Algorithm Design Approaches', [27]),
+  _dsTopic(29, 'Pseudo-code & Flowcharts', [27]),
+  _dsTopic(30, 'Correctness of Algorithms', [27]),
+  _dsTopic(31, 'Analysis of Algorithms', [27]),
+  _dsTopic(32, 'Time Complexity Analysis', [31]),
+  _dsTopic(33, 'Space Complexity Analysis', [31]),
+  _dsTopic(34, 'Asymptotic Notations (Big-O, Big-Omega, Big-Theta)', [32]),
+  _dsTopic(35, 'Best, Worst, and Average Case Analysis', [34]),
+  _dsTopic(36, 'Mathematical Foundations for Algorithm Analysis', [31]),
+  _dsTopic(37, 'Amortized Analysis', [34]),
+  _dsTopic(38, 'Recurrence Relations', [22, 32]),
+  _dsTopic(39, 'Substitution Method', [38]),
+  _dsTopic(40, 'Recursion Tree Method', [38]),
+  _dsTopic(41, 'Master Theorem', [38]),
+  _dsTopic(42, 'Empirical Analysis of Algorithms', [31]),
+  _dsTopic(43, 'Algorithm Efficiency Factors', [31]),
+  _dsTopic(44, 'Trade-offs in Algorithm Design', [32, 33]),
+  _dsTopic(45, 'Greedy Algorithms', [32]),
 
-  // 3. Complexity
-  Topic(
-    id: 'ds_complexity',
-    name: 'Time and Space Complexity',
-    subject: 'Data Structures',
-    prerequisites: ['ds_intro'],
-  ),
+  // UNIT 3: ARRAYS
+  _dsTopic(46, 'Introduction to Arrays', [24]),
+  _dsTopic(47, 'Declaration & Initialization of Arrays', [46]),
+  _dsTopic(48, 'Accessing Array Elements', [47]),
+  _dsTopic(49, 'Address Calculation in Single-Dimensional Arrays', [48]),
+  _dsTopic(50, 'Array Length & Bounds Checking', [48]),
+  _dsTopic(51, 'Storing Arrays in Memory', [49]),
+  _dsTopic(52, 'Traversing an Array', [48]),
+  _dsTopic(53, 'Inserting an Element into an Array', [52]),
+  _dsTopic(54, 'Deleting an Element from an Array', [52]),
+  _dsTopic(55, 'Merging Two Arrays', [52]),
+  _dsTopic(56, 'Searching in Arrays', [52]),
+  _dsTopic(57, 'Updating Elements in Arrays', [48]),
+  _dsTopic(58, 'Two-Dimensional Arrays', [46]),
+  _dsTopic(59, 'Row-Major & Column-Major Ordering', [58]),
+  _dsTopic(60, 'Address Calculation in 2D Arrays', [59]),
+  _dsTopic(61, 'Multi-Dimensional Arrays', [58]),
+  _dsTopic(62, 'Address Calculation in Multi-Dimensional Arrays', [61]),
+  _dsTopic(63, 'Applications of Arrays', [52]),
+  _dsTopic(64, 'Sparse Matrices', [58]),
+  _dsTopic(65, 'Representation of Sparse Matrices', [64]),
+  _dsTopic(66, 'Triplet Representation of Sparse Matrices', [65]),
+  _dsTopic(67, 'Transpose of Sparse Matrix', [66]),
+  _dsTopic(68, 'Addition of Sparse Matrices', [66]),
+  _dsTopic(69, 'Dynamic Arrays', [21, 46]),
+  _dsTopic(70, 'Resizing Dynamic Arrays', [69]),
+  _dsTopic(71, 'Array Implementation of ADTs', [26, 46]),
 
-  // 4. Arrays
-  Topic(
-    id: 'ds_arrays',
-    name: 'Arrays',
-    subject: 'Data Structures',
-    prerequisites: ['ds_types'],
-  ),
+  // UNIT 4: STRINGS
+  _dsTopic(72, 'Introduction to Strings', [46]),
+  _dsTopic(73, 'String Representation & Character Arrays', [72]),
+  _dsTopic(74, 'Operations on Strings', [73]),
+  _dsTopic(75, 'String Manipulation Functions in C', [74]),
+  _dsTopic(76, 'String Pattern Matching Algorithms', [74]),
+  _dsTopic(77, 'Applications of Strings', [74]),
 
-  // 5. Strings
-  Topic(
-    id: 'ds_strings',
-    name: 'Strings',
-    subject: 'Data Structures',
-    prerequisites: ['ds_arrays'],
-  ),
+  // UNIT 5: STRUCTURES & UNIONS
+  _dsTopic(78, 'Introduction to Structures', [2]),
+  _dsTopic(79, 'Declaring & Initializing Structures', [78]),
+  _dsTopic(80, 'Accessing Structure Members', [79]),
+  _dsTopic(81, 'Structure Padding & Alignment', [80]),
+  _dsTopic(82, 'Array of Structures', [46, 79]),
+  _dsTopic(83, 'Nested Structures', [79]),
+  _dsTopic(84, 'Pointers to Structures', [15, 79]),
+  _dsTopic(85, 'Self-Referential Structures', [84]),
+  _dsTopic(86, 'Passing Structures to Functions', [13, 79]),
+  _dsTopic(87, 'Returning Structures from Functions', [86]),
+  _dsTopic(88, 'Dynamic Allocation of Structures', [21, 84]),
+  _dsTopic(89, 'Introduction to Unions', [78]),
+  _dsTopic(90, 'Differences Between Structures and Unions', [89]),
+  _dsTopic(91, 'Applications of Unions', [89]),
+  _dsTopic(92, 'Bit Fields in Structures', [80]),
+  _dsTopic(93, 'Enumerations (enum)', [2]),
+  _dsTopic(94, 'Typedef Keyword', [2]),
+  _dsTopic(95, 'Using Typedef with Structures & Unions', [80, 89, 94]),
+  _dsTopic(96, 'User-Defined Data Types using Structures', [95]),
 
-  // 6. Linked List
-  Topic(
-    id: 'ds_linked_list',
-    name: 'Linked List',
-    subject: 'Data Structures',
-    prerequisites: ['ds_types'],
-  ),
+  // UNIT 6: LINKED LISTS
+  _dsTopic(97, 'Introduction to Linked Lists', [26, 85]),
+  _dsTopic(98, 'Singly Linked List Representation', [97]),
+  _dsTopic(99, 'Node Creation & Memory Allocation', [21, 98]),
+  _dsTopic(100, 'Traversing a Singly Linked List', [98]),
+  _dsTopic(101, 'Insertion in Singly Linked List', [100]),
+  _dsTopic(102, 'Deletion from a Singly Linked List', [100]),
+  _dsTopic(103, 'Searching in Singly Linked List', [100]),
+  _dsTopic(104, 'Reversing a Singly Linked List', [100]),
+  _dsTopic(105, 'Circular Linked Lists', [98]),
+  _dsTopic(106, 'Operations on Circular Linked Lists', [105]),
+  _dsTopic(107, 'Doubly Linked Lists', [98]),
+  _dsTopic(108, 'Operations on Doubly Linked Lists', [107]),
+  _dsTopic(109, 'Circular Doubly Linked Lists', [107]),
+  _dsTopic(110, 'Operations on Circular Doubly Linked Lists', [109]),
+  _dsTopic(111, 'Header Linked Lists', [98]),
+  _dsTopic(112, 'Two-Way Header Linked Lists', [111]),
+  _dsTopic(113, 'Polynomial Representation using Linked Lists', [98]),
+  _dsTopic(114, 'Polynomial Addition using Linked Lists', [113]),
+  _dsTopic(115, 'Sparse Matrix Representation using Linked Lists', [65, 98]),
+  _dsTopic(116, 'Generalized Linked Lists', [98]),
+  _dsTopic(117, 'Memory Management in Linked Lists', [99]),
+  _dsTopic(118, 'Linked List vs. Array Comparison', [46, 97]),
 
-  // 7. Singly Linked List
-  Topic(
-    id: 'ds_singly_linked_list',
-    name: 'Singly Linked List',
-    subject: 'Data Structures',
-    prerequisites: ['ds_linked_list'],
-  ),
+  // UNIT 7: STACKS
+  _dsTopic(119, 'Introduction to Stacks', [26]),
+  _dsTopic(120, 'Stack ADT & Operations', [119]),
+  _dsTopic(121, 'Array Implementation of Stacks', [46, 120]),
+  _dsTopic(122, 'Linked List Implementation of Stacks', [98, 120]),
+  _dsTopic(123, 'Multiple Stacks in Single Array', [121]),
+  _dsTopic(124, 'Applications of Stacks', [120]),
+  _dsTopic(125, 'Infix, Prefix, and Postfix Expressions', [124]),
+  _dsTopic(126, 'Infix to Postfix Conversion', [125]),
+  _dsTopic(127, 'Infix to Prefix Conversion', [125]),
+  _dsTopic(128, 'Evaluation of Postfix Expression', [126]),
+  _dsTopic(129, 'Evaluation of Prefix Expression', [127]),
+  _dsTopic(130, 'Parenthesis Matching Algorithm', [120]),
+  _dsTopic(131, 'Recursion Implementation using Stack', [22, 120]),
+  _dsTopic(132, 'Tower of Hanoi using Stack', [131]),
+  _dsTopic(133, 'Stack Frame & Call Stack', [131]),
 
-  // 8. Doubly Linked List
-  Topic(
-    id: 'ds_doubly_linked_list',
-    name: 'Doubly Linked List',
-    subject: 'Data Structures',
-    prerequisites: ['ds_linked_list'],
-  ),
+  // UNIT 8: QUEUES
+  _dsTopic(134, 'Introduction to Queues', [26]),
+  _dsTopic(135, 'Queue ADT & Operations', [134]),
+  _dsTopic(136, 'Array Implementation of Queues', [46, 135]),
+  _dsTopic(137, 'Linked List Implementation of Queues', [98, 135]),
+  _dsTopic(138, 'Limitations of Simple Queue', [136]),
+  _dsTopic(139, 'Circular Queue', [138]),
+  _dsTopic(140, 'Operations on Circular Queue', [139]),
+  _dsTopic(141, 'Deque (Double Ended Queue)', [135]),
+  _dsTopic(142, 'Priority Queue', [135]),
+  _dsTopic(143, 'Array Implementation of Priority Queue', [142]),
+  _dsTopic(144, 'Applications of Queues', [135]),
 
-  // 9. Circular Linked List
-  Topic(
-    id: 'ds_circular_linked_list',
-    name: 'Circular Linked List',
-    subject: 'Data Structures',
-    prerequisites: ['ds_linked_list'],
-  ),
+  // UNIT 9: TREES
+  _dsTopic(145, 'Introduction to Trees', [24]),
+  _dsTopic(146, 'Basic Tree Terminology', [145]),
+  _dsTopic(147, 'Representation of Trees', [146]),
+  _dsTopic(148, 'Binary Trees', [146]),
+  _dsTopic(149, 'Types of Binary Trees', [148]),
+  _dsTopic(150, 'Properties of Binary Trees', [148]),
+  _dsTopic(151, 'Array Representation of Binary Trees', [46, 148]),
+  _dsTopic(152, 'Linked Representation of Binary Trees', [85, 148]),
+  _dsTopic(153, 'Binary Tree Traversal (Inorder, Preorder, Postorder)', [148]),
+  _dsTopic(154, 'Iterative Traversals using Stack', [120, 153]),
+  _dsTopic(155, 'Level Order Traversal using Queue', [135, 153]),
+  _dsTopic(156, 'Constructing Binary Trees from Traversals', [153]),
+  _dsTopic(157, 'Threaded Binary Trees', [148]),
+  _dsTopic(158, 'Expression Trees', [125, 148]),
+  _dsTopic(159, 'Operations on Binary Trees', [153]),
+  _dsTopic(160, "Huffman's Tree", [45, 149]),
+  _dsTopic(161, 'General Trees to Binary Trees Conversion', [148]),
+  _dsTopic(162, 'Applications of Trees', [145]),
 
-  // 10. Stack
-  Topic(
-    id: 'ds_stack',
-    name: 'Stack',
-    subject: 'Data Structures',
-    prerequisites: ['ds_types'],
-  ),
+  // UNIT 10: EFFICIENT BINARY TREES
+  _dsTopic(163, 'Binary Search Trees (BST)', [148]),
+  _dsTopic(164, 'BST Operations (Search, Insert, Delete)', [163]),
+  _dsTopic(165, 'Searching in a BST', [164]),
+  _dsTopic(166, 'Insertion in a BST', [164]),
+  _dsTopic(167, 'Deletion in a BST', [164]),
+  _dsTopic(168, 'Time Complexity of BST Operations', [32, 164]),
+  _dsTopic(169, 'AVL Trees', [163]),
+  _dsTopic(170, 'Balance Factor in AVL Trees', [169]),
+  _dsTopic(171, 'AVL Rotations (LL, RR, LR, RL)', [170]),
+  _dsTopic(172, 'Insertion in AVL Trees', [171]),
+  _dsTopic(173, 'Deletion in AVL Trees', [171]),
+  _dsTopic(174, 'Red-Black Trees', [163]),
+  _dsTopic(175, 'Properties of Red-Black Trees', [174]),
+  _dsTopic(176, 'Insertion in Red-Black Trees', [175]),
+  _dsTopic(177, 'Deletion in Red-Black Trees', [175]),
+  _dsTopic(178, 'Splay Trees', [163]),
+  _dsTopic(179, 'Splay Operations', [178]),
+  _dsTopic(180, 'Augmented Binary Search Trees', [163]),
+  _dsTopic(181, 'Interval Trees', [180]),
+  _dsTopic(182, 'Segment Trees', [180]),
+  _dsTopic(183, 'Scapegoat Trees', [163]),
+  _dsTopic(184, 'Treaps', [163]),
+  _dsTopic(185, 'Comparison of Efficient Binary Trees', [169, 174, 178]),
 
-  // 11. Queue
-  Topic(
-    id: 'ds_queue',
-    name: 'Queue',
-    subject: 'Data Structures',
-    prerequisites: ['ds_types'],
-  ),
+  // UNIT 11: MULTI-WAY SEARCH TREES
+  _dsTopic(186, 'Multi-Way Search Trees (m-way Trees)', [163]),
+  _dsTopic(187, 'B-Trees', [186]),
+  _dsTopic(188, 'Properties of B-Trees', [187]),
+  _dsTopic(189, 'Insertion in B-Trees', [188]),
+  _dsTopic(190, 'Deletion from B-Trees', [188]),
+  _dsTopic(191, 'B+ Trees', [187]),
+  _dsTopic(192, 'Comparison of B-Trees and B+ Trees', [191]),
+  _dsTopic(193, 'B* Trees', [187]),
+  _dsTopic(194, '2-3 Trees', [187]),
+  _dsTopic(195, '2-3-4 Trees', [187]),
+  _dsTopic(196, 'Trie Data Structure', [73, 186]),
+  _dsTopic(197, 'Compressed Tries (Patricia Trees)', [196]),
+  _dsTopic(198, 'Suffix Trees', [196]),
+  _dsTopic(199, 'Applications of Multi-Way Trees', [187]),
 
-  // 12. Circular Queue
-  Topic(
-    id: 'ds_circular_queue',
-    name: 'Circular Queue',
-    subject: 'Data Structures',
-    prerequisites: ['ds_queue'],
-  ),
+  // UNIT 12: HEAPS
+  _dsTopic(200, 'Introduction to Heaps', [142, 151]),
+  _dsTopic(201, 'Binary Heaps', [200]),
+  _dsTopic(202, 'Min-Heap and Max-Heap Properties', [201]),
+  _dsTopic(203, 'Array Representation of Heaps', [201]),
+  _dsTopic(204, 'Heapify Operation', [202, 203]),
+  _dsTopic(205, 'Insertion in Heaps', [204]),
+  _dsTopic(206, 'Deletion from Heaps', [204]),
+  _dsTopic(207, 'Binomial Heaps', [200]),
+  _dsTopic(208, 'Binomial Trees and Properties', [207]),
+  _dsTopic(209, 'Operations on Binomial Heaps', [208]),
+  _dsTopic(210, 'Fibonacci Heaps', [200]),
+  _dsTopic(211, 'Operations on Fibonacci Heaps', [210]),
+  _dsTopic(212, 'Priority Queues using Heaps', [142, 201]),
+  _dsTopic(213, 'Comparison of Heap Structures', [201, 207, 210]),
 
-  // 13. Priority Queue
-  Topic(
-    id: 'ds_priority_queue',
-    name: 'Priority Queue',
-    subject: 'Data Structures',
-    prerequisites: ['ds_queue'],
-  ),
+  // UNIT 13: GRAPHS
+  _dsTopic(214, 'Introduction to Graphs', [24]),
+  _dsTopic(215, 'Graph Terminology', [214]),
+  _dsTopic(216, 'Directed and Undirected Graphs', [215]),
+  _dsTopic(217, 'Representation of Graphs', [215]),
+  _dsTopic(218, 'Adjacency Matrix Representation', [58, 217]),
+  _dsTopic(219, 'Adjacency List Representation', [98, 217]),
+  _dsTopic(220, 'Adjacency Multi-List Representation', [219]),
+  _dsTopic(221, 'Incidence Matrix Representation', [58, 217]),
+  _dsTopic(222, 'Graph Traversals', [217]),
+  _dsTopic(223, 'Breadth-First Search (BFS)', [135, 222]),
+  _dsTopic(224, 'Depth-First Search (DFS)', [22, 120, 222]),
+  _dsTopic(225, 'Applications of BFS and DFS', [223, 224]),
+  _dsTopic(226, 'Minimum Spanning Trees (MST)', [45, 215]),
+  _dsTopic(227, "Prim's Algorithm", [226]),
+  _dsTopic(228, "Kruskal's Algorithm", [226]),
+  _dsTopic(229, 'Single-Source Shortest Path Algorithms', [215]),
+  _dsTopic(230, "Dijkstra's Algorithm", [229]),
+  _dsTopic(231, 'Bellman-Ford Algorithm', [229]),
+  _dsTopic(232, 'All-Pairs Shortest Path Algorithms', [215]),
+  _dsTopic(233, 'Floyd-Warshall Algorithm', [232]),
+  _dsTopic(234, 'Topological Sort', [224]),
+  _dsTopic(235, 'Applications of Graphs', [214]),
 
-  // 14. Deque
-  Topic(
-    id: 'ds_deque',
-    name: 'Deque',
-    subject: 'Data Structures',
-    prerequisites: ['ds_queue'],
-  ),
+  // UNIT 14: SEARCHING & SORTING
+  _dsTopic(236, 'Introduction to Searching', [56]),
+  _dsTopic(237, 'Linear Search', [236]),
+  _dsTopic(238, 'Binary Search', [236]),
+  _dsTopic(239, 'Interpolation Search', [238]),
+  _dsTopic(240, 'Jump Search', [238]),
+  _dsTopic(241, 'Fibonacci Search', [238]),
+  _dsTopic(242, 'Comparison of Searching Algorithms', [237, 238, 239]),
+  _dsTopic(243, 'Introduction to Sorting', [52]),
+  _dsTopic(244, 'Bubble Sort', [243]),
+  _dsTopic(245, 'Selection Sort', [243]),
+  _dsTopic(246, 'Insertion Sort', [243]),
+  _dsTopic(247, 'Merge Sort', [22, 243]),
+  _dsTopic(248, 'Quick Sort', [22, 243]),
+  _dsTopic(249, 'Shell Sort', [246]),
+  _dsTopic(250, 'Heap Sort', [201, 243]),
+  _dsTopic(251, 'Radix Sort', [243]),
+  _dsTopic(252, 'Bucket Sort', [243]),
+  _dsTopic(253, 'Tree Sort', [163, 243]),
+  _dsTopic(254, 'Comparison of Sorting Algorithms', [244, 247, 248, 250]),
 
-  // 15. Recursion
-  Topic(
-    id: 'ds_recursion',
-    name: 'Recursion',
-    subject: 'Data Structures',
-    prerequisites: ['ds_intro'],
-  ),
+  // UNIT 15: HASHING & COLLISION
+  _dsTopic(255, 'Introduction to Hashing', [26]),
+  _dsTopic(256, 'Hash Tables', [46, 255]),
+  _dsTopic(257, 'Hash Functions', [256]),
+  _dsTopic(258, 'Characteristics of Good Hash Functions', [257]),
+  _dsTopic(259, 'Collision Resolution Techniques', [256]),
+  _dsTopic(260, 'Separate Chaining (Open Hashing)', [98, 259]),
+  _dsTopic(261, 'Open Addressing (Closed Hashing)', [259]),
+  _dsTopic(262, 'Linear Probing', [261]),
+  _dsTopic(263, 'Quadratic Probing', [261]),
+  _dsTopic(264, 'Double Hashing', [261]),
+  _dsTopic(265, 'Rehashing & Dynamic Hash Tables', [256]),
+  _dsTopic(266, 'Applications of Hashing', [256]),
 
-  // 16. Trees
-  Topic(
-    id: 'ds_trees',
-    name: 'Trees',
-    subject: 'Data Structures',
-    prerequisites: ['ds_types'],
-  ),
-
-  // 17. Binary Tree
-  Topic(
-    id: 'ds_binary_tree',
-    name: 'Binary Tree',
-    subject: 'Data Structures',
-    prerequisites: ['ds_trees'],
-  ),
-
-  // 18. Binary Search Tree
-  Topic(
-    id: 'ds_bst',
-    name: 'Binary Search Tree (BST)',
-    subject: 'Data Structures',
-    prerequisites: ['ds_binary_tree'],
-  ),
-
-  // 19. AVL Tree
-  Topic(
-    id: 'ds_avl',
-    name: 'AVL Tree',
-    subject: 'Data Structures',
-    prerequisites: ['ds_bst'],
-  ),
-
-  // 20. Heap
-  Topic(
-    id: 'ds_heap',
-    name: 'Heap',
-    subject: 'Data Structures',
-    prerequisites: ['ds_binary_tree'],
-  ),
-
-  // 21. Hashing
-  Topic(
-    id: 'ds_hashing',
-    name: 'Hashing',
-    subject: 'Data Structures',
-    prerequisites: ['ds_types'],
-  ),
-
-  // 22. Hash Table
-  Topic(
-    id: 'ds_hash_table',
-    name: 'Hash Table',
-    subject: 'Data Structures',
-    prerequisites: ['ds_hashing', 'ds_arrays'],
-  ),
-
-  // 23. Graphs
-  Topic(
-    id: 'ds_graphs',
-    name: 'Graphs',
-    subject: 'Data Structures',
-    prerequisites: ['ds_types'],
-  ),
-
-  // 24. Graph Representation
-  Topic(
-    id: 'ds_graph_representation',
-    name: 'Graph Representation',
-    subject: 'Data Structures',
-    prerequisites: ['ds_graphs', 'ds_arrays'],
-  ),
-
-  // 25. BFS
-  Topic(
-    id: 'ds_bfs',
-    name: 'BFS',
-    subject: 'Data Structures',
-    prerequisites: ['ds_graph_representation', 'ds_queue'],
-  ),
-
-  // 26. DFS
-  Topic(
-    id: 'ds_dfs',
-    name: 'DFS',
-    subject: 'Data Structures',
-    prerequisites: ['ds_graph_representation', 'ds_recursion'],
-  ),
-
-  // 27. Searching
-  Topic(
-    id: 'ds_searching',
-    name: 'Searching',
-    subject: 'Data Structures',
-    prerequisites: ['ds_arrays'],
-  ),
-
-  // 28. Linear Search
-  Topic(
-    id: 'ds_linear_search',
-    name: 'Linear Search',
-    subject: 'Data Structures',
-    prerequisites: ['ds_searching'],
-  ),
-
-  // 29. Binary Search
-  Topic(
-    id: 'ds_binary_search',
-    name: 'Binary Search',
-    subject: 'Data Structures',
-    prerequisites: ['ds_searching'],
-  ),
-
-  // 30. Sorting
-  Topic(
-    id: 'ds_sorting',
-    name: 'Sorting',
-    subject: 'Data Structures',
-    prerequisites: ['ds_arrays'],
-  ),
-
-  // 31. Bubble Sort
-  Topic(
-    id: 'ds_bubble_sort',
-    name: 'Bubble Sort',
-    subject: 'Data Structures',
-    prerequisites: ['ds_sorting'],
-  ),
-
-  // 32. Selection Sort
-  Topic(
-    id: 'ds_selection_sort',
-    name: 'Selection Sort',
-    subject: 'Data Structures',
-    prerequisites: ['ds_sorting'],
-  ),
-
-  // 33. Insertion Sort
-  Topic(
-    id: 'ds_insertion_sort',
-    name: 'Insertion Sort',
-    subject: 'Data Structures',
-    prerequisites: ['ds_sorting'],
-  ),
-
-  // 34. Merge Sort
-  Topic(
-    id: 'ds_merge_sort',
-    name: 'Merge Sort',
-    subject: 'Data Structures',
-    prerequisites: ['ds_sorting', 'ds_recursion'],
-  ),
-
-  // 35. Quick Sort
-  Topic(
-    id: 'ds_quick_sort',
-    name: 'Quick Sort',
-    subject: 'Data Structures',
-    prerequisites: ['ds_sorting', 'ds_recursion'],
-  ),
-
-  // 36. Heap Sort
-  Topic(
-    id: 'ds_heap_sort',
-    name: 'Heap Sort',
-    subject: 'Data Structures',
-    prerequisites: ['ds_sorting', 'ds_heap'],
-  ),
-
-  // 37. Greedy Algorithms
-  Topic(
-    id: 'ds_greedy',
-    name: 'Greedy Algorithms',
-    subject: 'Data Structures',
-    prerequisites: ['ds_complexity'],
-  ),
-
-  // 38. Divide and Conquer
-  Topic(
-    id: 'ds_divide_conquer',
-    name: 'Divide and Conquer',
-    subject: 'Data Structures',
-    prerequisites: ['ds_recursion'],
-  ),
-
-    // 39. Dynamic Programming
-  Topic(
-    id: 'ds_dynamic_programming',
-    name: 'Dynamic Programming',
-    subject: 'Data Structures',
-    prerequisites: ['ds_recursion'],
-  ),
+  // UNIT 16: FILES & FILE ORGANIZATION
+  _dsTopic(267, 'Introduction to Files', [1]),
+  _dsTopic(268, 'File Terminology', [267]),
+  _dsTopic(269, 'File Operations in C', [267]),
+  _dsTopic(270, 'File Organization Techniques', [268]),
+  _dsTopic(271, 'Sequential File Organization', [270]),
+  _dsTopic(272, 'Direct/Random File Organization', [270]),
+  _dsTopic(273, 'Indexed Sequential File Organization (ISAM)', [270]),
+  _dsTopic(274, 'Inverted File Organization', [270]),
+  _dsTopic(275, 'Hashed File Organization', [256, 270]),
+  _dsTopic(276, 'Indexing Techniques in Files', [268]),
+  _dsTopic(277, 'Primary and Secondary Indices', [276]),
+  _dsTopic(278, 'Dense and Sparse Indices', [276]),
+  _dsTopic(279, 'Single-Level vs. Multi-Level Indexing', [276]),
+  _dsTopic(280, 'B-Tree Indices', [187, 276]),
+  _dsTopic(281, 'B+ Tree Indices', [191, 276]),
+  _dsTopic(282, 'External Sorting', [247, 267]),
+  _dsTopic(283, 'Multi-way Merge Sort for Files', [282]),
 
   // =========================
   // C PROGRAMMING
