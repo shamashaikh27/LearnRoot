@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'screens/login_screen.dart';
 import 'theme/app_theme.dart';
-import 'module2/screens/subject_screen.dart';
 
 void main() {
   runApp(const LearnRootApp());
@@ -28,12 +28,14 @@ class _LearnRootAppState extends State<LearnRootApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'LearnRoot',
+
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,
-      home: SubjectScreen(
-        themeMode: _themeMode,
+
+      home: LoginScreen(
         onThemeChanged: _changeTheme,
+        isDarkMode: _themeMode == ThemeMode.dark,
       ),
     );
   }
