@@ -2,8 +2,9 @@
 // ============================================================
 // IMPORTS, HOME SCREEN AND VARIABLES
 // ============================================================
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../theme/app_theme.dart';
 import 'profile_screen.dart';
@@ -35,19 +36,42 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserName();
   }
 
-  Future<void> _loadUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedName = prefs.getString('registered_name');
+ Future<void> _loadUserName() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return;
+    }
+
+    String name = user.displayName ?? '';
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (userDoc.exists) {
+      final data = userDoc.data();
+
+      if (data != null &&
+          data['name'] != null &&
+          data['name'].toString().trim().isNotEmpty) {
+        name = data['name'].toString().trim();
+      }
+    }
 
     if (!mounted) return;
 
-    print('Saved name: $savedName');
-    if (savedName != null && savedName.isNotEmpty) {
+    if (name.isNotEmpty) {
       setState(() {
-        _userName = savedName;
+        _userName = name;
       });
     }
+  } catch (e) {
+    // Keep the default name if profile loading fails.
   }
+}
 
   String _getInitials(String name) {
   final parts = name.trim().split(RegExp(r'\s+'));
@@ -1013,19 +1037,23 @@ Widget _buildMainContent() {
     children: [
       _buildWelcomeSection(),
 
-      const SizedBox(height: 28),
+      const SizedBox(height: 22),
 
       _buildContinueLearning(),
 
-      const SizedBox(height: 28),
+      const SizedBox(height: 22),
 
       _buildLearningPath(),
 
-      const SizedBox(height: 28),
+      const SizedBox(height: 16),
+
+      _buildDashboardStatistics(),
+
+      const SizedBox(height: 20),
 
       _buildDashboardLowerSection(),
 
-      const SizedBox(height: 28),
+      const SizedBox(height: 20),
 
       _buildDashboardBottomSection(),
     ],
@@ -1084,7 +1112,6 @@ Widget _buildWelcomeSection() {
 // ============================================================
 
 Widget _buildWelcomeBanner() {
-  print('Logged-in gender: ${widget.gender}');
   return Container(
     height: 260,
     padding: const EdgeInsets.all(24),
@@ -1093,14 +1120,21 @@ Widget _buildWelcomeBanner() {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          LearnRootColors.primary.withOpacity(0.85),
-          LearnRootColors.primary.withOpacity(0.45),
+          LearnRootColors.primary,
+          LearnRootColors.primary.withOpacity(0.68),
         ],
       ),
       borderRadius: BorderRadius.circular(22),
       border: Border.all(
         color: LearnRootColors.primary.withOpacity(0.35),
       ),
+      boxShadow: [
+        BoxShadow(
+          color: LearnRootColors.primary.withOpacity(0.18),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+        ),
+      ],
     ),
     child: LayoutBuilder(
       builder: (context, constraints) {
@@ -1110,16 +1144,55 @@ Widget _buildWelcomeBanner() {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-               Text(
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.waving_hand_rounded,
+                          color: Colors.white,
+                          size: 15,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Good to see you!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 14),
+
+              Text(
                 'Welcome back, $_userName!',
-                style: TextStyle(
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
+                  height: 1.15,
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 9),
 
               const Text(
                 'Continue your learning journey and build stronger concepts every day.',
@@ -1135,19 +1208,19 @@ Widget _buildWelcomeBanner() {
               Align(
                 alignment: Alignment.centerRight,
                 child: SizedBox(
-                  width: 130,
-                  height: 100,
+                  width: 125,
+                  height: 90,
                   child: Image.asset(
                     widget.gender == 'Female'
-    ? 'assets/images/student_girl.png'
-    : 'assets/images/student_boy.png',
+                        ? 'assets/images/student_girl.png'
+                        : 'assets/images/student_boy.png',
                     fit: BoxFit.contain,
                     alignment: Alignment.center,
                     errorBuilder: (context, error, stackTrace) {
                       return const Icon(
                         Icons.school_rounded,
                         color: Colors.white70,
-                        size: 65,
+                        size: 60,
                       );
                     },
                   ),
@@ -1166,24 +1239,80 @@ Widget _buildWelcomeBanner() {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Welcome back, $_userName!',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.waving_hand_rounded,
+                          color: Colors.white,
+                          size: 15,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Good to see you!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  SizedBox(height: 10),
+                  const SizedBox(height: 14),
 
                   Text(
+                    'Welcome back, $_userName!',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      height: 1.15,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  const Text(
                     'Continue your learning journey and build stronger concepts every day.',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 13,
                       height: 1.5,
                     ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.white.withOpacity(0.85),
+                        size: 17,
+                      ),
+                      const SizedBox(width: 7),
+                      const Text(
+                        'Keep learning. Keep growing.',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1196,11 +1325,11 @@ Widget _buildWelcomeBanner() {
               child: Center(
                 child: SizedBox(
                   width: double.infinity,
-                  height: 190,
+                  height: 195,
                   child: Image.asset(
                     widget.gender == 'Female'
-      ? 'assets/images/student_girl.png'
-      : 'assets/images/student_boy.png',
+                        ? 'assets/images/student_girl.png'
+                        : 'assets/images/student_boy.png',
                     fit: BoxFit.contain,
                     alignment: Alignment.center,
                     errorBuilder: (context, error, stackTrace) {
@@ -1238,52 +1367,122 @@ Widget _buildCurrentSubjectCard() {
       border: Border.all(
         color: themeColors.border,
       ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 14,
+          offset: const Offset(0, 5),
+        ),
+      ],
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Current Subject',
-          style: TextStyle(
-            color: themeColors.textSecondary,
-            fontSize: 12,
-          ),
-        ),
-
-        const SizedBox(height: 18),
-
-        Container(
-          width: 55,
-          height: 55,
-          decoration: BoxDecoration(
-            color: LearnRootColors.primary.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: const Icon(
-            Icons.account_tree_outlined,
-            color: LearnRootColors.primary,
-            size: 28,
-          ),
+        Row(
+          children: [
+            Icon(
+              Icons.play_circle_outline_rounded,
+              color: LearnRootColors.primary,
+              size: 18,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              'Continue Learning',
+              style: TextStyle(
+                color: themeColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 16),
 
-        Text(
-          'Data Structures',
-          style: TextStyle(
-            color: themeColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          children: [
+            Container(
+              width: 55,
+              height: 55,
+              decoration: BoxDecoration(
+                color: LearnRootColors.primary.withOpacity(0.13),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: const Icon(
+                Icons.account_tree_outlined,
+                color: LearnRootColors.primary,
+                size: 28,
+              ),
+            ),
+
+            const SizedBox(width: 13),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Data Structures',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: themeColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 5),
+
+                  Text(
+                    'Current topic: Trees',
+                    style: TextStyle(
+                      color: themeColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
 
-        const SizedBox(height: 6),
+        const SizedBox(height: 17),
 
-        Text(
-          'Trees',
-          style: TextStyle(
-            color: themeColors.textSecondary,
-            fontSize: 12,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Trees • Binary Trees',
+                style: TextStyle(
+                  color: themeColors.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+            Text(
+              '68%',
+              style: TextStyle(
+                color: LearnRootColors.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 7),
+
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: 0.68,
+            minHeight: 7,
+            backgroundColor: themeColors.progressTrack,
+            valueColor:
+                const AlwaysStoppedAnimation<Color>(
+              LearnRootColors.primary,
+            ),
           ),
         ),
 
@@ -1291,7 +1490,7 @@ Widget _buildCurrentSubjectCard() {
 
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton(
+          child: ElevatedButton.icon(
             onPressed: () {
               Navigator.push(
                 context,
@@ -1302,6 +1501,13 @@ Widget _buildCurrentSubjectCard() {
                 ),
               );
             },
+            icon: const Icon(
+              Icons.arrow_forward_rounded,
+              size: 17,
+            ),
+            label: const Text(
+              'Continue Learning',
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: LearnRootColors.primary,
               foregroundColor: Colors.white,
@@ -1312,9 +1518,6 @@ Widget _buildCurrentSubjectCard() {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-            ),
-            child: const Text(
-              'Continue Learning',
             ),
           ),
         ),
@@ -1340,33 +1543,51 @@ Widget _buildProgressCard() {
       border: Border.all(
         color: themeColors.border,
       ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 14,
+          offset: const Offset(0, 5),
+        ),
+      ],
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Your Progress',
-          style: TextStyle(
-            color: themeColors.textSecondary,
-            fontSize: 12,
-          ),
+        Row(
+          children: [
+            Icon(
+              Icons.trending_up_rounded,
+              color: LearnRootColors.primary,
+              size: 18,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              'Your Progress',
+              style: TextStyle(
+                color: themeColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
 
         const Spacer(),
 
         Center(
           child: SizedBox(
-            width: 120,
-            height: 120,
+            width: 125,
+            height: 125,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 SizedBox(
-                  width: 110,
-                  height: 110,
+                  width: 115,
+                  height: 115,
                   child: CircularProgressIndicator(
                     value: 0.68,
-                    strokeWidth: 10,
+                    strokeWidth: 11,
                     backgroundColor:
                         themeColors.progressTrack,
                     valueColor:
@@ -1383,10 +1604,11 @@ Widget _buildProgressCard() {
                       '68%',
                       style: TextStyle(
                         color: themeColors.textPrimary,
-                        fontSize: 22,
+                        fontSize: 25,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       'Completed',
                       style: TextStyle(
@@ -1404,12 +1626,24 @@ Widget _buildProgressCard() {
         const Spacer(),
 
         Center(
-          child: Text(
-            'Keep going!',
-            style: TextStyle(
-              color: themeColors.textSecondary,
-              fontSize: 12,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle_outline_rounded,
+                color: LearnRootColors.success,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Keep going!',
+                style: TextStyle(
+                  color: themeColors.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1528,6 +1762,9 @@ Widget _buildContinueLearning() {
 // ============================================================
 
 Widget _buildLearningPath() {
+  final themeColors =
+      Theme.of(context).extension<LearnRootThemeColors>()!;
+
   return _sectionCard(
     title: 'Your Learning Path',
     icon: Icons.account_tree_outlined,
@@ -1541,91 +1778,114 @@ Widget _buildLearningPath() {
         'View Full Path',
         style: TextStyle(
           color: LearnRootColors.primary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     ),
     child: Column(
       children: [
         _pathItem(
-          'Pointers',
-          'Completed',
-          Icons.check_circle,
-          LearnRootColors.success,
-          true,
+          title: 'Pointers',
+          subtitle: 'Completed',
+          icon: Icons.check_circle_rounded,
+          iconColor: LearnRootColors.success,
+          completed: true,
+          current: false,
+          themeColors: themeColors,
         ),
 
-        _pathLine(),
-
-        _pathItem(
-          'Linked Lists',
-          'Completed',
-          Icons.check_circle,
-          LearnRootColors.success,
-          true,
+        _pathLine(
+          completed: true,
+          themeColors: themeColors,
         ),
 
-        _pathLine(),
-
         _pathItem(
-          'Trees',
-          'Current Topic',
-          Icons.play_circle_fill,
-          LearnRootColors.primary,
-          true,
+          title: 'Linked Lists',
+          subtitle: 'Completed',
+          icon: Icons.check_circle_rounded,
+          iconColor: LearnRootColors.success,
+          completed: true,
+          current: false,
+          themeColors: themeColors,
         ),
 
-        _pathLine(),
+        _pathLine(
+          completed: true,
+          themeColors: themeColors,
+        ),
 
         _pathItem(
-          'Graphs',
-          'Locked',
-          Icons.lock_outline,
-          LearnRootColors.textSecondary,
-          false,
+          title: 'Trees',
+          subtitle: 'Current Topic',
+          icon: Icons.play_circle_fill_rounded,
+          iconColor: LearnRootColors.primary,
+          completed: false,
+          current: true,
+          themeColors: themeColors,
+        ),
+
+        _pathLine(
+          completed: false,
+          themeColors: themeColors,
+        ),
+
+        _pathItem(
+          title: 'Graphs',
+          subtitle: 'Locked',
+          icon: Icons.lock_outline_rounded,
+          iconColor: themeColors.textSecondary,
+          completed: false,
+          current: false,
+          themeColors: themeColors,
         ),
       ],
     ),
   );
 }
 
-Widget _pathItem(
-  String title,
-  String subtitle,
-  IconData icon,
-  Color iconColor,
-  bool active,
-) {
-  final themeColors =
-      Theme.of(context).extension<LearnRootThemeColors>()!;
-
-  final Color actualIconColor =
-      title == 'Graphs'
-          ? themeColors.textSecondary
-          : iconColor;
+Widget _pathItem({
+  required String title,
+  required String subtitle,
+  required IconData icon,
+  required Color iconColor,
+  required bool completed,
+  required bool current,
+  required LearnRootThemeColors themeColors,
+}) {
+  final Color itemColor = current
+      ? LearnRootColors.primary
+      : completed
+          ? LearnRootColors.success
+          : themeColors.textSecondary;
 
   return Container(
-    padding: const EdgeInsets.symmetric(
-      horizontal: 14,
-      vertical: 13,
-    ),
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: active
-          ? actualIconColor.withOpacity(0.06)
-          : Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
+      color: current
+          ? LearnRootColors.primary.withOpacity(0.08)
+          : completed
+              ? LearnRootColors.success.withOpacity(0.04)
+              : themeColors.card,
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(
+        color: current
+            ? LearnRootColors.primary.withOpacity(0.30)
+            : themeColors.border,
+      ),
     ),
     child: Row(
       children: [
         Container(
-          width: 42,
-          height: 42,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
-            color: actualIconColor.withOpacity(0.12),
+            color: itemColor.withOpacity(0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
             icon,
-            color: actualIconColor,
+            color: itemColor,
             size: 21,
           ),
         ),
@@ -1638,24 +1898,28 @@ Widget _pathItem(
             children: [
               Text(
                 title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: themeColors.textPrimary,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
                 style: TextStyle(
-                  color: actualIconColor,
+                  color: itemColor,
                   fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
           ),
         ),
 
-        if (active && title == 'Trees')
+        if (current)
           ElevatedButton(
             onPressed: () {
               Navigator.push(
@@ -1671,26 +1935,57 @@ Widget _pathItem(
               backgroundColor: LearnRootColors.primary,
               foregroundColor: Colors.white,
               elevation: 0,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 10,
+              ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Continue'),
+            child: const Text(
+              'Continue',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+
+        if (completed)
+          const Icon(
+            Icons.check_rounded,
+            color: LearnRootColors.success,
+            size: 20,
           ),
       ],
     ),
   );
 }
 
-Widget _pathLine() {
-  final themeColors =
-      Theme.of(context).extension<LearnRootThemeColors>()!;
-
-  return Container(
-    margin: const EdgeInsets.only(left: 34),
-    width: 2,
-    height: 20,
-    color: themeColors.border,
+Widget _pathLine({
+  required bool completed,
+  required LearnRootThemeColors themeColors,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(
+      left: 34,
+      top: 2,
+      bottom: 2,
+    ),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        width: 2,
+        height: 18,
+        decoration: BoxDecoration(
+          color: completed
+              ? LearnRootColors.success.withOpacity(0.45)
+              : themeColors.border,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    ),
   );
 }
 
@@ -1724,6 +2019,146 @@ Widget _buildDashboardLowerSection() {
         ],
       );
     },
+  );
+}
+
+// ============================================================
+// DASHBOARD STATISTICS
+// ============================================================
+
+Widget _buildDashboardStatistics() {
+  final themeColors =
+      Theme.of(context).extension<LearnRootThemeColors>()!;
+
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth < 500) {
+        return Column(
+          children: [
+            _buildStatCard(
+              icon: Icons.check_circle_outline_rounded,
+              value: '12',
+              label: 'Topics Completed',
+              themeColors: themeColors,
+            ),
+            const SizedBox(height: 10),
+            _buildStatCard(
+              icon: Icons.schedule_rounded,
+              value: '18.5',
+              label: 'Study Hours',
+              themeColors: themeColors,
+            ),
+            const SizedBox(height: 10),
+            _buildStatCard(
+              icon: Icons.emoji_events_outlined,
+              value: '84%',
+              label: 'Quiz Score',
+              themeColors: themeColors,
+            ),
+          ],
+        );
+      }
+
+      return Row(
+        children: [
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.check_circle_outline_rounded,
+              value: '12',
+              label: 'Topics Completed',
+              themeColors: themeColors,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.schedule_rounded,
+              value: '18.5',
+              label: 'Study Hours',
+              themeColors: themeColors,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: _buildStatCard(
+              icon: Icons.emoji_events_outlined,
+              value: '84%',
+              label: 'Quiz Score',
+              themeColors: themeColors,
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Widget _buildStatCard({
+  required IconData icon,
+  required String value,
+  required String label,
+  required LearnRootThemeColors themeColors,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: themeColors.card,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: themeColors.border,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: LearnRootColors.primary.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: LearnRootColors.primary,
+            size: 21,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  color: themeColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: themeColors.textSecondary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 }
 

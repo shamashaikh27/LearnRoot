@@ -1,5 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -17,8 +18,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   bool hidePassword = true;
   bool hideConfirmPassword = true;
+  bool isCreatingAccount = false;
 
-  // Added for gender selection.
   String? selectedGender;
 
   @override
@@ -77,40 +78,97 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      isCreatingAccount = true;
+    });
 
-    final existingEmail = prefs.getString('registered_email');
+    try {
+      final credential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    if (existingEmail != null &&
-        existingEmail.toLowerCase() == email) {
+      final user = credential.user;
+
+      if (user == null) {
+        throw Exception('Account could not be created.');
+      }
+
+      await user.updateDisplayName(name);
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({
+        'name': name,
+        'email': email,
+        'gender': gender,
+        'provider': 'email',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await FirebaseAuth.instance.signOut();
+
       if (!mounted) return;
+
+      setState(() {
+        isCreatingAccount = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('An account with this email already exists'),
+          content: Text('Account created successfully! Please login.'),
         ),
       );
-      return;
+
+      Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isCreatingAccount = false;
+      });
+
+      String message = 'Registration failed. Please try again.';
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'An account with this email already exists.';
+          break;
+
+        case 'invalid-email':
+          message = 'Please enter a valid email address.';
+          break;
+
+        case 'weak-password':
+          message = 'Please choose a stronger password.';
+          break;
+
+        case 'operation-not-allowed':
+          message = 'Email/password registration is not enabled.';
+          break;
+
+        default:
+          message = e.message ?? 'Registration failed.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isCreatingAccount = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+        ),
+      );
     }
-
-    // Save the registered account locally.
-    await prefs.setString('registered_name', name);
-    await prefs.setString('registered_email', email);
-    await prefs.setString('registered_password', password);
-
-    // Save the selected gender.
-    await prefs.setString('registered_gender', gender);
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Account created successfully!'),
-      ),
-    );
-
-    // Return directly to Login.
-    Navigator.pop(context);
   }
 
   @override
@@ -198,7 +256,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
               const SizedBox(height: 20),
 
-              // Gender field.
               const Text(
                 'Gender',
                 style: TextStyle(
@@ -227,11 +284,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     child: Text('Male'),
                   ),
                 ],
-                onChanged: (value) {
-                  setState(() {
-                    selectedGender = value;
-                  });
-                },
+                onChanged: isCreatingAccount
+                    ? null
+                    : (value) {
+                        setState(() {
+                          selectedGender = value;
+                        });
+                      },
               ),
 
               const SizedBox(height: 20),
@@ -310,7 +369,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _createAccount,
+                  onPressed:
+                      isCreatingAccount ? null : _createAccount,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.indigo.shade700,
                     foregroundColor: Colors.white,
@@ -318,13 +378,22 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Create Account',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: isCreatingAccount
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Create Account',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
 
@@ -332,9 +401,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
               Center(
                 child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: isCreatingAccount
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                        },
                   child: const Text(
                     'Already have an account? Login',
                   ),
