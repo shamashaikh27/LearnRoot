@@ -13,6 +13,8 @@ import time
 import tempfile
 import uuid
 
+from database import get_cached_content, save_ai_content
+
 
 # ============================================================
 # ENVIRONMENT
@@ -42,6 +44,10 @@ client = genai.Client(api_key=api_key)
 
 # Lightweight model suitable for the free Gemini tier.
 MODEL = "gemini-3.5-flash-lite"
+
+# Versioned cache key for the improved, topic-specific visual lesson.
+# Changing this forces old generic visual lessons to be regenerated once.
+VISUAL_FEATURE = "visual_v5"
 
 
 # ============================================================
@@ -168,18 +174,55 @@ def ai_error_response(error):
 
 
 # ============================================================
+# MYSQL AI CONTENT CACHE
+# ============================================================
+
+def get_cached_or_generate(subject, topic, feature_type, generator):
+    """Return cached AI content or generate and save it."""
+    cached_content = get_cached_content(subject, topic, feature_type)
+
+    if cached_content is not None:
+        print(f"MySQL cache HIT: {subject} | {topic} | {feature_type}")
+        if feature_type.startswith("visual"):
+            try:
+                return json.loads(cached_content)
+            except (json.JSONDecodeError, TypeError):
+                print("Cached visual content is invalid JSON. Regenerating.")
+        else:
+            return cached_content
+
+    print(f"MySQL cache MISS: {subject} | {topic} | {feature_type}")
+    generated_content = generator()
+
+    if isinstance(generated_content, (dict, list)):
+        content_to_save = json.dumps(generated_content, ensure_ascii=False)
+    else:
+        content_to_save = str(generated_content)
+
+    save_ai_content(subject, topic, feature_type, content_to_save)
+    return generated_content
+
+
+def get_request_subject(data):
+    """Read the selected subject, keeping old topic-only requests working."""
+    subject = data.get("subject", "General")
+    return str(subject).strip() or "General"
+
+
+# ============================================================
 # 1. TEACHER-STYLE EXPLANATION
 # ============================================================
 
-def explain_topic(topic):
+def explain_topic(subject, topic):
 
     prompt = f"""
 You are the main classroom teacher inside LearnRoot, an AI learning
 platform for Computer Engineering students.
 
-Teach the student this topic:
+Teach the student this topic from the selected subject:
 
-{topic}
+Subject: {subject}
+Topic: {topic}
 
 IMPORTANT TEACHING STYLE:
 - Teach the topic as if you are standing in front of a beginner college
@@ -249,14 +292,15 @@ Return only the learner-facing explanation.
 # 2. AI SUMMARY
 # ============================================================
 
-def summarize_topic(topic):
+def summarize_topic(subject, topic):
 
     prompt = f"""
 You are the revision teacher inside LearnRoot.
 
-Create useful exam-oriented revision notes for:
+Create useful exam-oriented revision notes for this selected subject/topic:
 
-{topic}
+Subject: {subject}
+Topic: {topic}
 
 The student has already learned the topic and now wants a clear,
 quick revision.
@@ -295,14 +339,15 @@ Return only the revision notes.
 # 3. WHAT IF I SKIP?
 # ============================================================
 
-def what_if_i_skip(topic):
+def what_if_i_skip(subject, topic):
 
     prompt = f"""
 You are the academic mentor inside LearnRoot.
 
 The student is considering skipping this topic:
 
-{topic}
+Subject: {subject}
+Topic: {topic}
 
 Explain the academic impact honestly and specifically.
 
@@ -358,55 +403,110 @@ Return only the learner-facing explanation.
 # 4. AI VISUAL EXPLANATION
 # ============================================================
 
-def visual_explanation(topic):
+def visual_explanation(subject, topic):
+    """Generate a strongly topic-specific visual lesson."""
+
     prompt = f"""
-You are the visual-teaching engine inside LearnRoot.
+You are the visual-teaching engine inside LearnRoot, a Computer Engineering
+learning platform.
 
-Create a beginner-friendly animated visual lesson for this Computer Engineering topic:
+SELECTED SUBJECT: {subject}
+SELECTED TOPIC: {topic}
 
-{topic}
+Teach ONLY the selected topic inside the selected subject.
+The lesson must feel as if it was designed specifically for this one topic.
+Do not silently switch to a broader chapter or a nearby concept.
 
-The student should understand the topic by LOOKING at the diagram while a teacher explains it.
-Do not create a generic flowchart that could describe any topic.
+CORE GOAL:
+Create a memorable visual lesson that a beginner can understand by looking
+at the diagram while a teacher explains it aloud. The visual should make the
+concept easier to remember, not merely decorate the screen.
 
-IMPORTANT:
-The diagram must be SPECIFIC to the actual topic.
-Think like a teacher drawing on a classroom board:
-- Pointers: variable, memory address, pointer, arrow to the address/value.
-- Arrays: indexed memory cells with values and index labels.
-- Linked lists: nodes connected by arrows, ending in NULL.
-- Stack: stacked items with TOP and push/pop direction.
-- Queue: people/items in a line with FRONT and REAR.
-- Binary tree: parent and child nodes.
-- Operators and expressions: operands -> operator -> expression -> evaluated result.
-- Sorting: unsorted values -> comparisons/swaps -> sorted values.
-- Searching: data -> search target -> comparisons -> found/not found.
-- Functions: input -> function block -> parameters/work -> return value.
-- Loops: initialization -> condition -> repeated body -> update -> exit.
-- OOP: class -> object -> attributes/methods.
-- DBMS: table/rows/columns -> query -> result.
-- OS: application -> OS services -> hardware.
-- Networking: sender -> packets -> network -> receiver.
-For any other topic, invent a meaningful domain-specific diagram based on the actual concept.
+STRICT ANTI-MONOTONY RULES:
+1. Never use a generic INPUT -> TOPIC -> PROCESS -> RESULT flowchart.
+2. Never use "Structure of C Program", "Preprocessor Directives", "Input",
+   "Process", or "Result" unless the selected topic is actually about that
+   concept.
+3. Never make unrelated topics share the same diagram vocabulary.
+4. Choose the visual metaphor from the actual concept. For example, arrays
+   should look like indexed memory cells, a stack should look like a stack,
+   normalization should look like tables being decomposed, and TCP should
+   look like connection/segments/acknowledgement behaviour.
+5. Every node must represent a real object, state, operation, symbol, or
+   relationship from the selected topic.
+6. At least 4 of the nodes must be topic-specific. Do not fill nodes with
+   generic words such as Example, Result, Process, Input, or Output.
+7. The diagram title must name or clearly describe the selected topic.
+8. Use different relationships and arrangements depending on the topic.
+9. Choose ONE visual_type that naturally represents the topic. The visual_type
+   controls how LearnRoot draws the lesson, so choose the actual mechanism, not
+   a generic flowchart.
+10. Include one memorable real-world analogy and one memory hook.
+11. The teacher script must explain the same exact visual lesson. Do not
+    create a separate unrelated voice lesson.
+
+VISUAL TYPE RULES:
+- array: indexed memory cells and value access
+- pointer/memory: address/reference relationship
+- linked_list: linked data nodes and next references
+- stack: vertical LIFO structure with TOP, PUSH and POP
+- queue: horizontal FIFO structure with FRONT, REAR, ENQUEUE and DEQUEUE
+- tree/hierarchy: branching parent-child structure
+- table: rows/fields/keys/relationships
+- network: connected devices or packet movement
+- process/flow: ordered operations where sequence itself is the concept
+- concept: radial concept map for topics that are better explained through related ideas
+- If the selected topic is an ER-model/database-design topic, use visual_type "concept"
+  and use shape-aware node kinds: entity, relationship, and attribute. Do not use
+  generic process nodes for an ER diagram.
+
+VISUAL DESIGN EXAMPLES (adapt, do not copy blindly):
+- Pointers: variable value -> memory address -> pointer stores address -> dereference.
+- Arrays: index labels -> contiguous cells -> selected index -> value access.
+- Linked lists: data nodes -> next references -> traversal -> NULL.
+- Stack: TOP -> push -> new top -> pop -> previous top.
+- Queue: FRONT -> items -> REAR -> enqueue/dequeue movement.
+- Binary tree: root -> child branches -> levels -> traversal/search.
+- Sorting: actual values -> comparison -> swap -> ordered sequence.
+- Searching: collection -> target -> comparisons -> found/not found.
+- Functions: call -> parameters -> local work -> return.
+- Recursion: call stack -> repeated smaller call -> base case -> unwind.
+- Loops: initialization -> condition -> body -> update -> repeat/exit.
+- OOP: class blueprint -> object -> attributes -> methods.
+- DBMS: table -> fields/records -> query -> filtered result.
+- SQL joins: table A key -> matching table B key -> combined rows.
+- Normalization: repeated data -> dependency problem -> decomposed tables -> linked keys.
+- OS: process -> scheduler/resources -> CPU/memory -> execution state.
+- Networking: sender -> packet/segment -> protocol/network -> receiver.
+- IP addressing: network part -> host part -> destination -> packet delivery.
+- TCP: connection setup -> sequence numbers -> acknowledgement -> reliable delivery.
+- Any other topic: invent a topic-native visual from its actual mechanism.
+
+MEMORY RULE:
+The analogy and memory_hook should give the student a strong mental image,
+not a vague motivational sentence.
 
 Return ONLY valid JSON. No Markdown. No code fences.
 
 Use exactly this structure:
-
 {{
+  "subject": "{subject}",
   "topic": "{topic}",
-  "central_idea": "One or two clear sentences.",
-  "analogy": "A simple real-world mental picture.",
+  "central_idea": "One or two clear sentences about this exact topic.",
+  "analogy": "A memorable real-world mental picture specific to this topic.",
+  "memory_hook": "A short memorable phrase or mental image for this topic.",
+  "visual_type": "array|pointer|linked_list|stack|queue|tree|table|network|hierarchy|process|flow|memory|concept",
   "diagram": {{
-    "title": "Short topic-specific diagram title",
-    "subtitle": "What the student should follow in the diagram",
+    "title": "A topic-specific visual title",
+    "subtitle": "What the student should follow visually",
     "nodes": [
       {{
         "id": "n1",
-        "label": "Short label",
-        "value": "Optional value or notation",
+        "label": "Real topic-specific object or action",
+        "value": "Useful value, symbol, example, or notation",
         "caption": "Very short explanation",
-        "kind": "generic",
+        "emoji": "One suitable emoji",
+        "kind": "entity|relationship|attribute|memory|data|code|process|input|output|person|tree|table|generic",
         "stage": 0
       }}
     ],
@@ -414,296 +514,206 @@ Use exactly this structure:
       {{
         "from": "n1",
         "to": "n2",
-        "label": "Short relationship",
+        "label": "Real relationship",
         "stage": 0
       }}
     ]
   }},
   "steps": [
     {{
-      "title": "Short teaching step title",
-      "description": "Explain what the student should notice in the diagram and why."
+      "title": "Short topic-specific teaching step",
+      "description": "Explain what the student should notice and why it matters."
     }}
   ],
-  "example": "A small concrete example or code example when appropriate.",
+  "example": "A small correct example or code example when appropriate.",
   "remember": "The most important point to remember.",
-  "teacher_script": "A natural classroom-style explanation that follows the diagram from beginning to end."
+  "teacher_script": "A natural classroom-style explanation that follows the visual from beginning to end."
 }}
 
-DIAGRAM RULES:
-- Create 3 to 6 nodes.
-- Every node must be directly related to the selected topic.
-- Do NOT use generic labels such as INPUT, RESULT, PROCESS, or the topic name as a substitute for real concepts.
-- Use short labels that fit inside visual boxes.
-- Use value for code symbols, sample values, addresses, formulas, or other useful visual details.
-- Use caption for one short clarification.
-- kind should describe the visual object: memory, data, code, process, input, output, person, tree, table, generic.
-- stage is a zero-based teaching stage. Start with 0 and increase as the teacher reveals the diagram.
-- Connections must use node IDs that exist.
-- Use arrows/connections to show the actual relationship between concepts.
-- The diagram must work as a visual explanation, not as a decorative flowchart.
-
-TEACHING RULES:
-- Create 4 to 6 logical steps.
-- Each step should explain something visible in the diagram.
-- Explain WHY, not just WHAT.
+QUALITY CHECK BEFORE RETURNING:
+- Confirm the returned topic is exactly: {topic}
+- Confirm the returned subject is exactly: {subject}
+- Confirm the diagram cannot be reused unchanged for a different topic.
+- Confirm at least 4 nodes are genuinely specific to {topic}.
+- Confirm the teacher script discusses {topic}, not a broader subject.
+- Create 4 to 6 teaching steps.
+- Make teacher_script approximately 60 to 100 seconds.
 - Use simple but technically correct language.
-- Use a concrete example.
-- Make teacher_script sound like a professor explaining while pointing at the diagram.
-- teacher_script should follow the same order as the diagram and steps.
-- Make teacher_script about 45 to 90 seconds.
-- No Markdown, no **, no ##, no decorative stars.
-- Emojis may be used in learner-facing text, but do NOT use emojis in teacher_script.
-- Keep JSON valid.
+- Do not use emojis inside teacher_script.
 """
 
-    result = generate_with_retry(prompt).strip()
+    raw_result = generate_with_retry(prompt).strip()
 
-    result = re.sub(
-        r"^```(?:json)?\s*",
-        "",
-        result,
-        flags=re.IGNORECASE
-    )
-    result = re.sub(r"\s*```$", "", result)
+    def parse_and_validate(result_text):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", result_text, flags=re.IGNORECASE)
+        cleaned = re.sub(r"\s*```$", "", cleaned).strip()
+        data = json.loads(cleaned)
 
-    try:
-        data = json.loads(result)
+        if str(data.get("topic", "")).strip().casefold() != topic.casefold():
+            raise ValueError("Gemini returned a different topic.")
+
+        data["subject"] = subject
+        data["topic"] = topic
 
         for key in [
-            "topic",
-            "central_idea",
-            "analogy",
-            "example",
-            "remember",
-            "teacher_script"
+            "subject", "topic", "central_idea", "analogy", "memory_hook",
+            "visual_type", "example", "remember", "teacher_script"
         ]:
-            if key in data:
-                data[key] = clean_visual_field(data[key])
+            data[key] = clean_visual_field(data.get(key, ""))
 
-        # Clean and validate the AI-generated diagram.
+        visual_type = clean_visual_field(data.get("visual_type", "concept")).lower()
+        allowed_visual_types = {
+            "array", "pointer", "linked_list", "stack", "queue", "tree",
+            "table", "network", "hierarchy", "process", "flow", "memory",
+            "concept"
+        }
+        if visual_type not in allowed_visual_types:
+            visual_type = "concept"
+        data["visual_type"] = visual_type
+
         diagram = data.get("diagram")
-        if isinstance(diagram, dict):
-            diagram["title"] = clean_visual_field(
-                diagram.get("title", "See how the concept works")
-            )
-            diagram["subtitle"] = clean_visual_field(
-                diagram.get(
-                    "subtitle",
-                    "Follow the important parts of the concept"
-                )
-            )
+        if not isinstance(diagram, dict):
+            raise ValueError("Missing diagram object.")
+        diagram["visual_type"] = visual_type
 
-            raw_nodes = diagram.get("nodes", [])
-            cleaned_nodes = []
+        diagram["title"] = clean_visual_field(diagram.get("title", ""))
+        diagram["subtitle"] = clean_visual_field(diagram.get("subtitle", ""))
 
-            if isinstance(raw_nodes, list):
-                for index, node in enumerate(raw_nodes[:6]):
-                    if not isinstance(node, dict):
-                        continue
+        raw_nodes = diagram.get("nodes", [])
+        if not isinstance(raw_nodes, list) or len(raw_nodes) < 4:
+            raise ValueError("Diagram needs at least 4 nodes.")
 
-                    cleaned_nodes.append({
-                        "id": str(
-                            node.get("id", f"n{index + 1}")
-                        ).strip(),
-                        "label": clean_visual_field(
-                            node.get("label", "Concept")
-                        ),
-                        "value": clean_visual_field(
-                            node.get("value", "")
-                        ),
-                        "caption": clean_visual_field(
-                            node.get("caption", "")
-                        ),
-                        "kind": clean_visual_field(
-                            node.get("kind", "generic")
-                        ).lower(),
-                        "stage": max(
-                            0,
-                            min(
-                                5,
-                                int(node.get("stage", 0))
-                                if str(node.get("stage", "0")).isdigit()
-                                else 0
-                            )
-                        )
-                    })
+        cleaned_nodes = []
+        for index, node in enumerate(raw_nodes[:6]):
+            if not isinstance(node, dict):
+                continue
+            stage_value = node.get("stage", 0)
+            try:
+                stage = int(stage_value)
+            except (TypeError, ValueError):
+                stage = 0
+            cleaned_nodes.append({
+                "id": str(node.get("id", f"n{index + 1}")).strip(),
+                "label": clean_visual_field(node.get("label", "")),
+                "value": clean_visual_field(node.get("value", "")),
+                "caption": clean_visual_field(node.get("caption", "")),
+                "emoji": clean_visual_field(node.get("emoji", "💡"))[:4],
+                "kind": clean_visual_field(node.get("kind", "generic")).lower(),
+                "stage": max(0, min(5, stage)),
+            })
 
-            valid_ids = {node["id"] for node in cleaned_nodes}
+        if len(cleaned_nodes) < 4:
+            raise ValueError("Too few valid diagram nodes.")
 
-            raw_connections = diagram.get("connections", [])
-            cleaned_connections = []
+        node_ids = [node["id"] for node in cleaned_nodes]
+        if len(set(node_ids)) != len(node_ids):
+            raise ValueError("Diagram contains duplicate node IDs.")
 
-            if isinstance(raw_connections, list):
-                for connection in raw_connections:
-                    if not isinstance(connection, dict):
-                        continue
+        for node in cleaned_nodes:
+            if not node["label"]:
+                raise ValueError("Every visual node needs a label.")
 
-                    source = str(
-                        connection.get("from", "")
-                    ).strip()
-                    target = str(
-                        connection.get("to", "")
-                    ).strip()
+        allowed_kinds = {
+            "entity", "relationship", "attribute", "memory", "data", "code",
+            "process", "input", "output", "person", "tree", "table", "generic"
+        }
 
-                    if source not in valid_ids or target not in valid_ids:
-                        continue
+        for node in cleaned_nodes:
+            kind = node["kind"].replace("-", "_").strip().lower()
+            node["kind"] = kind if kind in allowed_kinds else "generic"
 
-                    stage_value = connection.get("stage", 0)
-                    stage = (
-                        int(stage_value)
-                        if str(stage_value).isdigit()
-                        else 0
-                    )
+        generic_labels = {
+            "input", "result", "process", "example", "output", "topic",
+            "structure of c program", "preprocessor directives"
+        }
+        labels = [node["label"].casefold() for node in cleaned_nodes]
+        generic_count = sum(label in generic_labels for label in labels)
+        if generic_count >= 2 or len(set(labels)) < 4:
+            raise ValueError("Diagram is too generic or repetitive.")
 
-                    cleaned_connections.append({
-                        "from": source,
-                        "to": target,
-                        "label": clean_visual_field(
-                            connection.get("label", "")
-                        ),
-                        "stage": max(0, min(5, stage))
-                    })
+        valid_ids = {node["id"] for node in cleaned_nodes}
+        raw_connections = diagram.get("connections", [])
+        cleaned_connections = []
+        if isinstance(raw_connections, list):
+            for connection in raw_connections:
+                if not isinstance(connection, dict):
+                    continue
+                source = str(connection.get("from", "")).strip()
+                target = str(connection.get("to", "")).strip()
+                if source not in valid_ids or target not in valid_ids:
+                    continue
+                try:
+                    stage = int(connection.get("stage", 0))
+                except (TypeError, ValueError):
+                    stage = 0
+                cleaned_connections.append({
+                    "from": source,
+                    "to": target,
+                    "label": clean_visual_field(connection.get("label", "")),
+                    "stage": max(0, min(5, stage)),
+                })
 
-            diagram["nodes"] = cleaned_nodes
-            diagram["connections"] = cleaned_connections
+        if len(cleaned_connections) < 2:
+            raise ValueError("Diagram needs meaningful connections.")
 
-            if not cleaned_nodes:
-                data["diagram"] = {
-                    "title": f"How {topic} works",
-                    "subtitle": "Follow the key parts and their relationship",
-                    "nodes": [
-                        {
-                            "id": "n1",
-                            "label": topic,
-                            "value": "",
-                            "caption": "Core concept",
-                            "kind": "generic",
-                            "stage": 0
-                        },
-                        {
-                            "id": "n2",
-                            "label": "Example",
-                            "value": "",
-                            "caption": "Concrete case",
-                            "kind": "data",
-                            "stage": 1
-                        }
-                    ],
-                    "connections": [
-                        {
-                            "from": "n1",
-                            "to": "n2",
-                            "label": "applied as",
-                            "stage": 1
-                        }
-                    ]
-                }
-        else:
-            # This fallback is still topic-specific, unlike the old
-            # INPUT -> TOPIC -> RESULT block.
-            data["diagram"] = {
-                "title": f"How {topic} works",
-                "subtitle": "Key ideas connected together",
-                "nodes": [
-                    {
-                        "id": "n1",
-                        "label": topic,
-                        "value": "",
-                        "caption": "Core idea",
-                        "kind": "generic",
-                        "stage": 0
-                    },
-                    {
-                        "id": "n2",
-                        "label": "Example",
-                        "value": "",
-                        "caption": "Concrete case",
-                        "kind": "data",
-                        "stage": 1
-                    },
-                    {
-                        "id": "n3",
-                        "label": "Result",
-                        "value": "",
-                        "caption": "What we get",
-                        "kind": "output",
-                        "stage": 2
-                    }
-                ],
-                "connections": [
-                    {
-                        "from": "n1",
-                        "to": "n2",
-                        "label": "used in",
-                        "stage": 1
-                    },
-                    {
-                        "from": "n2",
-                        "to": "n3",
-                        "label": "leads to",
-                        "stage": 2
-                    }
-                ]
-            }
+        diagram["nodes"] = cleaned_nodes
+        diagram["connections"] = cleaned_connections
+        data["diagram"] = diagram
 
         return data
 
-    except json.JSONDecodeError:
-        print("Gemini returned invalid visual JSON:")
-        print(result)
+    try:
+        return parse_and_validate(raw_result)
+    except (json.JSONDecodeError, ValueError, TypeError) as first_error:
+        print(f"Visual lesson validation failed: {first_error}")
+        print("Requesting a stricter topic-specific regeneration...")
 
-        return {
-            "topic": topic,
-            "central_idea": (
-                f"Let's understand {topic} using a topic-specific example."
-            ),
-            "analogy": "",
-            "diagram": {
-                "title": f"Understanding {topic}",
-                "subtitle": "Key idea and example",
-                "nodes": [
-                    {
-                        "id": "n1",
-                        "label": topic,
-                        "value": "",
-                        "caption": "Core concept",
-                        "kind": "generic",
-                        "stage": 0
-                    },
-                    {
-                        "id": "n2",
-                        "label": "Example",
-                        "value": "",
-                        "caption": "See it in practice",
-                        "kind": "data",
-                        "stage": 1
-                    }
-                ],
-                "connections": [
-                    {
-                        "from": "n1",
-                        "to": "n2",
-                        "label": "example",
-                        "stage": 1
-                    }
-                ]
-            },
-            "steps": [],
-            "example": "",
-            "remember": "",
-            "teacher_script": ""
-        }
+        repair_prompt = f"""
+Create a completely new visual lesson for EXACTLY this Computer Engineering topic.
+Subject: {subject}
+Topic: {topic}
+
+The previous attempt was rejected because it was too generic or not reliably
+specific to the selected topic.
+
+This time, make the diagram unmistakably about {topic}. Do not use INPUT,
+PROCESS, RESULT, EXAMPLE, Structure of C Program, or Preprocessor Directives
+unless they are genuinely part of {topic}. Use 4 to 6 real topic-specific nodes,
+2 or more meaningful relationships, a topic-specific analogy, and a memorable
+memory_hook. The teacher_script must follow the same visual and be 60 to 100
+seconds long.
+
+Return only JSON with these keys:
+subject, topic, central_idea, analogy, memory_hook, visual_type, diagram, steps, example,
+remember, teacher_script.
+visual_type must be one of: array, pointer, linked_list, stack, queue, tree, table,
+network, hierarchy, process, flow, memory, concept. Choose the one that best matches
+the actual teaching mechanism of the topic.
+The diagram must contain nodes with id, label, value, caption, emoji, kind,
+and stage, plus connections with from, to, label, and stage.
+"""
+
+        try:
+            repaired = generate_with_retry(repair_prompt).strip()
+            return parse_and_validate(repaired)
+        except Exception as second_error:
+            print(f"Strict visual regeneration failed: {second_error}")
+            raise RuntimeError(
+                f"Could not create a valid topic-specific visual lesson for {subject} - {topic}."
+            )
 
 
 # ============================================================
 # 5. AI DOUBT SOLVER
 # ============================================================
 
-def solve_doubt(topic, question):
+def solve_doubt(subject, topic, question):
 
     prompt = f"""
 You are a contextual academic tutor inside LearnRoot.
+
+Current selected subject:
+{subject}
 
 Current selected topic:
 {topic}
@@ -753,7 +763,7 @@ Return only the learner-facing answer.
 # 6. TEACHER-STYLE VOICE
 # ============================================================
 
-def generate_voice_script(topic):
+def generate_voice_script(subject, topic):
 
     """
     Generate a dedicated classroom-style script for TTS.
@@ -766,9 +776,10 @@ def generate_voice_script(topic):
 You are a friendly Computer Engineering professor teaching a beginner
 student in a classroom.
 
-Prepare a spoken explanation of this topic:
+Prepare a spoken explanation of this exact subject/topic:
 
-{topic}
+Subject: {subject}
+Topic: {topic}
 
 This will be converted directly into speech using text-to-speech.
 
@@ -817,7 +828,7 @@ Return only the spoken classroom explanation.
 # 7. VOICE FILE GENERATION
 # ============================================================
 
-def generate_voice(topic, explanation=None):
+def generate_voice(subject, topic, explanation=None):
     """
     Generate teacher voice for the visual lesson.
 
@@ -830,7 +841,7 @@ def generate_voice(topic, explanation=None):
     """
 
     if explanation is None or not str(explanation).strip():
-        explanation = generate_voice_script(topic)
+        explanation = generate_voice_script(subject, topic)
 
     explanation = clean_ai_text(explanation)
 
@@ -941,32 +952,32 @@ def explain():
     data = request.get_json()
 
     if not data:
-        return jsonify({
-            "error": "Request body is required."
-        }), 400
+        return jsonify({"error": "Request body is required."}), 400
 
+    subject = get_request_subject(data)
     topic = data.get("topic")
 
     if not topic:
-        return jsonify({
-            "error": "Topic is required."
-        }), 400
+        return jsonify({"error": "Topic is required."}), 400
+
+    topic = str(topic).strip()
 
     try:
-
-        answer = explain_topic(topic)
+        cached_before = get_cached_content(subject, topic, "explain")
+        answer = get_cached_or_generate(
+            subject, topic, "explain", lambda: explain_topic(subject, topic)
+        )
 
         return jsonify({
+            "subject": subject,
             "topic": topic,
-            "explanation": answer
+            "explanation": answer,
+            "source": "mysql" if cached_before is not None else "gemini"
         })
 
     except Exception as e:
-
         print(f"Explanation error: {e}")
-
         return ai_error_response(e)
-
 
 # ============================================================
 # SUMMARY API
@@ -978,32 +989,32 @@ def summary():
     data = request.get_json()
 
     if not data:
-        return jsonify({
-            "error": "Request body is required."
-        }), 400
+        return jsonify({"error": "Request body is required."}), 400
 
+    subject = get_request_subject(data)
     topic = data.get("topic")
 
     if not topic:
-        return jsonify({
-            "error": "Topic is required."
-        }), 400
+        return jsonify({"error": "Topic is required."}), 400
+
+    topic = str(topic).strip()
 
     try:
-
-        answer = summarize_topic(topic)
+        cached_before = get_cached_content(subject, topic, "summary")
+        answer = get_cached_or_generate(
+            subject, topic, "summary", lambda: summarize_topic(subject, topic)
+        )
 
         return jsonify({
+            "subject": subject,
             "topic": topic,
-            "summary": answer
+            "summary": answer,
+            "source": "mysql" if cached_before is not None else "gemini"
         })
 
     except Exception as e:
-
         print(f"Summary error: {e}")
-
         return ai_error_response(e)
-
 
 # ============================================================
 # WHAT IF I SKIP API
@@ -1015,32 +1026,32 @@ def skip():
     data = request.get_json()
 
     if not data:
-        return jsonify({
-            "error": "Request body is required."
-        }), 400
+        return jsonify({"error": "Request body is required."}), 400
 
+    subject = get_request_subject(data)
     topic = data.get("topic")
 
     if not topic:
-        return jsonify({
-            "error": "Topic is required."
-        }), 400
+        return jsonify({"error": "Topic is required."}), 400
+
+    topic = str(topic).strip()
 
     try:
-
-        answer = what_if_i_skip(topic)
+        cached_before = get_cached_content(subject, topic, "skip")
+        answer = get_cached_or_generate(
+            subject, topic, "skip", lambda: what_if_i_skip(subject, topic)
+        )
 
         return jsonify({
+            "subject": subject,
             "topic": topic,
-            "what_if_i_skip": answer
+            "what_if_i_skip": answer,
+            "source": "mysql" if cached_before is not None else "gemini"
         })
 
     except Exception as e:
-
         print(f"Skip error: {e}")
-
         return ai_error_response(e)
-
 
 # ============================================================
 # VISUAL EXPLANATION API
@@ -1052,29 +1063,41 @@ def visual():
     data = request.get_json()
 
     if not data:
-        return jsonify({
-            "error": "Request body is required."
-        }), 400
+        return jsonify({"error": "Request body is required."}), 400
 
+    subject = get_request_subject(data)
     topic = data.get("topic")
 
     if not topic:
-        return jsonify({
-            "error": "Topic is required."
-        }), 400
+        return jsonify({"error": "Topic is required."}), 400
+
+    topic = str(topic).strip()
 
     try:
+        cached = get_cached_content(subject, topic, VISUAL_FEATURE)
 
-        result = visual_explanation(topic)
+        if cached is not None:
+            print(f"MySQL cache HIT: {subject} | {topic} | {VISUAL_FEATURE}")
+            try:
+                result = json.loads(cached)
+                result["source"] = "mysql"
+                return jsonify(result)
+            except json.JSONDecodeError:
+                print("Cached visual JSON is invalid. Generating again.")
 
+        print(f"MySQL cache MISS: {subject} | {topic} | {VISUAL_FEATURE}")
+        result = visual_explanation(subject, topic)
+
+        save_ai_content(
+            subject, topic, VISUAL_FEATURE, json.dumps(result, ensure_ascii=False)
+        )
+
+        result["source"] = "gemini"
         return jsonify(result)
 
     except Exception as e:
-
         print(f"Visual explanation error: {e}")
-
         return ai_error_response(e)
-
 
 # ============================================================
 # DOUBT SOLVER API
@@ -1090,6 +1113,7 @@ def doubt():
             "error": "Request body is required."
         }), 400
 
+    subject = get_request_subject(data)
     topic = data.get("topic")
     question = data.get("question")
 
@@ -1101,14 +1125,17 @@ def doubt():
     try:
 
         answer = solve_doubt(
+            subject,
             topic,
             question
         )
 
         return jsonify({
+            "subject": subject,
             "topic": topic,
             "question": question,
-            "answer": answer
+            "answer": answer,
+            "source": "gemini"
         })
 
     except Exception as e:
@@ -1132,6 +1159,7 @@ def voice():
             "error": "Request body is required."
         }), 400
 
+    subject = get_request_subject(data)
     topic = data.get("topic")
 
     if not topic:
@@ -1144,6 +1172,7 @@ def voice():
         script = data.get("script")
 
         audio_file = generate_voice(
+            subject,
             topic,
             explanation=script
         )

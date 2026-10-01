@@ -5,9 +5,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
+
 import '../theme/app_theme.dart';
 import 'profile_screen.dart';
 import 'subject_screen.dart';
+import 'subject_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(ThemeMode) onThemeChanged;
@@ -450,6 +452,20 @@ Widget _buildMenuItem(
         borderRadius: BorderRadius.circular(12),
 
         onTap: () {
+          if (index == 2) {
+            if (closeDrawer) {
+              Navigator.of(context).pop();
+            }
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SubjectListScreen(),
+              ),
+            );
+            return;
+          }
+
           setState(() {
             selectedMenu = index;
           });
@@ -1761,9 +1777,12 @@ Widget _buildSubjects() {
     icon: Icons.menu_book_outlined,
     trailing: TextButton(
       onPressed: () {
-        setState(() {
-          selectedMenu = 2;
-        });
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SubjectListScreen(),
+          ),
+        );
       },
       child: const Text(
         'View All',

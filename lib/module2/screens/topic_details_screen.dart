@@ -28,6 +28,24 @@ class TopicDetailsScreen extends StatefulWidget {
 
 class _TopicDetailsScreenState extends State<TopicDetailsScreen> {
 
+  bool get _isDarkTheme => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _themeCardColor =>
+      _isDarkTheme ? AppTheme.darkCard : AppTheme.lightCard;
+
+  Color get _themeSecondarySurface =>
+      _isDarkTheme ? AppTheme.darkSecondary : AppTheme.lightSecondary;
+
+  Color get _themeMainText =>
+      _isDarkTheme ? AppTheme.darkMainText : AppTheme.lightMainText;
+
+  Color get _themeSecondaryText =>
+      _isDarkTheme ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText;
+
+  Color get _themeBorderColor => _isDarkTheme
+      ? const Color(0xFF222D50)
+      : const Color(0xFFE8E6F0);
+
 // =============================================================
 // AI STATES
 // =============================================================
@@ -42,6 +60,7 @@ bool _isVoicePlaying = false;
 Duration _voiceDuration = Duration.zero;
 Duration _voicePosition = Duration.zero;
 int _activeLessonStage = 0;
+final ValueNotifier<int> _lessonViewTick = ValueNotifier<int>(0);
 StreamSubscription<Duration>? _positionSubscription;
 StreamSubscription<Duration>? _durationSubscription;
 
@@ -56,6 +75,7 @@ Map<String, dynamic>? _aiVisualData;
 // =============================================================
 
 final AudioPlayer _audioPlayer = AudioPlayer();
+final GlobalKey _visualLessonKey = GlobalKey();
 
 // =============================================================
 // DOUBT CONTROLLER
@@ -85,6 +105,7 @@ _audioPlayer.onPlayerStateChanged.listen((state) {
   setState(() {
     _isVoicePlaying = state == PlayerState.playing;
   });
+  _refreshLessonView();
 });
 
 _durationSubscription = _audioPlayer.onDurationChanged.listen((duration) {
@@ -103,6 +124,7 @@ _positionSubscription = _audioPlayer.onPositionChanged.listen((position) {
   setState(() {
     _voicePosition = position;
   });
+  _refreshLessonView();
 });
 
 _audioPlayer.onPlayerComplete.listen((event) {
@@ -113,9 +135,8 @@ _audioPlayer.onPlayerComplete.listen((event) {
     _voicePosition = _voiceDuration;
     _activeLessonStage = _lessonStageCount() - 1;
   });
+  _refreshLessonView();
 });
-
-
 }
 
 // =============================================================
@@ -127,8 +148,13 @@ void dispose() {
 _positionSubscription?.cancel();
 _durationSubscription?.cancel();
 _doubtController.dispose();
+_lessonViewTick.dispose();
 _audioPlayer.dispose();
 super.dispose();
+}
+
+void _refreshLessonView() {
+  _lessonViewTick.value++;
 }
 
 // =============================================================
@@ -150,6 +176,7 @@ try {
       'Content-Type': 'application/json',
     },
     body: jsonEncode({
+      'subject': widget.subject,
       'topic': widget.selectedTopic.name,
     }),
   );
@@ -168,6 +195,19 @@ try {
       _voicePosition = Duration.zero;
       _voiceDuration = Duration.zero;
       _isLoadingAI = false;
+    });
+    _refreshLessonView();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final lessonContext = _visualLessonKey.currentContext;
+      if (lessonContext != null && mounted) {
+        Scrollable.ensureVisible(
+          lessonContext,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          alignment: 0.08,
+        );
+      }
     });
 
     // The visual lesson and the teacher voice are one lesson.
@@ -216,6 +256,7 @@ try {
       'Content-Type': 'application/json',
     },
     body: jsonEncode({
+      'subject': widget.subject,
       'topic': widget.selectedTopic.name,
     }),
   );
@@ -283,6 +324,7 @@ try {
       'Content-Type': 'application/json',
     },
     body: jsonEncode({
+      'subject': widget.subject,
       'topic': widget.selectedTopic.name,
       'question': question,
     }),
@@ -338,6 +380,7 @@ try {
       'Content-Type': 'application/json',
     },
     body: jsonEncode({
+      'subject': widget.subject,
       'topic': widget.selectedTopic.name,
     }),
   );
@@ -405,6 +448,7 @@ Future<void> _playVoiceExplanation() async {
     _voiceDuration = Duration.zero;
     _activeLessonStage = 0;
   });
+  _refreshLessonView();
 
   try {
     final response = await http.post(
@@ -413,6 +457,7 @@ Future<void> _playVoiceExplanation() async {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
+        'subject': widget.subject,
         'topic': widget.selectedTopic.name,
         'script': script,
       }),
@@ -437,6 +482,7 @@ Future<void> _playVoiceExplanation() async {
       _isLoadingVoice = false;
       _isVoicePlaying = true;
     });
+    _refreshLessonView();
   } catch (e) {
     if (!mounted) return;
 
@@ -444,6 +490,7 @@ Future<void> _playVoiceExplanation() async {
       _isLoadingVoice = false;
       _isVoicePlaying = false;
     });
+    _refreshLessonView();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -466,6 +513,7 @@ Future<void> _stopVoiceExplanation() async {
     _voicePosition = Duration.zero;
     _activeLessonStage = 0;
   });
+  _refreshLessonView();
 }
 
 // =============================================================
@@ -473,21 +521,24 @@ Future<void> _stopVoiceExplanation() async {
 // =============================================================
 
 List<String> _lessonStageTexts() {
+  final topic = widget.selectedTopic.name.toLowerCase();
+
+  // Pointers is the demo lesson. Keep exactly five voice/visual stages so
+  // the audio timeline and the manual lesson controls stay synchronized.
+  if (topic.contains('pointer')) {
+    return const [
+      'A variable stores a value in memory.',
+      'Every variable is stored at a specific memory address.',
+      'A pointer is a special variable used to store an address.',
+      'Here, p stores the address 1000.',
+      'Using *p lets us access the value stored at that address.',
+    ];
+  }
+
   final data = _aiVisualData;
   if (data == null) return [];
 
   final values = <String>[];
-
-  final centralIdea = _cleanDisplayText(
-    data['central_idea']?.toString() ?? '',
-  );
-  final analogy = _cleanDisplayText(
-    data['analogy']?.toString() ?? '',
-  );
-
-  if (centralIdea.isNotEmpty) values.add(centralIdea);
-  if (analogy.isNotEmpty) values.add(analogy);
-
   final rawSteps = data['steps'];
   if (rawSteps is List) {
     for (final item in rawSteps) {
@@ -496,22 +547,20 @@ List<String> _lessonStageTexts() {
         final description = _cleanDisplayText(
           item['description']?.toString() ?? '',
         );
-        values.add(
-          [title, description]
-              .where((value) => value.isNotEmpty)
-              .join('. '),
-        );
+        final text = [title, description]
+            .where((value) => value.isNotEmpty)
+            .join('. ');
+        if (text.isNotEmpty) values.add(text);
       }
     }
   }
 
-  final example = _cleanDisplayText(data['example']?.toString() ?? '');
-  final remember = _cleanDisplayText(data['remember']?.toString() ?? '');
+  if (values.isEmpty) {
+    final central = _cleanDisplayText(data['central_idea']?.toString() ?? '');
+    if (central.isNotEmpty) values.add(central);
+  }
 
-  if (example.isNotEmpty) values.add(example);
-  if (remember.isNotEmpty) values.add(remember);
-
-  return values;
+  return values.take(5).toList();
 }
 
 int _lessonStageCount() {
@@ -520,39 +569,45 @@ int _lessonStageCount() {
 }
 
 void _updateActiveLessonStage(Duration position) {
-  if (_voiceDuration <= Duration.zero) return;
+  final texts = _lessonStageTexts();
+  if (texts.isEmpty) return;
 
-  final stages = _lessonStageTexts();
-  if (stages.isEmpty) return;
+  final durationMs = _voiceDuration.inMilliseconds;
+  final positionMs = position.inMilliseconds.clamp(0, durationMs > 0 ? durationMs : position.inMilliseconds);
 
-  final progress = (position.inMilliseconds / _voiceDuration.inMilliseconds)
-      .clamp(0.0, 1.0);
-
-  final weights = stages.map((text) {
-    final words = text.split(RegExp(r'\s+')).length;
-    return (words + 8).toDouble();
-  }).toList();
-
-  final totalWeight = weights.fold<double>(0, (sum, value) => sum + value);
-  final target = progress * totalWeight;
-
-  double running = 0;
-  int selected = 0;
-
-  for (int i = 0; i < weights.length; i++) {
-    running += weights[i];
-    if (target <= running) {
-      selected = i;
-      break;
-    }
-    selected = i;
+  int nextStage;
+  if (durationMs <= 0) {
+    nextStage = _activeLessonStage.clamp(0, texts.length - 1).toInt();
+  } else {
+    final progress = (positionMs / durationMs).clamp(0.0, 0.999999);
+    nextStage = (progress * texts.length).floor().clamp(0, texts.length - 1);
   }
 
-  if (selected != _activeLessonStage) {
+  if (nextStage != _activeLessonStage && mounted) {
     setState(() {
-      _activeLessonStage = selected;
+      _activeLessonStage = nextStage;
     });
   }
+}
+
+Future<void> _setManualLessonStage(int stage) async {
+  final maxStage = _lessonStageCount() - 1;
+  final nextStage = stage.clamp(0, maxStage).toInt();
+
+  // Manual navigation owns the lesson position. Pause TTS so its position
+  // listener cannot immediately move the visual back to another stage.
+  if (_isVoicePlaying) {
+    await _audioPlayer.pause();
+  }
+
+  if (!mounted) return;
+
+  setState(() {
+    _isVoicePlaying = false;
+    _isLoadingVoice = false;
+    _activeLessonStage = nextStage;
+  });
+  _refreshLessonView();
 }
 
 String _formatAIResponse(
@@ -847,7 +902,7 @@ return data.toString();
   Widget build(BuildContext context) {
     // LearnRoot topic learning uses the team's dark navy/purple theme
     // consistently, matching the dashboard and learning-path reference.
-    const isDark = true;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final backgroundColor = isDark
         ? AppTheme.darkBackground
@@ -1227,7 +1282,7 @@ return data.toString();
                   Text(
                     'This topic is useful in these further topics:',
                     style: TextStyle(
-                      color: secondaryText,
+                      color: _themeSecondaryText,
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
                       height: 1.4,
@@ -1266,95 +1321,114 @@ return data.toString();
         ),
       ),
     );
-  }
+}
 
 // VISUAL EXPLANATION CARD
 // =============================================================
 
 Widget _buildVisualExplanationCard() {
-  return _mainCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _cardHeader(
-          icon: Icons.auto_awesome,
-          iconColor: const Color(0xFF6C63A8),
-          iconBackground: const Color(0xFFEDEBFA),
-          title: 'AI Visual Lesson',
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Watch the concept being drawn while the AI teacher explains it aloud.',
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.45,
-            color: Color(0xFFBDB9D8),
+  Widget lessonContent() {
+    if (_isLoadingAI) return const _LessonLoadingView();
+    if (_aiVisualData != null) return _buildVisualResult();
+    return _buildLessonEmptyState();
+  }
+
+  return KeyedSubtree(
+    key: _visualLessonKey,
+    child: _mainCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cardHeader(
+            icon: Icons.smart_toy_rounded,
+            iconColor: const Color(0xFF4DD0E1),
+            iconBackground: const Color(0xFF172B4A),
+            title: 'AI Tutor',
+            onMaximize: () {
+              _openAIFullscreen(
+                title: 'AI Visual Lesson',
+                icon: Icons.smart_toy_rounded,
+                builder: () => lessonContent(),
+              );
+            },
           ),
-        ),
-        const SizedBox(height: 16),
-        if (_isLoadingAI)
-          const _LessonLoadingView()
-        else if (_aiVisualData != null)
-          _buildVisualResult()
-        else
-          _buildLessonEmptyState(),
-        const SizedBox(height: 16),
-        _primaryButton(
-          onPressed: _isLoadingAI
-              ? null
-              : _aiVisualData == null
-                  ? _startAIExplanation
-                  : _isVoicePlaying
-                      ? _stopVoiceExplanation
-                      : _playVoiceExplanation,
-          icon: _isLoadingAI
-              ? Icons.hourglass_top
-              : _isVoicePlaying
-                  ? Icons.pause_rounded
-                  : Icons.play_circle_fill_rounded,
-          label: _isLoadingAI
-              ? 'Preparing lesson...'
-              : _isVoicePlaying
-                  ? 'Pause teacher'
-                  : _aiVisualData == null
-                      ? 'Start AI lesson'
-                      : 'Replay teacher lesson',
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            'Watch the AI teacher build the concept visually, one step at a time.',
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.45,
+              color: _themeSecondaryText,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // The visual lesson is the hero of this section.
+          // Keep the voice action BELOW the visual, matching the other
+          // AI tools instead of using a separate full-width voice bar.
+          lessonContent(),
+
+          const SizedBox(height: 16),
+          _primaryButton(
+            onPressed: _isLoadingAI
+                ? null
+                : _aiVisualData == null
+                    ? _startAIExplanation
+                    : _isVoicePlaying
+                        ? _stopVoiceExplanation
+                        : _playVoiceExplanation,
+            icon: _isLoadingAI
+                ? Icons.hourglass_top
+                : _isVoicePlaying
+                    ? Icons.pause_rounded
+                    : Icons.volume_up_rounded,
+            label: _isLoadingAI
+                ? 'Preparing lesson...'
+                : _isVoicePlaying
+                    ? 'Pause teacher'
+                    : _aiVisualData == null
+                        ? 'Explain with Voice'
+                        : 'Explain with Voice',
+          ),
+        ],
+      ),
     ),
   );
 }
 
 Widget _buildLessonEmptyState() {
+  final isDark = _isDarkTheme;
+
   return Container(
     width: double.infinity,
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFF171A38), Color(0xFF29245C)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
+      color: _themeSecondarySurface,
       borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: _themeBorderColor),
     ),
-    child: const Column(
+    child: Column(
       children: [
-        Icon(Icons.auto_awesome_rounded, color: Color(0xFFB9B2FF), size: 34),
-        SizedBox(height: 10),
+        Icon(
+          Icons.auto_awesome_rounded,
+          color: isDark ? const Color(0xFFB9B2FF) : const Color(0xFF6C63A8),
+          size: 34,
+        ),
+        const SizedBox(height: 10),
         Text(
           'Your AI teacher is ready',
           style: TextStyle(
-            color: Colors.white,
+            color: _themeMainText,
             fontSize: 18,
             fontWeight: FontWeight.w800,
           ),
         ),
-        SizedBox(height: 6),
+        const SizedBox(height: 6),
         Text(
           'The lesson will draw the idea, highlight the important part, and explain it at the same time.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Color(0xFFD1CFF0),
+            color: _themeSecondaryText,
             fontSize: 13,
             height: 1.45,
           ),
@@ -1363,8 +1437,6 @@ Widget _buildLessonEmptyState() {
     ),
   );
 }
-
-
 
 Widget _buildVisualResult() {
   if (_aiVisualData == null) {
@@ -1379,9 +1451,6 @@ Widget _buildStructuredVisualResult(Map<String, dynamic> data) {
     data['central_idea']?.toString() ??
         'Let us understand $topic step by step.',
   );
-  final analogy = _cleanDisplayText(data['analogy']?.toString() ?? '');
-  final example = _cleanDisplayText(data['example']?.toString() ?? '');
-  final remember = _cleanDisplayText(data['remember']?.toString() ?? '');
 
   final steps = <Map<String, String>>[];
   final rawSteps = data['steps'];
@@ -1400,33 +1469,31 @@ Widget _buildStructuredVisualResult(Map<String, dynamic> data) {
     }
   }
 
-  final stageLabels = <String>['Big idea'];
-  if (analogy.isNotEmpty) stageLabels.add('Think of it');
-  for (int i = 0; i < steps.length; i++) {
-    stageLabels.add('Step ${i + 1}');
-  }
-  if (example.isNotEmpty) stageLabels.add('Example');
-  if (remember.isNotEmpty) stageLabels.add('Remember');
+  final stageCount = _lessonStageCount();
+  final activeStage = _activeLessonStage.clamp(0, stageCount - 1).toInt();
 
-  final activeStage = _activeLessonStage.clamp(0, stageLabels.length - 1).toInt();
-
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _buildLessonProgress(stageLabels, activeStage),
-      const SizedBox(height: 10),
-      _buildLessonCanvas(
-        topic: topic,
-        centralIdea: centralIdea,
-        analogy: analogy,
-        steps: steps,
-        example: example,
-        remember: remember,
-        activeStage: activeStage,
-      ),
-    ],
+  return _InteractiveAILesson(
+    topic: topic,
+    centralIdea: centralIdea,
+    steps: steps,
+    data: data,
+    activeStage: activeStage,
+    isVoicePlaying: _isVoicePlaying,
+    onPrevious: activeStage == 0
+        ? null
+        : () => _setManualLessonStage(activeStage - 1),
+    onNext: activeStage >= stageCount - 1
+        ? null
+        : () => _setManualLessonStage(activeStage + 1),
+    onPlayPause: _aiVisualData == null
+        ? _startAIExplanation
+        : _isVoicePlaying
+            ? _stopVoiceExplanation
+            : _playVoiceExplanation,
   );
 }
+
+
 
 Widget _buildLessonProgress(List<String> labels, int activeStage) {
   return Column(
@@ -1434,13 +1501,17 @@ Widget _buildLessonProgress(List<String> labels, int activeStage) {
     children: [
       Row(
         children: [
-          const Icon(Icons.record_voice_over_rounded, size: 17, color: Color(0xFF6C63A8)),
+          const Icon(
+            Icons.record_voice_over_rounded,
+            size: 17,
+            color: Color(0xFF6C63A8),
+          ),
           const SizedBox(width: 7),
           Expanded(
             child: Text(
               _isVoicePlaying ? 'AI teacher is explaining' : 'Lesson board',
-              style: const TextStyle(
-                color: Color(0xFF3B3650),
+              style: TextStyle(
+                color: _themeMainText,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -1448,8 +1519,8 @@ Widget _buildLessonProgress(List<String> labels, int activeStage) {
           ),
           Text(
             '${activeStage + 1}/${labels.length}',
-            style: const TextStyle(
-              color: Color(0xFF777282),
+            style: TextStyle(
+              color: _themeSecondaryText,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -1462,7 +1533,9 @@ Widget _buildLessonProgress(List<String> labels, int activeStage) {
         child: LinearProgressIndicator(
           minHeight: 6,
           value: labels.isEmpty ? 0 : (activeStage + 1) / labels.length,
-          backgroundColor: const Color(0xFFE8E5F1),
+          backgroundColor: _isDarkTheme
+              ? const Color(0xFF303457)
+              : const Color(0xFFE8E5F1),
           valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF756BE0)),
         ),
       ),
@@ -1476,6 +1549,7 @@ Widget _buildLessonCanvas({
   required String analogy,
   required List<Map<String, String>> steps,
   required String example,
+  required String memoryHook,
   required String remember,
   required int activeStage,
 }) {
@@ -1501,12 +1575,25 @@ Widget _buildLessonCanvas({
     stageTitles.add('💻 Example');
   }
 
+  if (memoryHook.isNotEmpty) {
+    stageTexts.add(memoryHook);
+    stageTitles.add('🧠 Memory hook');
+  }
+
   if (remember.isNotEmpty) {
     stageTexts.add(remember);
     stageTitles.add('💡 Remember');
   }
 
   final safeStage = activeStage.clamp(0, stageTexts.length - 1);
+  final accentColors = <Color>[
+    const Color(0xFF4DD0E1),
+    const Color(0xFFFFC857),
+    const Color(0xFFFF7AA2),
+    const Color(0xFF9B8CFF),
+    const Color(0xFF63E6BE),
+  ];
+  final accent = accentColors[safeStage % accentColors.length];
 
   return AnimatedSwitcher(
     duration: const Duration(milliseconds: 420),
@@ -1529,60 +1616,130 @@ Widget _buildLessonCanvas({
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildConceptDiagram(topic),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 15),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF7F5FD),
-            borderRadius: BorderRadius.circular(17),
-            border: Border.all(color: const Color(0xFFE1DCEF)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6C63A8),
-                  borderRadius: BorderRadius.circular(11),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [accent, accent.withAlpha(145)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: const Icon(
-                  Icons.school_rounded,
-                  color: Colors.white,
-                  size: 19,
-                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withAlpha(55),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
-              const SizedBox(width: 11),
-              Expanded(
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(15, 13, 15, 14),
+                decoration: BoxDecoration(
+                  color: _isDarkTheme
+                      ? const Color(0xFF171D36)
+                      : const Color(0xFFF7F5FF),
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(20),
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  border: Border(
+                    left: BorderSide(
+                      color: accent,
+                      width: 3,
+                    ),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withAlpha(25),
+                      blurRadius: 14,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       stageTitles[safeStage],
-                      style: const TextStyle(
-                        color: Color(0xFF332E4B),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    Text(
+                    const SizedBox(height: 7),
+                    _buildColorfulExplanationText(
                       stageTexts[safeStage],
-                      style: const TextStyle(
-                        color: Color(0xFF595563),
-                        fontSize: 14,
-                        height: 1.5,
-                      ),
+                      accent,
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ],
+    ),
+  );
+}
+
+Widget _buildColorfulExplanationText(String text, Color accent) {
+  final parts = text.split(RegExp(r'(\s+)'));
+  const highlightWords = {
+    'pointer',
+    'pointers',
+    'memory',
+    'address',
+    'variable',
+    'value',
+    'node',
+    'array',
+    'stack',
+    'queue',
+    'tree',
+    'database',
+    'class',
+    'object',
+    'network',
+  };
+
+  return RichText(
+    text: TextSpan(
+      children: [
+        for (final part in parts)
+          TextSpan(
+            text: part,
+            style: TextStyle(
+              color: highlightWords.contains(
+                part.toLowerCase().replaceAll(RegExp(r'[^a-z]'), ''),
+              )
+                  ? accent
+                  : _themeSecondaryText,
+              fontSize: 14,
+              height: 1.55,
+              fontWeight: highlightWords.contains(
+                part.toLowerCase().replaceAll(RegExp(r'[^a-z]'), ''),
+              )
+                  ? FontWeight.w800
+                  : FontWeight.w500,
+            ),
+          ),
       ],
     ),
   );
@@ -1597,6 +1754,8 @@ String _cleanDisplayText(String value) {
       .replaceAll('##', '')
       .replaceAll('###', '')
       .replaceAll(RegExp(r'^[-•]\s*'), '')
+      .replaceAllMapped(RegExp(r'([a-z])([A-Z])'), (m) => '${m.group(1)} ${m.group(2)}')
+      .replaceAll(RegExp(r'\s*&\s*'), ' & ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 }
@@ -1865,9 +2024,17 @@ Widget _buildStepTile({
 }
 
 Widget _buildConceptDiagram(String topic) {
-  // The lesson board deliberately uses a clean, topic-specific scene instead
-  // of drawing arbitrary AI nodes over one another. The AI text and teacher
-  // voice still control the lesson stage; this board is the visual layer.
+  // IMPORTANT: Use the diagram generated specifically for the selected
+  // subject + topic. The previous DynamicConceptBoard chose a hard-coded
+  // scene from topic keywords, which caused many unrelated topics to look
+  // identical.
+  final diagram = _aiVisualData?['diagram'];
+
+  if (diagram is Map) {
+    return _buildAIDiagram(Map<String, dynamic>.from(diagram));
+  }
+
+  // Only use the old board as a last-resort compatibility fallback.
   return _DynamicConceptBoard(
     topic: topic,
     centralIdea: _cleanDisplayText(
@@ -1902,12 +2069,11 @@ Widget _buildAIDiagram(Map<String, dynamic> diagram) {
     diagram['title']?.toString() ?? 'See how the concept works',
   );
   final subtitle = _cleanDisplayText(
-    diagram['subtitle']?.toString() ?? 'The important parts are connected visually',
+    diagram['subtitle']?.toString() ??
+        'A colorful visual story of the important parts',
   );
 
   final rawNodes = diagram['nodes'];
-  final rawConnections = diagram['connections'];
-
   final nodes = <Map<String, dynamic>>[];
   if (rawNodes is List) {
     for (int i = 0; i < rawNodes.length && i < 6; i++) {
@@ -1918,74 +2084,26 @@ Widget _buildAIDiagram(Map<String, dynamic> diagram) {
     }
   }
 
-  if (nodes.isEmpty) {
-    return _buildAnimatedGenericDiagram(widget.selectedTopic.name);
-  }
-
-  final connections = <Map<String, dynamic>>[];
-  if (rawConnections is List) {
-    for (final item in rawConnections) {
-      if (item is Map) {
-        connections.add(Map<String, dynamic>.from(item));
-      }
-    }
-  }
-
   return _animatedDiagramShell(
     title: title,
     subtitle: subtitle,
-    child: SizedBox(
-      height: nodes.length <= 3 ? 185 : 235,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final nodeWidth = nodes.length <= 3
-              ? (width - 28) / nodes.length
-              : (width - 24) / 3;
-
-          final positions = <Offset>[];
-          for (int i = 0; i < nodes.length; i++) {
-            if (nodes.length <= 3) {
-              positions.add(
-                Offset(i * (nodeWidth + 14), 55),
-              );
-            } else {
-              final column = i % 3;
-              final row = i ~/ 3;
-              positions.add(
-                Offset(
-                  column * (nodeWidth + 12),
-                  row * 105 + 28,
-                ),
-              );
-            }
-          }
-
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _AIDiagramConnectionPainter(
-                    nodes: nodes,
-                    connections: connections,
-                    positions: positions,
-                    nodeWidth: nodeWidth,
-                    activeStage: _activeLessonStage,
-                  ),
-                ),
-              ),
-              for (int i = 0; i < nodes.length; i++)
-                Positioned(
-                  left: positions[i].dx,
-                  top: positions[i].dy,
-                  width: nodeWidth,
-                  child: _buildAIDiagramNode(
-                    node: nodes[i],
-                    active: _isAIDiagramNodeActive(nodes[i]),
-                  ),
-                ),
-            ],
+    builder: () => SizedBox(
+      height: 500,
+      width: double.infinity,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 850),
+        curve: Curves.easeOutCubic,
+        builder: (context, reveal, child) {
+          return CustomPaint(
+            painter: _FunVisualLessonPainter(
+              topic: widget.selectedTopic.name,
+              visualType:
+                  diagram['visual_type']?.toString().toLowerCase() ?? '',
+              nodes: nodes,
+              activeStage: _activeLessonStage,
+              reveal: reveal,
+            ),
           );
         },
       ),
@@ -2012,6 +2130,7 @@ Widget _buildAIDiagramNode({
     node['caption']?.toString() ?? '',
   );
   final kind = node['kind']?.toString().toLowerCase() ?? 'generic';
+  final emoji = _cleanDisplayText(node['emoji']?.toString() ?? '');
 
   IconData icon = Icons.widgets_rounded;
   if (kind.contains('memory')) icon = Icons.memory_rounded;
@@ -2054,13 +2173,19 @@ Widget _buildAIDiagramNode({
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          icon,
-          size: 18,
-          color: active
-              ? Colors.white
-              : const Color(0xFFBDBADD),
-        ),
+        if (emoji.isNotEmpty)
+          Text(
+            emoji,
+            style: const TextStyle(fontSize: 20),
+          )
+        else
+          Icon(
+            icon,
+            size: 18,
+            color: active
+                ? Colors.white
+                : const Color(0xFFBDBADD),
+          ),
         const SizedBox(height: 4),
         Text(
           label,
@@ -2114,7 +2239,7 @@ Widget _buildAIDiagramNode({
 Widget _animatedDiagramShell({
   required String title,
   required String subtitle,
-  required Widget child,
+  required Widget Function() builder,
 }) {
   return Container(
     width: double.infinity,
@@ -2143,7 +2268,7 @@ Widget _animatedDiagramShell({
               width: 31,
               height: 31,
               decoration: BoxDecoration(
-                color: const Color(0xFF756BE0),
+                color: const Color(0xFF625DB8),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.draw_rounded, color: Colors.white, size: 17),
@@ -2175,7 +2300,7 @@ Widget _animatedDiagramShell({
           ],
         ),
         const SizedBox(height: 15),
-        child,
+        builder(),
       ],
     ),
   );
@@ -2191,7 +2316,7 @@ Widget _buildAnimatedPointerDiagram() {
   return _animatedDiagramShell(
     title: '📍 Pointer in memory',
     subtitle: 'Follow the address from the pointer to the variable',
-    child: Column(
+    builder: () => Column(
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -2337,7 +2462,7 @@ Widget _buildAnimatedArrayDiagram() {
   return _animatedDiagramShell(
     title: '📦 Array as memory boxes',
     subtitle: 'The highlighted position is the one the teacher is discussing',
-    child: Row(
+    builder: () => Row(
       children: List.generate(5, (index) {
         final active = index == activeIndex;
         return Expanded(
@@ -2388,7 +2513,7 @@ Widget _buildAnimatedLinkedListDiagram() {
   return _animatedDiagramShell(
     title: '🔗 Linked list as a chain',
     subtitle: 'Each node connects to the next one',
-    child: Row(
+    builder: () => Row(
       children: [
         _animatedNode('10', active == 0),
         _animatedArrow(active >= 0),
@@ -2443,7 +2568,7 @@ Widget _buildAnimatedStackDiagram() {
   return _animatedDiagramShell(
     title: '🥞 Stack of plates',
     subtitle: 'The top is where push and pop happen',
-    child: Column(
+    builder: () => Column(
       children: [
         _animatedPlate('30', active == 0),
         _animatedPlate('20', active == 1),
@@ -2488,7 +2613,7 @@ Widget _buildAnimatedQueueDiagram() {
   return _animatedDiagramShell(
     title: '🚶 Queue of people',
     subtitle: 'First in → first out',
-    child: Row(
+    builder: () => Row(
       children: [
         const Icon(Icons.logout_rounded, color: Color(0xFFAAA6CA), size: 18),
         const SizedBox(width: 4),
@@ -2525,7 +2650,7 @@ Widget _buildAnimatedTreeDiagram() {
   return _animatedDiagramShell(
     title: '🌳 Tree hierarchy',
     subtitle: 'Parent nodes connect to their children',
-    child: Column(
+    builder: () => Column(
       children: [
         _animatedTreeChip('ROOT', active == 0),
         Row(
@@ -2581,7 +2706,7 @@ Widget _buildAnimatedDatabaseDiagram() {
   return _animatedDiagramShell(
     title: '🗃️ Database table',
     subtitle: 'Each row is one record',
-    child: Container(
+    builder: () => Container(
       decoration: BoxDecoration(
         color: const Color(0xFF222448),
         borderRadius: BorderRadius.circular(11),
@@ -2630,7 +2755,7 @@ Widget _buildAnimatedOSDiagram() {
   return _animatedDiagramShell(
     title: '🖥️ Operating system as a manager',
     subtitle: 'Requests travel between apps and hardware',
-    child: Column(
+    builder: () => Column(
       children: [
         _animatedOSLayer('Your Apps', Icons.apps_rounded, active == 0),
         _animatedOSArrow(active >= 0),
@@ -2684,7 +2809,7 @@ Widget _buildAnimatedGenericDiagram(String topic) {
   return _animatedDiagramShell(
     title: '🧩 Follow the concept',
     subtitle: 'The highlighted part is being explained now',
-    child: Row(
+    builder: () => Row(
       children: [
         Expanded(child: _animatedProcessBox('INPUT', active == 0)),
         _animatedArrow(active >= 0),
@@ -3253,7 +3378,7 @@ Widget _buildVisualResultFromText(String text) {
           icon: Icons.school_rounded,
           iconBackground: const Color(0xFFEDEBFA),
           iconColor: const Color(0xFF6C63A8),
-          title: '🔍 Step $i',
+          title: 'Lesson point',
           text: lines[i],
         ),
       ],
@@ -3272,13 +3397,43 @@ crossAxisAlignment:
 CrossAxisAlignment.start,
 children: [
 _cardHeader(
-icon:
-Icons.volume_up_rounded,
-iconColor:
-const Color(0xFF4D8754),
-iconBackground:
-const Color(0xFFE8F5E9),
+icon: Icons.volume_up_rounded,
+iconColor: const Color(0xFF4D8754),
+iconBackground: const Color(0xFFE8F5E9),
 title: 'Voice Explanation',
+onMaximize: () {
+  _openAIFullscreen(
+    title: 'Voice Explanation',
+    icon: Icons.volume_up_rounded,
+    builder: () => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Listen to an AI-generated explanation of this topic.',
+          style: TextStyle(
+            fontSize: 16,
+            height: 1.5,
+            color: _themeSecondaryText,
+          ),
+        ),
+        const SizedBox(height: 24),
+        _greenButton(
+          onPressed: _isLoadingVoice ? null : _playVoiceExplanation,
+          icon: _isLoadingVoice
+              ? Icons.hourglass_top
+              : _isVoicePlaying
+                  ? Icons.stop_rounded
+                  : Icons.volume_up_rounded,
+          label: _isLoadingVoice
+              ? 'Generating Voice...'
+              : _isVoicePlaying
+                  ? 'Stop Voice'
+                  : 'Play Voice Explanation',
+        ),
+      ],
+    ),
+  );
+},
 ),
 
 
@@ -3323,93 +3478,143 @@ title: 'Voice Explanation',
 // =============================================================
 
 Widget _buildSummaryCard() {
-return _mainCard(
-child: Column(
-crossAxisAlignment:
-CrossAxisAlignment.start,
-children: [
-_cardHeader(
-icon:
-Icons.summarize_outlined,
-iconColor:
-const Color(0xFF6C63A8),
-iconBackground:
-const Color(0xFFEDEBFA),
-title: 'AI Summary',
-),
-
-
-      const SizedBox(height: 16),
-
-      if (_isLoadingSummary)
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              children: [
-                CircularProgressIndicator(
-                  color: Color(0xFF6C63A8),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  'Generating AI summary...',
-                  textAlign:
-                      TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 15,
+  return _mainCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _cardHeader(
+          icon: Icons.summarize_outlined,
+          iconColor: const Color(0xFF6C63A8),
+          iconBackground: const Color(0xFFEDEBFA),
+          title: 'AI Summary',
+          onMaximize: () {
+            _openAIFullscreen(
+              title: 'AI Summary',
+              icon: Icons.summarize_outlined,
+              builder: () => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoadingSummary)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            const CircularProgressIndicator(
+                              color: Color(0xFF6C63A8),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Generating AI summary...',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _themeSecondaryText,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (_aiSummary != null)
+                    _resultContainer(
+                      child: Text(
+                        _aiSummary!,
+                        softWrap: true,
+                        style: TextStyle(
+                          fontSize: 16,
+                          height: 1.5,
+                          color: _themeMainText,
+                        ),
+                      ),
+                    )
+                  else
+                    Text(
+                      'Generate a short AI-powered summary to quickly revise the important points of this topic.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.5,
+                        color: _themeSecondaryText,
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  if (_aiSummary == null)
+                    _primaryButton(
+                      onPressed: _isLoadingSummary
+                          ? null
+                          : _generateAISummary,
+                      icon: _isLoadingSummary
+                          ? Icons.hourglass_top
+                          : Icons.summarize_outlined,
+                      label: _isLoadingSummary
+                          ? 'Generating...'
+                          : 'Generate AI Summary',
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        if (_isLoadingSummary)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const CircularProgressIndicator(
+                    color: Color(0xFF6C63A8),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Text(
+                    'Generating AI summary...',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _themeSecondaryText,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        )
-      else if (_aiSummary != null)
-        _resultContainer(
-          child: Text(
-            _aiSummary!,
-            softWrap: true,
-            style: const TextStyle(
+          )
+        else if (_aiSummary != null)
+          _resultContainer(
+            child: Text(
+              _aiSummary!,
+              softWrap: true,
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
+                color: _themeMainText,
+              ),
+            ),
+          )
+        else
+          Text(
+            'Generate a short AI-powered summary to quickly revise the important points of this topic.',
+            style: TextStyle(
               fontSize: 16,
               height: 1.5,
-              color: Color(0xFFEAE7FA),
+              color: _themeSecondaryText,
             ),
           ),
-        )
-      else
-        const Text(
-          'Generate a short AI-powered summary to quickly revise the important points of this topic.',
-          style: TextStyle(
-            fontSize: 16,
-            height: 1.5,
-            color: Color(0xFFBDB9D8),
+        if (_aiSummary == null) ...[
+          const SizedBox(height: 20),
+          _primaryButton(
+            onPressed: _isLoadingSummary ? null : _generateAISummary,
+            icon: _isLoadingSummary
+                ? Icons.hourglass_top
+                : Icons.summarize_outlined,
+            label: _isLoadingSummary
+                ? 'Generating...'
+                : 'Generate AI Summary',
           ),
-        ),
-
-      const SizedBox(height: 20),
-
-      _primaryButton(
-        onPressed:
-            _isLoadingSummary
-                ? null
-                : _generateAISummary,
-        icon: _isLoadingSummary
-            ? Icons.hourglass_top
-            : Icons.summarize_outlined,
-        label: _isLoadingSummary
-            ? 'Generating...'
-            : 'Generate AI Summary',
-      ),
-    ],
-  ),
-);
-
-
+        ],
+      ],
+    ),
+  );
 }
-
-// =============================================================
-// DOUBT SOLVER CARD
-// =============================================================
 
 Widget _buildDoubtSolverCard() {
   return _mainCard(
@@ -3418,56 +3623,231 @@ Widget _buildDoubtSolverCard() {
       children: [
         _cardHeader(
           icon: Icons.psychology_rounded,
-          iconColor: const Color(0xFFD8D4FF),
-          iconBackground: const Color(0xFF38336F),
+          iconColor: _isDarkTheme
+              ? const Color(0xFFD8D4FF)
+              : const Color(0xFF6C63A8),
+          iconBackground: _isDarkTheme
+              ? const Color(0xFF38336F)
+              : const Color(0xFFEDEBFA),
           title: 'AI Doubt Solver',
+          onMaximize: () {
+            _openAIFullscreen(
+              title: 'AI Doubt Solver',
+              icon: Icons.psychology_rounded,
+              builder: () => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ask anything about ${widget.selectedTopic.name}. Your AI teacher will explain the answer in a simple, topic-focused way.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: _themeSecondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: _themeSecondarySurface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _themeBorderColor),
+                    ),
+                    child: TextField(
+                      controller: _doubtController,
+                      maxLines: 7,
+                      textInputAction: TextInputAction.newline,
+                      style: TextStyle(
+                        color: _themeMainText,
+                        fontSize: 16,
+                        height: 1.45,
+                      ),
+                      cursorColor: const Color(0xFF9A8CFF),
+                      decoration: InputDecoration(
+                        hintText: '💬 Type your doubt here...',
+                        hintStyle: TextStyle(
+                          color: _themeSecondaryText,
+                          fontSize: 14,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_aiDoubtAnswer == null)
+                    _primaryButton(
+                      onPressed: _isLoadingDoubt ? null : _askAIDoubt,
+                      icon: _isLoadingDoubt
+                          ? Icons.hourglass_top_rounded
+                          : Icons.auto_awesome_rounded,
+                      label: _isLoadingDoubt
+                          ? 'Thinking...'
+                          : 'Ask AI Teacher',
+                    ),
+                  if (_isLoadingDoubt)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 18),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Color(0xFF9A8CFF),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Your AI teacher is thinking...',
+                            style: TextStyle(
+                              color: _themeSecondaryText,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_aiDoubtAnswer != null && !_isLoadingDoubt)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 18),
+                      child: _resultContainer(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF7165D9),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.smart_toy_rounded,
+                                    size: 19,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'AI Teacher Answer',
+                                    style: TextStyle(
+                                      color: _themeMainText,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _aiDoubtAnswer!,
+                              softWrap: true,
+                              style: TextStyle(
+                                color: _themeMainText,
+                                fontSize: 15,
+                                height: 1.6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
         const SizedBox(height: 10),
         Text(
           'Ask anything about ${widget.selectedTopic.name}. Your AI teacher will explain the answer in a simple, topic-focused way.',
-          style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFFBDB9D8)),
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.5,
+            color: _themeSecondaryText,
+          ),
         ),
         const SizedBox(height: 16),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF11152F),
+            color: _themeSecondarySurface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF38345F)),
+            border: Border.all(color: _themeBorderColor),
           ),
           child: TextField(
             controller: _doubtController,
             maxLines: 4,
             textInputAction: TextInputAction.newline,
-            style: const TextStyle(color: Color(0xFFF5F3FF), fontSize: 15, height: 1.45),
+            style: TextStyle(
+              color: _themeMainText,
+              fontSize: 15,
+              height: 1.45,
+            ),
             cursorColor: const Color(0xFF9A8CFF),
             decoration: InputDecoration(
               hintText: '💬 Type your doubt here...',
-              hintStyle: const TextStyle(color: Color(0xFF777394), fontSize: 14),
+              hintStyle: TextStyle(
+                color: _themeSecondaryText,
+                fontSize: 14,
+              ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.all(16),
-              prefixIcon: const Padding(
-                padding: EdgeInsets.only(left: 14, top: 14),
-                child: Icon(Icons.question_mark_rounded, color: Color(0xFF8E82F5), size: 19),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 14, top: 14),
+                child: Icon(
+                  Icons.question_mark_rounded,
+                  color: _isDarkTheme
+                      ? const Color(0xFF8E82F5)
+                      : const Color(0xFF6C63A8),
+                  size: 19,
+                ),
               ),
-              prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 48,
+                minHeight: 48,
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        _primaryButton(
-          onPressed: _isLoadingDoubt ? null : _askAIDoubt,
-          icon: _isLoadingDoubt ? Icons.hourglass_top_rounded : Icons.auto_awesome_rounded,
-          label: _isLoadingDoubt ? 'Thinking...' : 'Ask AI Teacher',
-        ),
+        if (_aiDoubtAnswer == null) ...[
+          const SizedBox(height: 14),
+          _primaryButton(
+            onPressed: _isLoadingDoubt ? null : _askAIDoubt,
+            icon: _isLoadingDoubt
+                ? Icons.hourglass_top_rounded
+                : Icons.auto_awesome_rounded,
+            label: _isLoadingDoubt
+                ? 'Thinking...'
+                : 'Ask AI Teacher',
+          ),
+        ],
         if (_isLoadingDoubt)
-          const Padding(
-            padding: EdgeInsets.only(top: 18),
+          Padding(
+            padding: const EdgeInsets.only(top: 18),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Color(0xFF9A8CFF))),
-                SizedBox(width: 10),
-                Text('Your AI teacher is thinking...', style: TextStyle(color: Color(0xFFBDB9D8), fontSize: 13)),
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Color(0xFF9A8CFF),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Your AI teacher is thinking...',
+                  style: TextStyle(
+                    color: _themeSecondaryText,
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),
@@ -3478,9 +3858,13 @@ Widget _buildDoubtSolverCard() {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF201B49), Color(0xFF29235C)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                color: _themeSecondarySurface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF6256C9)),
+                border: Border.all(
+                  color: _isDarkTheme
+                      ? const Color(0xFF6256C9)
+                      : const Color(0xFFDCD7F4),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3488,16 +3872,41 @@ Widget _buildDoubtSolverCard() {
                   Row(
                     children: [
                       Container(
-                        width: 34, height: 34,
-                        decoration: BoxDecoration(color: const Color(0xFF7165D9), borderRadius: BorderRadius.circular(10)),
-                        child: const Icon(Icons.smart_toy_rounded, size: 19, color: Colors.white),
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7165D9),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.smart_toy_rounded,
+                          size: 19,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(width: 10),
-                      const Expanded(child: Text('AI Teacher Answer', style: TextStyle(color: Color(0xFFF7F5FF), fontSize: 15, fontWeight: FontWeight.w800))),
+                      Expanded(
+                        child: Text(
+                          'AI Teacher Answer',
+                          style: TextStyle(
+                            color: _themeMainText,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(_aiDoubtAnswer!, softWrap: true, style: const TextStyle(color: Color(0xFFEAE7FA), fontSize: 14, height: 1.6)),
+                  Text(
+                    _aiDoubtAnswer!,
+                    softWrap: true,
+                    style: TextStyle(
+                      color: _themeMainText,
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -3507,10 +3916,6 @@ Widget _buildDoubtSolverCard() {
   );
 }
 
-// =============================================================
-// WHAT IF I SKIP CARD
-// =============================================================
-
 Widget _buildSkipCard() {
   return _mainCard(
     child: Column(
@@ -3518,28 +3923,169 @@ Widget _buildSkipCard() {
       children: [
         _cardHeader(
           icon: Icons.route_rounded,
-          iconColor: const Color(0xFFD8D4FF),
-          iconBackground: const Color(0xFF38336F),
+          iconColor: _isDarkTheme
+              ? const Color(0xFFD8D4FF)
+              : const Color(0xFF6C63A8),
+          iconBackground: _isDarkTheme
+              ? const Color(0xFF38336F)
+              : const Color(0xFFEDEBFA),
           title: 'What If I Skip?',
+          onMaximize: () {
+            _openAIFullscreen(
+              title: 'What If I Skip?',
+              icon: Icons.route_rounded,
+              builder: () => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'See how skipping ${widget.selectedTopic.name} could affect the topics that come after it.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.5,
+                      color: _themeSecondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: _themeSecondarySurface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _themeBorderColor),
+                    ),
+                    child: Row(
+                      children: [
+                        _skipStageIcon(Icons.play_lesson_rounded, 'Learn'),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Color(0xFF7066C9),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        _skipStageIcon(Icons.alt_route_rounded, 'Skip'),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Color(0xFF7066C9),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        _skipStageIcon(Icons.warning_amber_rounded, 'Impact'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  if (_isLoadingSkip)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Color(0xFF9A8CFF),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Mapping the learning impact...',
+                            style: TextStyle(
+                              color: _themeSecondaryText,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (_aiSkipAnswer != null)
+                    _resultContainer(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF7165D9),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.alt_route_rounded,
+                              color: Colors.white,
+                              size: 19,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _aiSkipAnswer!,
+                              softWrap: true,
+                              style: TextStyle(
+                                color: _themeMainText,
+                                fontSize: 15,
+                                height: 1.6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  if (_aiSkipAnswer == null)
+                    _primaryButton(
+                      onPressed: _isLoadingSkip
+                          ? null
+                          : _checkWhatIfISkip,
+                      icon: _isLoadingSkip
+                          ? Icons.hourglass_top_rounded
+                          : Icons.alt_route_rounded,
+                      label: _isLoadingSkip
+                          ? 'Analyzing...'
+                          : 'See Learning Impact',
+                    ),
+                ],
+              ),
+            );
+          },
         ),
         const SizedBox(height: 10),
         Text(
           'See how skipping ${widget.selectedTopic.name} could affect the topics that come after it.',
-          style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFFBDB9D8)),
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.5,
+            color: _themeSecondaryText,
+          ),
         ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: const Color(0xFF11152F), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF38345F))),
+          decoration: BoxDecoration(
+            color: _themeSecondarySurface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _themeBorderColor),
+          ),
           child: Row(
             children: [
               _skipStageIcon(Icons.play_lesson_rounded, 'Learn'),
               const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward_rounded, color: Color(0xFF7066C9), size: 18),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: Color(0xFF7066C9),
+                size: 18,
+              ),
               const SizedBox(width: 8),
               _skipStageIcon(Icons.alt_route_rounded, 'Skip'),
               const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward_rounded, color: Color(0xFF7066C9), size: 18),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: Color(0xFF7066C9),
+                size: 18,
+              ),
               const SizedBox(width: 8),
               _skipStageIcon(Icons.warning_amber_rounded, 'Impact'),
             ],
@@ -3547,42 +4093,206 @@ Widget _buildSkipCard() {
         ),
         const SizedBox(height: 14),
         if (_isLoadingSkip)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Color(0xFF9A8CFF))),
-              SizedBox(width: 10),
-              Text('Mapping the learning impact...', style: TextStyle(color: Color(0xFFBDB9D8), fontSize: 13)),
-            ]),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Color(0xFF9A8CFF),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Mapping the learning impact...',
+                  style: TextStyle(
+                    color: _themeSecondaryText,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
           )
         else if (_aiSkipAnswer != null)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF201B49), Color(0xFF29235C)], begin: Alignment.topLeft, end: Alignment.bottomRight), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF6256C9))),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFF7165D9), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.alt_route_rounded, color: Colors.white, size: 19)),
-              const SizedBox(width: 12),
-              Expanded(child: Text(_aiSkipAnswer!, softWrap: true, style: const TextStyle(color: Color(0xFFEAE7FA), fontSize: 14, height: 1.6))),
-            ]),
+            decoration: BoxDecoration(
+              color: _themeSecondarySurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _isDarkTheme
+                    ? const Color(0xFF6256C9)
+                    : const Color(0xFFDCD7F4),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7165D9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.alt_route_rounded,
+                    color: Colors.white,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _aiSkipAnswer!,
+                    softWrap: true,
+                    style: TextStyle(
+                      color: _themeMainText,
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        if (_aiSkipAnswer != null || _isLoadingSkip) const SizedBox(height: 16),
-        _primaryButton(
-          onPressed: _isLoadingSkip ? null : _checkWhatIfISkip,
-          icon: _isLoadingSkip ? Icons.hourglass_top_rounded : Icons.alt_route_rounded,
-          label: _isLoadingSkip ? 'Analyzing...' : 'See Learning Impact',
-        ),
+        if (_aiSkipAnswer != null || _isLoadingSkip)
+          const SizedBox(height: 16),
+        if (_aiSkipAnswer == null)
+          _primaryButton(
+            onPressed: _isLoadingSkip ? null : _checkWhatIfISkip,
+            icon: _isLoadingSkip
+                ? Icons.hourglass_top_rounded
+                : Icons.alt_route_rounded,
+            label: _isLoadingSkip
+                ? 'Analyzing...'
+                : 'See Learning Impact',
+          ),
       ],
     ),
   );
 }
 
 Widget _skipStageIcon(IconData icon, String label) {
-  return Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-    Container(width: 38, height: 38, decoration: BoxDecoration(color: const Color(0xFF302A67), borderRadius: BorderRadius.circular(11), border: Border.all(color: const Color(0xFF6256C9))), child: Icon(icon, color: const Color(0xFFC7C1FF), size: 19)),
-    const SizedBox(height: 5),
-    Text(label, style: const TextStyle(color: Color(0xFFA9A5C5), fontSize: 10, fontWeight: FontWeight.w700)),
-  ]));
+  return Expanded(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: _isDarkTheme
+                ? const Color(0xFF302A67)
+                : const Color(0xFFEDEBFA),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: _isDarkTheme
+                  ? const Color(0xFF6256C9)
+                  : const Color(0xFFDCD7F4),
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: _isDarkTheme
+                ? const Color(0xFFC7C1FF)
+                : const Color(0xFF6C63A8),
+            size: 19,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: _themeSecondaryText,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// =============================================================
+// FULLSCREEN AI FEATURE
+// =============================================================
+
+void _openAIFullscreen({
+  required String title,
+  required IconData icon,
+  required Widget Function() builder,
+}) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (fullscreenContext) {
+        return Scaffold(
+          backgroundColor: _themeCardColor,
+          appBar: AppBar(
+            backgroundColor: _themeCardColor,
+            elevation: 0,
+            leading: IconButton(
+              tooltip: 'Close',
+              icon: Icon(
+                Icons.close_rounded,
+                color: _themeMainText,
+              ),
+              onPressed: () {
+                Navigator.of(fullscreenContext).pop();
+              },
+            ),
+            title: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF7165D9),
+                        Color(0xFF5549B9),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: _themeMainText,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
+              child: ValueListenableBuilder<int>(
+                valueListenable: _lessonViewTick,
+                builder: (context, _, __) => builder(),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }
 
 // =============================================================
@@ -3590,38 +4300,140 @@ Widget _skipStageIcon(IconData icon, String label) {
 // =============================================================
 
 Widget _mainCard({required Widget child}) {
+  // Keep the cards aligned with the full content area. The page already
+  // provides its own horizontal padding, so don't add a desktop max-width
+  // here. This keeps every AI card consistently wide on large screens.
   return Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(20),
+    padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(colors: [Color(0xFF171A38), Color(0xFF242052)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+      color: _themeCardColor,
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFF343063)),
-      boxShadow: const [BoxShadow(blurRadius: 18, offset: Offset(0, 8), color: Color(0x33100D2E))],
+      border: Border.all(color: _themeBorderColor),
+      boxShadow: [
+        BoxShadow(
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+          color: _isDarkTheme
+              ? const Color(0x33100D2E)
+              : const Color(0x14000000),
+        ),
+      ],
     ),
     child: child,
   );
 }
 
-Widget _cardHeader({required IconData icon, required Color iconColor, required Color iconBackground, required String title}) {
-  return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-    Container(
-      width: 46, height: 46,
-      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF7165D9), Color(0xFF5549B9)], begin: Alignment.topLeft, end: Alignment.bottomRight), borderRadius: BorderRadius.circular(13), boxShadow: const [BoxShadow(blurRadius: 12, color: Color(0x447165D9), offset: Offset(0, 5))]),
-      child: Icon(icon, color: Colors.white, size: 23),
-    ),
-    const SizedBox(width: 12),
-    Expanded(child: Text(title, softWrap: true, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFFF7F5FF), letterSpacing: -0.2))),
-  ]);
+Widget _cardHeader({
+  required IconData icon,
+  required Color iconColor,
+  required Color iconBackground,
+  required String title,
+  VoidCallback? onMaximize,
+}) {
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF7165D9), Color(0xFF5549B9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(13),
+          boxShadow: const [
+            BoxShadow(
+              blurRadius: 12,
+              color: Color(0x447165D9),
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: Colors.white, size: 23),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Text(
+          title,
+          softWrap: true,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: _themeMainText,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ),
+      if (onMaximize != null)
+        IconButton(
+          tooltip: 'Open fullscreen',
+          onPressed: onMaximize,
+          icon: Icon(
+            Icons.open_in_full_rounded,
+            color: _themeSecondaryText,
+            size: 22,
+          ),
+        ),
+    ],
+  );
 }
 
-Widget _primaryButton({required VoidCallback? onPressed, required IconData icon, required String label}) {
-  return SizedBox(width: double.infinity, height: 50, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7165D9), disabledBackgroundColor: const Color(0xFF3B3764), foregroundColor: Colors.white, disabledForegroundColor: const Color(0xFFAAA6C5), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), onPressed: onPressed, icon: Icon(icon, size: 20), label: Text(label, softWrap: false, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800))));
+Widget _primaryButton({
+  required VoidCallback? onPressed,
+  required IconData icon,
+  required String label,
+}) {
+  return Align(
+    alignment: Alignment.center,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF7165D9),
+            disabledBackgroundColor: const Color(0xFF3B3764),
+            foregroundColor: Colors.white,
+            disabledForegroundColor: const Color(0xFFAAA6C5),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: onPressed,
+          icon: Icon(icon, size: 20),
+          label: Text(
+            label,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 Widget _greenButton({required VoidCallback? onPressed, required IconData icon, required String label}) => _primaryButton(onPressed: onPressed, icon: icon, label: label);
 Widget _resultContainer({required Widget child}) {
-  return Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: const Color(0xFF11152F), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFF38345F))), child: child);
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: _themeSecondarySurface,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: _themeBorderColor),
+    ),
+    child: child,
+  );
 }
 
 
@@ -3712,7 +4524,7 @@ Widget _resultContainer({required Widget child}) {
                       TextSpan(
                         text: 'Subject: ',
                         style: TextStyle(
-                          color: secondaryText,
+                          color: _themeSecondaryText,
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                           height: 1.35,
@@ -3744,7 +4556,7 @@ Widget _resultContainer({required Widget child}) {
                 Text(
                   'Choose how you want to learn this topic.',
                   style: TextStyle(
-                    color: secondaryText,
+                    color: _themeSecondaryText,
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     height: 1.4,
@@ -3837,7 +4649,7 @@ Widget _resultContainer({required Widget child}) {
               Text(
                 subtitle,
                 style: TextStyle(
-                  color: secondaryText,
+                  color: _themeSecondaryText,
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                   height: 1.35,
@@ -3959,7 +4771,7 @@ Widget _resultContainer({required Widget child}) {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: secondaryText,
+                          color: _themeSecondaryText,
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                           height: 1.4,
@@ -3976,7 +4788,7 @@ Widget _resultContainer({required Widget child}) {
                 padding: const EdgeInsets.only(top: 4),
                 child: Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: secondaryText,
+                  color: _themeSecondaryText,
                   size: 15,
                 ),
               ),
@@ -4206,40 +5018,29 @@ class _DynamicConceptBoard extends StatelessWidget {
     required this.isVoicePlaying,
   });
 
-  String get _name => topic.toLowerCase();
-
-  int get _visualStep {
-    if (steps.isEmpty) return 0;
-    final value = activeStage - 2;
-    return value.clamp(0, steps.length - 1);
-  }
-
-  String get _currentStepTitle {
-    if (steps.isEmpty) return 'Watch the idea come together';
-    return steps[_visualStep]['title']?.isNotEmpty == true
-        ? steps[_visualStep]['title']!
-        : 'Step ${_visualStep + 1}';
-  }
-
   @override
   Widget build(BuildContext context) {
+    final stepIndex = steps.isEmpty
+        ? 0
+        : (activeStage - 2).clamp(0, steps.length - 1);
+    final stepTitle = steps.isEmpty
+        ? 'Concept in action'
+        : (steps[stepIndex]['title']?.trim().isNotEmpty == true
+            ? steps[stepIndex]['title']!.trim()
+            : 'Step ${stepIndex + 1}');
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+      height: 360,
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF11152F), Color(0xFF29245E)],
+          colors: [Color(0xFF0D1228), Color(0xFF211D4A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x25000000),
-            blurRadius: 16,
-            offset: Offset(0, 7),
-          ),
-        ],
+        border: Border.all(color: const Color(0x335E58A4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4265,23 +5066,24 @@ class _DynamicConceptBoard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _boardTitle,
+                      topic,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isVoicePlaying
-                          ? 'The teacher is drawing this step now'
-                          : 'Press play to watch the lesson unfold',
+                      stepTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Color(0xFFBDB9DE),
+                        color: Color(0xFFBEB9E4),
                         fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -4291,814 +5093,465 @@ class _DynamicConceptBoard extends StatelessWidget {
                 const _PulsingSpeakerIcon(),
             ],
           ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: const Color(0x33100E2C),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x335F59A6)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.record_voice_over_rounded,
-                  color: Color(0xFFB8B0FF),
-                  size: 17,
+          const SizedBox(height: 10),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: CustomPaint(
+                painter: _FallbackConceptPainter(
+                  topic: topic,
+                  centralIdea: centralIdea,
+                  activeStage: activeStage,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _currentStepTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFFEAE8FF),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 500),
-            switchInCurve: Curves.easeOutBack,
-            switchOutCurve: Curves.easeIn,
-            child: KeyedSubtree(
-              key: ValueKey<String>('$_name-$_visualStep-$activeStage'),
-              child: _buildScene(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _stageDot(0, 'Idea')),
-              Expanded(child: _stageDot(1, 'Imagine')),
-              Expanded(child: _stageDot(2, 'Build')),
-              Expanded(child: _stageDot(3, 'Apply')),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String get _boardTitle {
-    if (_name.contains('array')) return 'Memory cells in action';
-    if (_name.contains('pointer')) return 'Follow the address';
-    if (_name.contains('linked list')) return 'Follow the chain';
-    if (_name.contains('stack')) return 'Watch the stack change';
-    if (_name.contains('queue')) return 'Watch the queue move';
-    if (_name.contains('tree')) return 'Build the hierarchy';
-    if (_name.contains('sort')) return 'Watch the data get sorted';
-    if (_name.contains('search')) return 'Find the target';
-    if (_name.contains('operator') || _name.contains('expression')) {
-      return 'Build the expression';
-    }
-    if (_name.contains('function')) return 'Input goes through a function';
-    if (_name.contains('recursion')) return 'Watch the calls stack up';
-    if (_name.contains('loop') || _name.contains('iteration')) {
-      return 'Watch the loop repeat';
-    }
-    if (_name.contains('class') || _name.contains('object') || _name.contains('inherit')) {
-      return 'Turn a class into objects';
-    }
-    if (_name.contains('database') || _name.contains('dbms') || _name.contains('sql')) {
-      return 'See data inside a table';
-    }
-    if (_name.contains('operating system') || _name == 'os') {
-      return 'See how the OS manages everything';
-    }
-    return 'See $topic come alive';
-  }
-
-  Widget _stageDot(int index, String label) {
-    final active = index == _stageIndex;
-    return Row(
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          width: active ? 9 : 7,
-          height: active ? 9 : 7,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: active ? const Color(0xFFA79FFF) : const Color(0xFF5D5983),
-          ),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : const Color(0xFF8581A5),
-            fontSize: 10,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  int get _stageIndex {
-    if (activeStage <= 0) return 0;
-    if (activeStage == 1) return 1;
-    if (activeStage <= 4) return 2;
-    return 3;
-  }
-
-  Widget _buildScene() {
-    if (_name.contains('array')) return _arrayScene();
-    if (_name.contains('pointer')) return _pointerScene();
-    if (_name.contains('linked list') || _name.contains('linkedlist')) {
-      return _linkedListScene();
-    }
-    if (_name.contains('stack')) return _stackScene();
-    if (_name.contains('queue')) return _queueScene();
-    if (_name.contains('binary tree') || _name.contains('tree')) {
-      return _treeScene();
-    }
-    if (_name.contains('sort')) return _sortingScene();
-    if (_name.contains('search')) return _searchScene();
-    if (_name.contains('operator') || _name.contains('expression')) {
-      return _operatorScene();
-    }
-    if (_name.contains('function')) return _functionScene();
-    if (_name.contains('recursion')) return _recursionScene();
-    if (_name.contains('loop') || _name.contains('iteration')) {
-      return _loopScene();
-    }
-    if (_name.contains('class') || _name.contains('object') || _name.contains('inherit')) {
-      return _oopScene();
-    }
-    if (_name.contains('database') || _name.contains('dbms') || _name.contains('sql')) {
-      return _databaseScene();
-    }
-    if (_name.contains('operating system') || _name == 'os') {
-      return _osScene();
-    }
-    return _genericScene();
-  }
-
-  Widget _sceneFrame({required Widget child, String? caption}) {
-    return Container(
-      width: double.infinity,
-      height: 220,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 11),
-      decoration: BoxDecoration(
-        color: const Color(0x14101432),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x334F4B84)),
-      ),
-      child: Column(
-        children: [
-          Expanded(child: child),
-          if (caption != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              caption,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFFCBC8E6),
-                fontSize: 11,
-                height: 1.3,
+                child: const SizedBox.expand(),
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _labelChip(String text, {bool active = false}) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: active ? const Color(0xFF756BE0) : const Color(0xFF24244C),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: active ? const Color(0xFFA8A2FF) : const Color(0xFF49466E),
-        ),
+class _FallbackConceptPainter extends CustomPainter {
+  final String topic;
+  final String centralIdea;
+  final int activeStage;
+
+  const _FallbackConceptPainter({
+    required this.topic,
+    required this.centralIdea,
+    required this.activeStage,
+  });
+
+  String get _name => topic.toLowerCase();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final background = Paint()..color = const Color(0xFF0A0E20);
+    canvas.drawRect(Offset.zero & size, background);
+
+    final titlePaint = Paint()
+      ..color = const Color(0xFF5D59A6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0.5, 0.5, size.width - 1, size.height - 1),
+        const Radius.circular(18),
       ),
-      child: Text(
-        text,
+      titlePaint,
+    );
+
+    if (_name.contains('array')) {
+      _paintArray(canvas, size);
+    } else if (_name.contains('pointer')) {
+      _paintPointer(canvas, size);
+    } else if (_name.contains('linked list') || _name.contains('linkedlist')) {
+      _paintLinkedList(canvas, size);
+    } else if (_name.contains('stack')) {
+      _paintStack(canvas, size);
+    } else if (_name.contains('queue')) {
+      _paintQueue(canvas, size);
+    } else if (_name.contains('tree')) {
+      _paintTree(canvas, size);
+    } else if (_name.contains('sort')) {
+      _paintSorting(canvas, size);
+    } else if (_name.contains('search')) {
+      _paintSearch(canvas, size);
+    } else if (_name.contains('operator') || _name.contains('expression')) {
+      _paintExpression(canvas, size);
+    } else if (_name.contains('function')) {
+      _paintFunction(canvas, size);
+    } else if (_name.contains('recursion')) {
+      _paintRecursion(canvas, size);
+    } else if (_name.contains('loop') || _name.contains('iteration')) {
+      _paintLoop(canvas, size);
+    } else if (_name.contains('class') || _name.contains('object') || _name.contains('inherit')) {
+      _paintOop(canvas, size);
+    } else if (_name.contains('database') || _name.contains('dbms') || _name.contains('sql')) {
+      _paintDatabase(canvas, size);
+    } else if (_name.contains('operating system') || _name == 'os') {
+      _paintOs(canvas, size);
+    } else {
+      _paintConcept(canvas, size);
+    }
+
+    _paintFooter(canvas, size);
+  }
+
+  void _paintArray(Canvas canvas, Size size) {
+    final y = size.height * 0.48;
+    final cellW = (size.width - 70) / 5;
+    for (var i = 0; i < 5; i++) {
+      final x = 35 + i * cellW;
+      _cell(canvas, Rect.fromLTWH(x, y, cellW - 5, 58), '${i + 10}', i == activeStage % 5);
+      _text(canvas, '[${i}]', Offset(x + (cellW - 5) / 2, y - 19), 10, const Color(0xFF8984B4), center: true);
+    }
+    _arrow(canvas, Offset(35, y + 86), Offset(size.width - 35, y + 86));
+    _text(canvas, 'contiguous memory', Offset(size.width / 2, y + 104), 11, const Color(0xFFB9B4DA), center: true);
+  }
+
+  void _paintPointer(Canvas canvas, Size size) {
+    final left = Offset(size.width * 0.22, size.height * 0.43);
+    final right = Offset(size.width * 0.70, size.height * 0.43);
+    _cell(canvas, Rect.fromCenter(center: left, width: 120, height: 68), 'x = 10', true);
+    _circle(canvas, right, 42, '0x1004');
+    _arrow(canvas, Offset(left.dx + 65, left.dy), Offset(right.dx - 47, right.dy));
+    _text(canvas, 'pointer', Offset((left.dx + right.dx) / 2, left.dy - 22), 11, const Color(0xFFBDB8E0), center: true);
+    _text(canvas, 'address', Offset(right.dx, right.dy + 58), 10, const Color(0xFF8581A9), center: true);
+  }
+
+  void _paintLinkedList(Canvas canvas, Size size) {
+    final y = size.height * 0.44;
+    final values = ['10', '20', '30', 'NULL'];
+    for (var i = 0; i < values.length; i++) {
+      final x = 55 + i * ((size.width - 130) / 3);
+      _cell(canvas, Rect.fromLTWH(x, y, 78, 62), values[i], i == activeStage % 3);
+      if (i < values.length - 1) {
+        _arrow(canvas, Offset(x + 84, y + 31), Offset(x + 112, y + 31));
+      }
+    }
+    _text(canvas, 'next → next → next', Offset(size.width / 2, y + 84), 11, const Color(0xFFAAA5CC), center: true);
+  }
+
+  void _paintStack(Canvas canvas, Size size) {
+    final x = size.width / 2 - 55;
+    final bottom = size.height * 0.76;
+    final values = ['A', 'B', 'C'];
+    for (var i = 0; i < values.length; i++) {
+      final y = bottom - i * 53;
+      _cell(canvas, Rect.fromLTWH(x, y, 110, 45), values[i], i == activeStage % 3);
+    }
+    _arrow(canvas, Offset(x + 140, bottom - 80), Offset(x + 140, bottom - 150));
+    _text(canvas, activeStage.isEven ? 'PUSH' : 'POP', Offset(x + 160, bottom - 160), 11, const Color(0xFFBDB8E0), center: true);
+  }
+
+ void _paintQueue(Canvas canvas, Size size) {
+  final double y = size.height * 0.45;
+
+  final values = ['A', 'B', 'C', 'D'];
+
+  for (var i = 0; i < values.length; i++) {
+    final double x = 35.0 + i * 78.0;
+
+    _cell(
+      canvas,
+      Rect.fromLTWH(
+        x,
+        y,
+        68.0,
+        52.0,
+      ),
+      values[i],
+      i == activeStage % 4,
+    );
+  }
+
+  _arrow(
+    canvas,
+    Offset(20.0, y + 26.0),
+    Offset(34.0, y + 26.0),
+  );
+
+  _arrow(
+    canvas,
+    Offset(size.width - 34.0, y + 26.0),
+    Offset(size.width - 20.0, y + 26.0),
+  );
+
+  _text(
+    canvas,
+    'FRONT',
+    Offset(48.0, y - 18.0),
+    9.0,
+    const Color(0xFF9A95BA),
+    center: true,
+  );
+
+  _text(
+    canvas,
+    'REAR',
+    Offset(size.width - 48.0, y - 18.0),
+    9.0,
+    const Color(0xFF9A95BA),
+    center: true,
+  );
+}
+
+  void _paintTree(Canvas canvas, Size size) {
+    final root = Offset(size.width / 2, size.height * 0.27);
+    final l = Offset(size.width * 0.30, size.height * 0.52);
+    final r = Offset(size.width * 0.70, size.height * 0.52);
+    final ll = Offset(size.width * 0.18, size.height * 0.76);
+    final lr = Offset(size.width * 0.42, size.height * 0.76);
+    final rl = Offset(size.width * 0.58, size.height * 0.76);
+    final rr = Offset(size.width * 0.82, size.height * 0.76);
+    _line(canvas, root, l); _line(canvas, root, r);
+    _line(canvas, l, ll); _line(canvas, l, lr);
+    _line(canvas, r, rl); _line(canvas, r, rr);
+    _circle(canvas, root, 24, '8');
+    _circle(canvas, l, 21, '4'); _circle(canvas, r, 21, '12');
+    _circle(canvas, ll, 18, '2'); _circle(canvas, lr, 18, '6');
+    _circle(canvas, rl, 18, '10'); _circle(canvas, rr, 18, '14');
+  }
+
+  void _paintSorting(Canvas canvas, Size size) {
+    final base = size.height * 0.79;
+    final values = [0.28, 0.55, 0.42, 0.82, 0.64, 0.38];
+    for (var i = 0; i < values.length; i++) {
+      final h = size.height * 0.50 * values[i];
+      final x = 30 + i * 48;
+      final active = i == activeStage % values.length || i == (activeStage + 1) % values.length;
+      final paint = Paint()..color = active ? const Color(0xFFA69FFF) : const Color(0xFF57527F);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+  Rect.fromLTWH(x.toDouble(), base - h, 34.0, h),
+  const Radius.circular(7),
+),
+        paint,
+      );
+      _text(canvas, '${(values[i] * 10).round()}', Offset(x + 17, base + 12), 9, const Color(0xFFAAA5C8), center: true);
+    }
+    _text(canvas, 'compare → swap → repeat', Offset(size.width / 2, 22), 11, const Color(0xFFBDB8E0), center: true);
+  }
+
+ void _paintSearch(Canvas canvas, Size size) {
+  final double y = size.height * 0.47;
+
+  final values = ['4', '7', '9', '12', '18'];
+  final target = activeStage % values.length;
+
+  for (var i = 0; i < values.length; i++) {
+    final double x = 28.0 + i * 66.0;
+
+    _cell(
+      canvas,
+      Rect.fromLTWH(
+        x,
+        y,
+        55.0,
+        52.0,
+      ),
+      values[i],
+      i == target,
+    );
+  }
+
+  final double targetX = 28.0 + target * 66.0 + 27.0;
+
+  _arrow(
+    canvas,
+    Offset(targetX, y - 38.0),
+    Offset(targetX, y - 7.0),
+  );
+
+  _text(
+    canvas,
+    'target',
+    Offset(targetX, y - 54.0),
+    10.0,
+    const Color(0xFFBDB8E0),
+    center: true,
+  );
+}
+
+  void _paintExpression(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height * 0.48);
+    _cell(canvas, Rect.fromCenter(center: center, width: 100, height: 58), '+', true);
+    _circle(canvas, Offset(center.dx - 92, center.dy), 30, 'A');
+    _circle(canvas, Offset(center.dx + 92, center.dy), 30, 'B');
+    _arrow(canvas, Offset(center.dx - 62, center.dy), Offset(center.dx - 51, center.dy));
+    _arrow(canvas, Offset(center.dx + 51, center.dy), Offset(center.dx + 62, center.dy));
+    _text(canvas, 'operand', Offset(center.dx - 92, center.dy + 48), 9, const Color(0xFF8C88AE), center: true);
+    _text(canvas, 'operand', Offset(center.dx + 92, center.dy + 48), 9, const Color(0xFF8C88AE), center: true);
+  }
+
+  void _paintFunction(Canvas canvas, Size size) {
+    final y = size.height * 0.48;
+    _cell(canvas, Rect.fromLTWH(28, y, 92, 58), 'input', true);
+    _cell(canvas, Rect.fromLTWH(size.width / 2 - 60, y, 120, 58), 'f(x)', activeStage % 2 == 0);
+    _cell(canvas, Rect.fromLTWH(size.width - 120, y, 92, 58), 'output', activeStage % 2 == 1);
+    _arrow(canvas, Offset(122, y + 29), Offset(size.width / 2 - 63, y + 29));
+    _arrow(canvas, Offset(size.width / 2 + 63, y + 29), Offset(size.width - 123, y + 29));
+  }
+
+  void _paintRecursion(Canvas canvas, Size size) {
+    final x = size.width / 2;
+    for (var i = 0; i < 3; i++) {
+      final w = 150.0 - i * 28;
+      final y = 42 + i * 57.0;
+      _cell(canvas, Rect.fromLTWH(x - w / 2, y, w, 42), 'call ${i + 1}', i == activeStage % 3);
+    }
+    _text(canvas, 'base case ends the calls', Offset(x, size.height - 42), 10, const Color(0xFFAAA5C8), center: true);
+  }
+
+  void _paintLoop(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(size.width * 0.22, size.height * 0.25, size.width * 0.56, size.height * 0.46);
+    final paint = Paint()
+      ..color = const Color(0xFF7468E8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(26)), paint);
+    _arrow(canvas, Offset(rect.right, rect.center.dy), Offset(rect.right - 2, rect.top + 30));
+    _text(canvas, 'condition?', rect.topLeft + const Offset(12, 22), 11, const Color(0xFFBDB8E0));
+    _text(canvas, 'repeat', rect.center, 14, const Color(0xFFD6D2F3), center: true);
+  }
+
+  void _paintOop(Canvas canvas, Size size) {
+    final classCenter = Offset(size.width * 0.30, size.height * 0.48);
+    final objectCenter = Offset(size.width * 0.70, size.height * 0.48);
+    _cell(canvas, Rect.fromCenter(center: classCenter, width: 135, height: 90), 'Class');
+    _cell(canvas, Rect.fromCenter(center: objectCenter, width: 135, height: 90), 'Object', true);
+    _arrow(canvas, Offset(classCenter.dx + 70, classCenter.dy), Offset(objectCenter.dx - 70, objectCenter.dy));
+    _text(canvas, 'creates', Offset(size.width / 2, classCenter.dy - 20), 10, const Color(0xFFAAA5C8), center: true);
+  }
+
+  void _paintDatabase(Canvas canvas, Size size) {
+    final x = size.width * 0.50;
+    final y = size.height * 0.48;
+    _cell(canvas, Rect.fromCenter(center: Offset(x, y), width: 160, height: 60), 'TABLE', true);
+    for (var i = 0; i < 3; i++) {
+      final yy = y - 70 + i * 140;
+      _cell(canvas, Rect.fromLTWH(22, yy, 86, 42), 'row ${i + 1}', i == activeStage % 3);
+      _arrow(canvas, Offset(110, yy + 21), Offset(x - 82, y));
+    }
+    _text(canvas, 'rows + columns', Offset(x, y + 48), 10, const Color(0xFFAAA5C8), center: true);
+  }
+
+  void _paintOs(Canvas canvas, Size size) {
+    final x = size.width / 2;
+    final layers = ['Applications', 'Operating System', 'Hardware'];
+    for (var i = 0; i < layers.length; i++) {
+      final w = 210.0 - i * 45;
+      final y = 42 + i * 62.0;
+      _cell(canvas, Rect.fromLTWH(x - w / 2, y, w, 46), layers[i], i == activeStage % 3);
+      if (i < layers.length - 1) {
+        _arrow(canvas, Offset(x, y + 50), Offset(x, y + 59));
+      }
+    }
+  }
+
+  void _paintConcept(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height * 0.45);
+    final idea = centralIdea.trim().isEmpty ? 'core idea' : _short(centralIdea, 28);
+    _circle(canvas, center, 48, 'IDEA');
+    final points = [
+      Offset(size.width * 0.22, size.height * 0.28),
+      Offset(size.width * 0.78, size.height * 0.28),
+      Offset(size.width * 0.22, size.height * 0.70),
+      Offset(size.width * 0.78, size.height * 0.70),
+    ];
+    for (var i = 0; i < points.length; i++) {
+      _line(canvas, center, points[i]);
+      _circle(canvas, points[i], 27, '${i + 1}');
+    }
+    _text(canvas, idea, Offset(center.dx, center.dy + 67), 10, const Color(0xFFBDB8E0), center: true);
+  }
+
+  void _paintFooter(Canvas canvas, Size size) {
+    final text = centralIdea.trim().isEmpty
+        ? 'AI visual fallback'
+        : _short(centralIdea, 58);
+    _text(canvas, text, Offset(size.width / 2, size.height - 17), 9.5, const Color(0xFF77739A), center: true);
+  }
+
+  void _cell(Canvas canvas, Rect rect, String label, [bool active = false]) {
+    final fill = Paint()..color = active ? const Color(0xFF655FD0) : const Color(0xFF25264B);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(10)),
+      fill,
+    );
+    final border = Paint()
+      ..color = active ? const Color(0xFFB0AAFF) : const Color(0xFF4E4B78)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(10)),
+      border,
+    );
+    _text(canvas, label, rect.center, 11, Colors.white, center: true);
+  }
+
+  void _circle(Canvas canvas, Offset center, double radius, String label) {
+    final fill = Paint()..color = const Color(0xFF282950);
+    canvas.drawCircle(center, radius, fill);
+    final border = Paint()
+      ..color = const Color(0xFF8079E8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawCircle(center, radius, border);
+    _text(canvas, label, center, radius < 20 ? 9 : 10.5, Colors.white, center: true);
+  }
+
+  void _line(Canvas canvas, Offset start, Offset end) {
+    canvas.drawLine(
+      start,
+      end,
+      Paint()
+        ..color = const Color(0xFF625E91)
+        ..strokeWidth = 2,
+    );
+  }
+
+  void _arrow(Canvas canvas, Offset start, Offset end) {
+    final paint = Paint()
+      ..color = const Color(0xFF8C86E9)
+      ..strokeWidth = 2.2
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(start, end, paint);
+    final direction = end - start;
+    final length = direction.distance;
+    if (length < 1) return;
+    final unit = direction / length;
+    final side = Offset(-unit.dy, unit.dx);
+    final base = end - unit * 9;
+    final path = Path()
+      ..moveTo(end.dx, end.dy)
+      ..lineTo((base + side * 4).dx, (base + side * 4).dy)
+      ..lineTo((base - side * 4).dx, (base - side * 4).dy)
+      ..close();
+    canvas.drawPath(path, Paint()..color = const Color(0xFF8C86E9));
+  }
+
+  void _text(
+    Canvas canvas,
+    String value,
+    Offset position,
+    double fontSize,
+    Color color, {
+    bool center = false,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: value,
         style: TextStyle(
-          color: active ? Colors.white : const Color(0xFFBEBADF),
-          fontSize: 10.5,
+          color: color,
+          fontSize: fontSize,
           fontWeight: FontWeight.w700,
         ),
       ),
-    );
+      textDirection: TextDirection.ltr,
+      maxLines: 2,
+      ellipsis: '…',
+    )..layout(maxWidth: 190);
+    final offset = center
+        ? position - Offset(painter.width / 2, painter.height / 2)
+        : position;
+    painter.paint(canvas, offset);
   }
 
-  Widget _box(String title, String value, {bool active = false, IconData? icon}) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: active
-              ? const [Color(0xFF4D4AA0), Color(0xFF7469E2)]
-              : const [Color(0xFF25264F), Color(0xFF30305D)],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: active ? const Color(0xFFA8A1FF) : const Color(0xFF55527A),
-          width: active ? 1.5 : 1,
-        ),
-        boxShadow: active
-            ? const [
-                BoxShadow(
-                  color: Color(0x557C72F0),
-                  blurRadius: 16,
-                  offset: Offset(0, 5),
-                ),
-              ]
-            : null,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (icon != null)
-            Icon(icon, color: const Color(0xFFE7E4FF), size: 17),
-          if (icon != null) const SizedBox(height: 5),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          if (value.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              value,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFFD0CDF0),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+  String _short(String value, int maxLength) {
+    final clean = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (clean.length <= maxLength) return clean;
+    return '${clean.substring(0, maxLength - 1)}…';
   }
 
-  Widget _arrow({bool active = false}) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      width: 28,
-      height: 32,
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.arrow_forward_rounded,
-        color: active ? const Color(0xFFA79FFF) : const Color(0xFF65618E),
-        size: active ? 23 : 19,
-      ),
-    );
-  }
-
-  Widget _arrayScene() {
-    final activeIndex = _visualStep % 4;
-    return _sceneFrame(
-      caption: 'Each value has a position. The index tells us exactly which cell to access.',
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              for (int i = 0; i < 4; i++)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 450),
-                      height: 88,
-                      decoration: BoxDecoration(
-                        gradient: i == activeIndex
-                            ? const LinearGradient(
-                                colors: [Color(0xFF6F65DD), Color(0xFF8A80F2)],
-                              )
-                            : const LinearGradient(
-                                colors: [Color(0xFF24264C), Color(0xFF30315C)],
-                              ),
-                        borderRadius: BorderRadius.circular(13),
-                        border: Border.all(
-                          color: i == activeIndex
-                              ? const Color(0xFFB3ADFF)
-                              : const Color(0xFF4F4C76),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$i',
-                            style: TextStyle(
-                              color: i == activeIndex
-                                  ? Colors.white
-                                  : const Color(0xFF9894B8),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            ['45', '12', '78', '34'][i],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            i == activeIndex ? '← accessed' : 'cell',
-                            style: TextStyle(
-                              color: i == activeIndex
-                                  ? const Color(0xFFE2DFFF)
-                                  : const Color(0xFF777492),
-                              fontSize: 8.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 13),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _labelChip('index $activeIndex', active: true),
-              _arrow(active: true),
-              _labelChip('value ${['45', '12', '78', '34'][activeIndex]}', active: true),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _pointerScene() {
-    final active = _visualStep % 3;
-    return _sceneFrame(
-      caption: 'A pointer does not store the value itself. It remembers where the value lives in memory.',
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(child: _box('Variable', 'x = 10', active: active == 0, icon: Icons.data_object_rounded)),
-          _arrow(active: active >= 1),
-          Expanded(child: _box('Address', '0x1000', active: active == 1, icon: Icons.location_on_rounded)),
-          _arrow(active: active >= 2),
-          Expanded(child: _box('Value at address', '10', active: active == 2, icon: Icons.memory_rounded)),
-        ],
-      ),
-    );
-  }
-
-  Widget _linkedListScene() {
-    final active = _visualStep % 3;
-    return _sceneFrame(
-      caption: 'Each node stores data plus the link to the next node. The chain ends at NULL.',
-      child: Row(
-        children: [
-          for (int i = 0; i < 3; i++) ...[
-            Expanded(
-              child: _box(
-                'Node ${i + 1}',
-                'data: ${[10, 20, 30][i]}',
-                active: i == active,
-                icon: Icons.link_rounded,
-              ),
-            ),
-            if (i < 2) _arrow(active: active > i),
-          ],
-          const SizedBox(width: 5),
-          _labelChip('NULL', active: active == 2),
-        ],
-      ),
-    );
-  }
-
-  Widget _stackScene() {
-    final count = (_visualStep % 3) + 1;
-    return _sceneFrame(
-      caption: 'Stack follows LIFO: the last plate pushed is the first plate popped.',
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (int i = 0; i < count; i++)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 450),
-                  width: 145,
-                  height: 34,
-                  margin: const EdgeInsets.only(bottom: 5),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: i == count - 1
-                          ? const [Color(0xFF7469E1), Color(0xFF9389FF)]
-                          : const [Color(0xFF34345E), Color(0xFF45446E)],
-                    ),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color: i == count - 1
-                          ? const Color(0xFFB4AEFF)
-                          : const Color(0xFF5D5A83),
-                    ),
-                  ),
-                  child: Text(
-                    'Item ${i + 1}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-            ].reversed.toList(),
-          ),
-          const SizedBox(width: 22),
-          _labelChip(
-            _visualStep % 2 == 0 ? 'PUSH ↑' : 'POP ↑',
-            active: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _queueScene() {
-    final active = _visualStep % 4;
-    return _sceneFrame(
-      caption: 'Queue follows FIFO: the first item to enter is the first item to leave.',
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              _labelChip('FRONT'),
-              const SizedBox(width: 7),
-              for (int i = 0; i < 4; i++)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: _box(
-                      'Person ${i + 1}',
-                      i == active ? 'moving' : 'waiting',
-                      active: i == active,
-                      icon: Icons.person_rounded,
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 7),
-              _labelChip('REAR'),
-            ],
-          ),
-          const SizedBox(height: 11),
-          Text(
-            active == 0 ? 'First in line → first out' : 'Everyone moves forward one place',
-            style: const TextStyle(color: Color(0xFFD0CDF0), fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _treeScene() {
-    final active = _visualStep % 3;
-    return _sceneFrame(
-      caption: 'A tree starts at a root and branches into child nodes.',
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _box('ROOT', 'A', active: active == 0, icon: Icons.account_tree_rounded),
-          const SizedBox(height: 8),
-          const Icon(Icons.south_rounded, color: Color(0xFF7773A0), size: 18),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _box('LEFT CHILD', 'B', active: active == 1)),
-              const SizedBox(width: 12),
-              Expanded(child: _box('RIGHT CHILD', 'C', active: active == 2)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sortingScene() {
-    final swap = _visualStep % 3;
-    final values = [4, 1, 3, 2];
-    final sorted = [1, 2, 3, 4];
-    return _sceneFrame(
-      caption: 'The algorithm compares values and moves them toward their correct positions.',
-      child: Row(
-        children: [
-          Expanded(child: _barGroup('Before', values, swap)),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Icon(Icons.arrow_forward_rounded, color: Color(0xFFA39CFF)),
-          ),
-          Expanded(child: _barGroup('After', sorted, 3)),
-        ],
-      ),
-    );
-  }
-
-  Widget _barGroup(String title, List<int> values, int active) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(title, style: const TextStyle(color: Color(0xFFBEBADF), fontSize: 10, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 110,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (int i = 0; i < values.length; i++)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
-                      height: 25.0 + values[i] * 14,
-                      decoration: BoxDecoration(
-                        color: i == active
-                            ? const Color(0xFF8378EB)
-                            : const Color(0xFF414167),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
-                      ),
-                      alignment: Alignment.topCenter,
-                      padding: const EdgeInsets.only(top: 5),
-                      child: Text(
-                        '${values[i]}',
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _searchScene() {
-    final target = _visualStep % 4;
-    return _sceneFrame(
-      caption: 'Searching checks candidates until the required value is found.',
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              for (int i = 0; i < 4; i++)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: _box(
-                      'Index $i',
-                      ['12', '27', '42', '58'][i],
-                      active: i == target,
-                      icon: i == target ? Icons.search_rounded : Icons.crop_square_rounded,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 13),
-          _labelChip(target == 2 ? 'FOUND ✓' : 'checking index $target', active: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _operatorScene() {
-    final active = _visualStep % 4;
-    final parts = ['5', '+', '3', '=', '8'];
-    return _sceneFrame(
-      caption: 'An expression combines values and operators to produce a result.',
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (int i = 0; i < parts.length; i++)
-                _labelChip(parts[i], active: i == active),
-            ],
-          ),
-          const SizedBox(height: 15),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            child: _box(
-              active >= 3 ? 'Result' : 'Expression',
-              active >= 3 ? '8' : '5 + 3',
-              active: true,
-              icon: active >= 3 ? Icons.check_circle_rounded : Icons.calculate_rounded,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _functionScene() {
-    final active = _visualStep % 3;
-    return _sceneFrame(
-      caption: 'A function takes an input, performs its defined work, and returns an output.',
-      child: Row(
-        children: [
-          Expanded(child: _box('INPUT', '5', active: active == 0, icon: Icons.input_rounded)),
-          _arrow(active: active >= 1),
-          Expanded(child: _box('FUNCTION', 'double(x)', active: active == 1, icon: Icons.functions_rounded)),
-          _arrow(active: active >= 2),
-          Expanded(child: _box('OUTPUT', '10', active: active == 2, icon: Icons.output_rounded)),
-        ],
-      ),
-    );
-  }
-
-  Widget _recursionScene() {
-    final depth = (_visualStep % 3) + 1;
-    return _sceneFrame(
-      caption: 'A recursive function calls itself with a smaller problem until it reaches the base case.',
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (int i = 0; i < depth; i++)
-                _box('call ${depth - i}', i == depth - 1 ? 'base case' : 'call again', active: i == depth - 1, icon: Icons.replay_rounded),
-            ],
-          ),
-          const SizedBox(width: 18),
-          _labelChip('return ↑', active: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _loopScene() {
-    final current = (_visualStep % 4) + 1;
-    return _sceneFrame(
-      caption: 'A loop repeats the same block while its condition remains true.',
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _box('condition', current < 4 ? 'true ✓' : 'false → stop', active: true, icon: Icons.rule_rounded),
-          _arrow(active: true),
-          _box('iteration', 'run #$current', active: true, icon: Icons.loop_rounded),
-        ],
-      ),
-    );
-  }
-
-  Widget _oopScene() {
-    final active = _visualStep % 3;
-    return _sceneFrame(
-      caption: 'A class is a blueprint. Objects are real instances created from that blueprint.',
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _box('CLASS', 'Car blueprint', active: active == 0, icon: Icons.architecture_rounded),
-          const SizedBox(height: 8),
-          const Icon(Icons.south_rounded, color: Color(0xFF7773A0), size: 18),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _box('OBJECT 1', 'myCar', active: active == 1, icon: Icons.directions_car_rounded)),
-              const SizedBox(width: 10),
-              Expanded(child: _box('OBJECT 2', 'yourCar', active: active == 2, icon: Icons.directions_car_filled_rounded)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _databaseScene() {
-    final active = _visualStep % 3;
-    final rows = [
-      ['101', 'Aisha', '92'],
-      ['102', 'Rahul', '87'],
-      ['103', 'Zoya', '95'],
-    ];
-    return _sceneFrame(
-      caption: 'A database stores related records in an organized structure so we can query and update them.',
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF24254B),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF55517C)),
-            ),
-            child: Column(
-              children: [
-                _dbRow(['ID', 'NAME', 'MARKS'], active: active == 0, header: true),
-                for (int i = 0; i < rows.length; i++)
-                  _dbRow(rows[i], active: i == active),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          _labelChip(active == 0 ? 'TABLE' : active == 1 ? 'ROW' : 'QUERY → RESULT', active: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _dbRow(List<String> values, {required bool active, bool header = false}) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
-      color: active ? const Color(0x445E57C2) : Colors.transparent,
-      child: Row(
-        children: [
-          for (final value in values)
-            Expanded(
-              child: Text(
-                value,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: active ? Colors.white : const Color(0xFFBDB9D8),
-                  fontSize: header ? 9 : 10,
-                  fontWeight: header || active ? FontWeight.w800 : FontWeight.w500,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _osScene() {
-    final active = _visualStep % 3;
-    final layers = [
-      ('APPS', Icons.apps_rounded),
-      ('OPERATING SYSTEM', Icons.settings_suggest_rounded),
-      ('HARDWARE', Icons.memory_rounded),
-    ];
-    return _sceneFrame(
-      caption: 'The OS acts as the manager between applications and the computer hardware.',
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          for (int i = 0; i < layers.length; i++) ...[
-            _box(layers[i].$1, i == 0 ? 'Chrome • VS Code • Music' : '', active: i == active, icon: layers[i].$2),
-            if (i < layers.length - 1) const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
-              child: Icon(Icons.south_rounded, color: Color(0xFF7773A0), size: 17),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _genericScene() {
-    final active = _visualStep % 3;
-    final idea = centralIdea.isEmpty ? 'Core concept' : centralIdea;
-    return _sceneFrame(
-      caption: 'The visual follows the teacher explanation and highlights the current learning step.',
-      child: Row(
-        children: [
-          Expanded(child: _box('START', 'What goes in?', active: active == 0, icon: Icons.play_arrow_rounded)),
-          _arrow(active: active >= 1),
-          Expanded(child: _box(topic, idea, active: active == 1, icon: Icons.lightbulb_rounded)),
-          _arrow(active: active >= 2),
-          Expanded(child: _box('RESULT', 'What we learn', active: active == 2, icon: Icons.check_circle_rounded)),
-        ],
-      ),
-    );
+  @override
+  bool shouldRepaint(covariant _FallbackConceptPainter oldDelegate) {
+    return oldDelegate.topic != topic ||
+        oldDelegate.centralIdea != centralIdea ||
+        oldDelegate.activeStage != activeStage;
   }
 }
 
@@ -5184,6 +5637,469 @@ class _LessonLoadingView extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+
+class _FunVisualLessonPainter extends CustomPainter {
+  final String topic;
+  final String visualType;
+  final List<Map<String, dynamic>> nodes;
+  final int activeStage;
+  final double reveal;
+
+  _FunVisualLessonPainter({
+    required this.topic,
+    required this.visualType,
+    required this.nodes,
+    required this.activeStage,
+    required this.reveal,
+  });
+
+  final List<Color> _palette = const [
+    Color(0xFF4DD0E1),
+    Color(0xFFFFC857),
+    Color(0xFFFF7AA2),
+    Color(0xFF9B8CFF),
+    Color(0xFF63E6BE),
+    Color(0xFFFF9F43),
+  ];
+
+  String _clean(String value) {
+    return value
+        .replaceAll(RegExp(r'```[a-zA-Z]*'), '')
+        .replaceAll('```', '')
+        .replaceAll('**', '')
+        .replaceAll('__', '')
+        .replaceAll('##', '')
+        .replaceAll('###', '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  String _label(Map<String, dynamic> node) =>
+      _clean(node['label']?.toString() ?? 'Concept');
+
+  String _value(Map<String, dynamic> node) =>
+      _clean(node['value']?.toString() ?? '');
+
+  String _caption(Map<String, dynamic> node) =>
+      _clean(node['caption']?.toString() ?? '');
+
+  bool _active(Map<String, dynamic> node) {
+    final stage = int.tryParse(node['stage']?.toString() ?? '') ?? 0;
+    return stage <= activeStage;
+  }
+
+  void _text(
+    Canvas canvas,
+    String value,
+    Offset center,
+    TextStyle style, {
+    double maxWidth = 150,
+    int maxLines = 2,
+  }) {
+    if (value.isEmpty) return;
+    final painter = TextPainter(
+      text: TextSpan(text: value, style: style),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+      maxLines: maxLines,
+      ellipsis: '…',
+    )..layout(maxWidth: maxWidth);
+
+    painter.paint(
+      canvas,
+      Offset(
+        center.dx - painter.width / 2,
+        center.dy - painter.height / 2,
+      ),
+    );
+  }
+
+  void _star(Canvas canvas, Offset center, double size, Color color) {
+    final paint = Paint()..color = color;
+    final path = Path();
+    for (int i = 0; i < 8; i++) {
+      final angle = -math.pi / 2 + i * math.pi / 4;
+      final radius = i.isEven ? size : size * .28;
+      final point = Offset(
+        center.dx + math.cos(angle) * radius,
+        center.dy + math.sin(angle) * radius,
+      );
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _glow(Canvas canvas, Offset center, double radius, Color color) {
+    final paint = Paint()
+      ..color = color.withAlpha(45)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 18);
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  void _drawTag(
+    Canvas canvas,
+    String text,
+    Offset center,
+    Color color, {
+    double width = 92,
+  }) {
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center, width: width, height: 36),
+      const Radius.circular(14),
+    );
+    canvas.drawRRect(rect, Paint()..color = color.withAlpha(42));
+    canvas.drawRRect(
+      rect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = color.withAlpha(150),
+    );
+    _text(
+      canvas,
+      text,
+      center,
+      TextStyle(
+        color: color,
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+      ),
+      maxWidth: width - 10,
+      maxLines: 1,
+    );
+  }
+
+  void _drawMemoryBlock(
+    Canvas canvas,
+    Offset center,
+    Size size,
+    String label,
+    String value,
+    String caption,
+    Color color,
+    bool active,
+  ) {
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center, width: size.width, height: size.height),
+      const Radius.circular(16),
+    );
+
+    if (active) _glow(canvas, center, size.width * .35, color);
+
+    final fill = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          color.withAlpha(active ? 72 : 35),
+          const Color(0xFF18213E).withAlpha(230),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(rect.outerRect);
+
+    canvas.drawRRect(rect, fill);
+    canvas.drawRRect(
+      rect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = active ? 2.2 : 1.1
+        ..color = color.withAlpha(active ? 230 : 100),
+    );
+
+    _text(
+      canvas,
+      label,
+      center.translate(0, -25),
+      TextStyle(
+        color: color,
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+      ),
+      maxWidth: size.width - 12,
+      maxLines: 1,
+    );
+
+    _text(
+      canvas,
+      value.isEmpty ? '—' : value,
+      center.translate(0, 2),
+      const TextStyle(
+        color: Colors.white,
+        fontSize: 27,
+        fontWeight: FontWeight.w900,
+      ),
+      maxWidth: size.width - 12,
+      maxLines: 1,
+    );
+
+    _text(
+      canvas,
+      caption,
+      center.translate(0, 27),
+      const TextStyle(
+        color: Color(0xFFAEB7D6),
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+      ),
+      maxWidth: size.width - 10,
+      maxLines: 1,
+    );
+  }
+
+  void _arrow(
+    Canvas canvas,
+    Offset from,
+    Offset to,
+    Color color, {
+    String label = '',
+  }) {
+    final delta = to - from;
+    final distance = delta.distance;
+    if (distance < 2) return;
+
+    final unit = delta / distance;
+    final end = to - unit * 7;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(from, end, paint);
+
+    final perpendicular = Offset(-unit.dy, unit.dx);
+    final p1 = end - unit * 10 + perpendicular * 5;
+    final p2 = end - unit * 10 - perpendicular * 5;
+
+    final arrow = Path()
+      ..moveTo(end.dx, end.dy)
+      ..lineTo(p1.dx, p1.dy)
+      ..lineTo(p2.dx, p2.dy)
+      ..close();
+
+    canvas.drawPath(arrow, Paint()..color = color);
+
+    if (label.isNotEmpty) {
+      _drawTag(
+        canvas,
+        label,
+        (from + to) / 2 + perpendicular * 16,
+        color,
+        width: 105,
+      );
+    }
+  }
+
+  void _drawPointer(Canvas canvas, Size size) {
+    final pointer = nodes.isNotEmpty
+        ? nodes[0]
+        : <String, dynamic>{
+            'label': 'Pointer p',
+            'value': '1000',
+            'caption': 'stores address',
+            'stage': 0,
+          };
+    final variable = nodes.length > 1
+        ? nodes[1]
+        : <String, dynamic>{
+            'label': 'Variable x',
+            'value': '10',
+            'caption': 'memory address 1000',
+            'stage': 1,
+          };
+
+    final left = Offset(size.width * .27, size.height * .51);
+    final right = Offset(size.width * .73, size.height * .51);
+    final pointerColor = _palette[3];
+    final variableColor = _palette[0];
+
+    final blockWidth = math.min(260.0, math.max(180.0, size.width * .22));
+    final blockHeight = math.min(165.0, math.max(130.0, size.height * .32));
+
+    _drawMemoryBlock(
+      canvas,
+      left,
+      Size(blockWidth, blockHeight),
+      _label(variable),
+      _value(variable).isEmpty ? '10' : _value(variable),
+      'ADDRESS 1000',
+      variableColor,
+      _active(variable),
+    );
+
+    _drawMemoryBlock(
+      canvas,
+      right,
+      Size(blockWidth, blockHeight),
+      _label(pointer),
+      _value(pointer).isEmpty ? '1000' : _value(pointer),
+      'p → x',
+      pointerColor,
+      _active(pointer),
+    );
+
+    _arrow(
+      canvas,
+      left + const Offset(64, 0),
+      right - const Offset(64, 0),
+      _palette[1],
+      label: 'points to',
+    );
+
+    _drawTag(
+      canvas,
+      'x = 10',
+      Offset(left.dx, size.height * .20),
+      variableColor,
+      width: 78,
+    );
+    _drawTag(
+      canvas,
+      'p stores address',
+      Offset(right.dx, size.height * .20),
+      pointerColor,
+      width: 112,
+    );
+
+    _text(
+      canvas,
+      'One variable • one address • one connection',
+      Offset(size.width / 2, size.height * .88),
+      const TextStyle(
+        color: Color(0xFFC4CBE4),
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+      ),
+      maxWidth: size.width - 24,
+      maxLines: 1,
+    );
+  }
+
+  void _drawGeneric(Canvas canvas, Size size) {
+    // Large colorful concept bubbles keep text readable in fullscreen.
+    final center = Offset(size.width / 2, size.height * .52);
+    final count = math.min(nodes.length, 5);
+    final nodeRadius = math.min(64.0, math.max(50.0, size.width * .035));
+    final positions = <Offset>[
+      Offset(size.width * .18, size.height * .27),
+      Offset(size.width * .82, size.height * .27),
+      Offset(size.width * .15, size.height * .75),
+      Offset(size.width * .85, size.height * .75),
+      Offset(size.width * .50, size.height * .13),
+    ];
+
+    _glow(canvas, center, 92, _palette[3]);
+
+    for (int i = 0; i < count; i++) {
+      final node = nodes[i];
+      final color = _palette[i % _palette.length];
+      final pos = positions[i];
+      final active = _active(node);
+      final value = _value(node);
+      final caption = _caption(node);
+      final direction = center - pos;
+      final distance = direction.distance;
+
+      if (active && distance > 1) {
+        final unit = direction / distance;
+        _arrow(canvas, pos + unit * nodeRadius, center - unit * 100, color.withAlpha(230));
+      }
+
+      _glow(canvas, pos, nodeRadius * .75, color);
+      canvas.drawCircle(pos, nodeRadius, Paint()..color = color.withAlpha(active ? 62 : 22));
+      canvas.drawCircle(
+        pos,
+        nodeRadius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = active ? 3.2 : 1.5
+          ..color = color.withAlpha(active ? 250 : 110),
+      );
+
+      final emoji = _clean(node['emoji']?.toString() ?? '');
+      if (emoji.isNotEmpty) {
+        _text(canvas, emoji, pos.translate(0, -29), const TextStyle(fontSize: 31), maxWidth: nodeRadius * 1.6, maxLines: 1);
+      }
+
+      _text(
+        canvas,
+        _label(node),
+        pos.translate(0, 7),
+        TextStyle(color: active ? Colors.white : const Color(0xFFD2D6E8), fontSize: 13.5, fontWeight: FontWeight.w900, height: 1.15),
+        maxWidth: nodeRadius * 1.7,
+        maxLines: 2,
+      );
+
+      if (value.isNotEmpty || caption.isNotEmpty) {
+        _text(
+          canvas,
+          value.isNotEmpty ? value : caption,
+          pos.translate(0, 35),
+          TextStyle(color: color.withAlpha(active ? 250 : 170), fontSize: 10.5, fontWeight: FontWeight.w800),
+          maxWidth: nodeRadius * 1.7,
+          maxLines: 1,
+        );
+      }
+    }
+
+    final centerWidth = math.min(360.0, math.max(250.0, size.width * .27));
+    final centerRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center, width: centerWidth, height: 128),
+      const Radius.circular(32),
+    );
+
+    canvas.drawRRect(
+      centerRect,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF6257D8), Color(0xFF9B70F7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(centerRect.outerRect),
+    );
+    canvas.drawRRect(centerRect, Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = const Color(0xFFECE9FF));
+
+    _text(canvas, topic, center.translate(0, -20), const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900), maxWidth: centerWidth - 30, maxLines: 2);
+    _text(canvas, 'CORE IDEA', center.translate(0, 23), const TextStyle(color: Color(0xFFECE9FF), fontSize: 11.5, fontWeight: FontWeight.w900, letterSpacing: 1.2), maxWidth: centerWidth - 30, maxLines: 1);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Small decorative sparkles make the lesson feel more like a visual
+    // teaching board and less like a collection of UI cards.
+    _star(canvas, Offset(size.width * .07, size.height * .16), 6, _palette[0]);
+    _star(canvas, Offset(size.width * .92, size.height * .22), 5, _palette[3]);
+    _star(canvas, Offset(size.width * .08, size.height * .82), 4, _palette[2]);
+    _star(canvas, Offset(size.width * .94, size.height * .78), 6, _palette[1]);
+
+    final type = visualType.isNotEmpty
+        ? visualType
+        : topic.toLowerCase().contains('pointer')
+            ? 'pointer'
+            : 'concept';
+
+    if (type.contains('pointer')) {
+      _drawPointer(canvas, size);
+    } else {
+      _drawGeneric(canvas, size);
+    }
+
+  }
+
+  @override
+  bool shouldRepaint(covariant _FunVisualLessonPainter oldDelegate) {
+    return oldDelegate.activeStage != activeStage ||
+        oldDelegate.reveal != reveal ||
+        oldDelegate.nodes != nodes ||
+        oldDelegate.visualType != visualType ||
+        oldDelegate.topic != topic;
   }
 }
 
@@ -5386,6 +6302,984 @@ class _AIDiagramConnectionPainter extends CustomPainter {
         oldDelegate.connections != connections ||
         oldDelegate.positions != positions ||
         oldDelegate.nodeWidth != nodeWidth;
+  }
+}
+
+class _InteractiveAILesson extends StatelessWidget {
+  final String topic;
+  final String centralIdea;
+  final List<Map<String, String>> steps;
+  final Map<String, dynamic> data;
+  final int activeStage;
+  final bool isVoicePlaying;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+  final Future<void> Function() onPlayPause;
+
+  const _InteractiveAILesson({
+    required this.topic,
+    required this.centralIdea,
+    required this.steps,
+    required this.data,
+    required this.activeStage,
+    required this.isVoicePlaying,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onPlayPause,
+  });
+
+  bool get _isPointer => topic.toLowerCase().contains('pointer') ||
+      data['visual_type']?.toString().toLowerCase().contains('pointer') == true;
+
+  int get _stageCount => _isPointer ? 5 : math.max(1, math.min(5, steps.length)).toInt();
+
+  String _stageExplanation() {
+    if (_isPointer) {
+      const pointerText = [
+        'A variable stores a value in memory.',
+        'Every variable is stored at a specific memory address.',
+        'A pointer is a special variable used to store an address.',
+        'Here, p stores the address 1000.',
+        'Using *p lets us access the value stored at that address.',
+      ];
+      return pointerText[activeStage.clamp(0, 4)];
+    }
+
+    if (steps.isNotEmpty) {
+      final index = activeStage.clamp(0, steps.length - 1);
+      final title = steps[index]['title'] ?? '';
+      final description = steps[index]['description'] ?? '';
+      return [title, description]
+          .where((value) => value.trim().isNotEmpty)
+          .join('. ');
+    }
+    return centralIdea;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = _lessonAccent(activeStage);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _LessonBoard(
+          topic: topic,
+          activeStage: activeStage,
+          isPointer: _isPointer,
+          steps: steps,
+          explanation: _stageExplanation(),
+          centralIdea: centralIdea,
+          data: data,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _LessonNavButton(
+                icon: Icons.arrow_back_rounded,
+                label: 'Previous',
+                enabled: onPrevious != null,
+                onPressed: onPrevious,
+              ),
+            ),
+            const SizedBox(width: 12),
+            _LessonPlayButton(
+              isPlaying: isVoicePlaying,
+              accent: accent,
+              onPressed: () => onPlayPause(),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _LessonNavButton(
+                icon: Icons.arrow_forward_rounded,
+                label: 'Next',
+                iconOnRight: true,
+                enabled: onNext != null,
+                onPressed: onNext,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 9),
+        Center(
+          child: Text(
+            'Step ${activeStage + 1} / $_stageCount',
+            style: TextStyle(
+              color: dark ? const Color(0xFFD7D9EA) : const Color(0xFF4E5270),
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Color _lessonAccent(int stage) {
+  const colors = [
+    Color(0xFF45D7E8),
+    Color(0xFFFFC857),
+    Color(0xFFFF7AA2),
+    Color(0xFF9B7BFF),
+    Color(0xFF63E6BE),
+  ];
+  return colors[stage.clamp(0, colors.length - 1)];
+}
+
+class _LessonBoard extends StatelessWidget {
+  final String topic;
+  final int activeStage;
+  final bool isPointer;
+  final List<Map<String, String>> steps;
+  final String explanation;
+  final String centralIdea;
+  final Map<String, dynamic> data;
+
+  const _LessonBoard({
+    required this.topic,
+    required this.activeStage,
+    required this.isPointer,
+    required this.steps,
+    required this.explanation,
+    required this.centralIdea,
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boardHeight = math.max(
+          500.0,
+          math.min(680.0, constraints.maxWidth * .52),
+        );
+        return Container(
+          width: double.infinity,
+          height: boardHeight,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0A1731), Color(0xFF121F43), Color(0xFF1A2350)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xFF263C68), width: 1.4),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x40000000),
+                blurRadius: 22,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Text('🤖', style: TextStyle(fontSize: 28)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        topic,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'AI teacher • watch the idea happen',
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(170),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 450),
+                    switchInCurve: Curves.easeOutBack,
+                    switchOutCurve: Curves.easeIn,
+                    child: KeyedSubtree(
+                      key: ValueKey<int>(activeStage),
+                      child: isPointer
+                          ? _PointerTeachingScene(stage: activeStage)
+                          : _DynamicTeachingScene(
+                              topic: topic,
+                              stage: activeStage,
+                              steps: steps,
+                              centralIdea: centralIdea,
+                              data: data,
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _TeacherSpeechBubble(
+                  text: explanation,
+                  accent: _lessonAccent(activeStage),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PointerTeachingScene extends StatelessWidget {
+  final int stage;
+
+  const _PointerTeachingScene({required this.stage});
+
+  double _opacityFor(int itemStage) {
+    if (itemStage > stage) return 0.0;
+    if (itemStage == stage) return 1.0;
+    return 0.52;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final variableWidth = compact ? math.min(240.0, constraints.maxWidth * .72) : 230.0;
+        final memoryWidth = compact ? math.min(220.0, constraints.maxWidth * .66) : 210.0;
+        final arrowLabel = stage >= 3 ? 'stores address' : 'memory';
+
+        if (compact) {
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 350),
+                  opacity: _opacityFor(0),
+                  child: _TeachingVariable(
+                    width: variableWidth,
+                    active: stage == 0,
+                  ),
+                ),
+                if (stage >= 1) ...[
+                  const SizedBox(height: 8),
+                  Icon(Icons.arrow_downward_rounded, color: _lessonAccent(1), size: 32),
+                  Text(
+                    'stored in memory',
+                    style: TextStyle(color: _lessonAccent(1), fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 350),
+                    opacity: _opacityFor(1),
+                    child: _MemoryBlock(width: memoryWidth, active: stage == 1 || stage >= 3),
+                  ),
+                ],
+                if (stage >= 2) ...[
+                  const SizedBox(height: 12),
+                  Icon(Icons.arrow_downward_rounded, color: _lessonAccent(3), size: 32),
+                  const SizedBox(height: 6),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 350),
+                    opacity: _opacityFor(2),
+                    child: _PointerBubble(active: stage == 2 || stage >= 3),
+                  ),
+                ],
+                if (stage >= 3) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    stage == 4 ? '*p  →  10' : 'p  →  1000',
+                    style: TextStyle(
+                      color: _lessonAccent(stage),
+                      fontSize: stage == 4 ? 30 : 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _PointerArrowPainter(stage: stage),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
+              left: compact ? 18 : constraints.maxWidth * .09,
+              top: constraints.maxHeight * .19,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 350),
+                opacity: _opacityFor(0),
+                child: _TeachingVariable(
+                  width: variableWidth,
+                  active: stage == 0,
+                ),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
+              right: compact ? 18 : constraints.maxWidth * .09,
+              top: constraints.maxHeight * .19,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 350),
+                opacity: _opacityFor(1),
+                child: _MemoryBlock(
+                  width: memoryWidth,
+                  active: stage == 1 || stage >= 3,
+                ),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
+              right: compact ? 28 : constraints.maxWidth * .12,
+              top: constraints.maxHeight * .62,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 350),
+                opacity: _opacityFor(2),
+                child: _PointerBubble(active: stage == 2 || stage >= 3),
+              ),
+            ),
+            if (stage >= 3)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: constraints.maxHeight * .49,
+                child: Center(
+                  child: AnimatedScale(
+                    scale: stage == 3 ? 1.06 : 1.0,
+                    duration: const Duration(milliseconds: 350),
+                    child: Text(
+                      arrowLabel,
+                      style: TextStyle(
+                        color: _lessonAccent(stage),
+                        fontSize: compact ? 14 : 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (stage == 4)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: constraints.maxHeight * .71,
+                child: Center(
+                  child: AnimatedScale(
+                    scale: 1.08,
+                    duration: const Duration(milliseconds: 400),
+                    child: Text(
+                      '*p  →  10',
+                      style: TextStyle(
+                        color: _lessonAccent(4),
+                        fontSize: compact ? 28 : 38,
+                        fontWeight: FontWeight.w900,
+                        shadows: const [
+                          Shadow(color: Color(0x8863E6BE), blurRadius: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              left: 12,
+              top: 20,
+              child: _Sparkle(color: _lessonAccent(0), size: 10),
+            ),
+            Positioned(
+              right: 24,
+              top: 36,
+              child: _Sparkle(color: _lessonAccent(3), size: 8),
+            ),
+            Positioned(
+              left: constraints.maxWidth * .45,
+              bottom: 12,
+              child: _Sparkle(color: _lessonAccent(1), size: 7),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TeachingVariable extends StatelessWidget {
+  final double width;
+  final bool active;
+
+  const _TeachingVariable({required this.width, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          'Variable',
+          style: TextStyle(
+            color: active ? Colors.white : const Color(0xFFB8C1D8),
+            fontSize: width < 190 ? 17 : 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'x = 10',
+          style: TextStyle(
+            color: _lessonAccent(0),
+            fontSize: width < 190 ? 18 : 22,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          width: width,
+          height: width < 190 ? 72 : 88,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF132B35),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _lessonAccent(0),
+              width: active ? 3 : 1.5,
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: _lessonAccent(0).withAlpha(100),
+                      blurRadius: 22,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            '1000',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: width < 190 ? 25 : 31,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'memory address',
+          style: TextStyle(
+            color: Colors.white.withAlpha(active ? 220 : 130),
+            fontSize: width < 190 ? 12 : 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MemoryBlock extends StatelessWidget {
+  final double width;
+  final bool active;
+
+  const _MemoryBlock({required this.width, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          'Memory',
+          style: TextStyle(
+            color: active ? Colors.white : const Color(0xFFB8C1D8),
+            fontSize: width < 180 ? 17 : 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'Address 1000',
+          style: TextStyle(
+            color: _lessonAccent(1),
+            fontSize: width < 180 ? 16 : 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          width: width,
+          height: width < 180 ? 72 : 88,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF302A18),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _lessonAccent(1),
+              width: active ? 3 : 1.5,
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: _lessonAccent(1).withAlpha(90),
+                      blurRadius: 20,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            '10',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: width < 180 ? 26 : 31,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'value stored here',
+          style: TextStyle(
+            color: Colors.white.withAlpha(active ? 220 : 130),
+            fontSize: width < 180 ? 12 : 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PointerBubble extends StatelessWidget {
+  final bool active;
+
+  const _PointerBubble({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          'Pointer',
+          style: TextStyle(
+            color: active ? Colors.white : const Color(0xFFB8C1D8),
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'p',
+          style: TextStyle(
+            color: _lessonAccent(3),
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 9),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          width: 108,
+          height: 108,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF251C3A),
+            border: Border.all(
+              color: _lessonAccent(3),
+              width: active ? 3 : 1.5,
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: _lessonAccent(3).withAlpha(105),
+                      blurRadius: 25,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: const Text(
+            'p',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 38,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'stores an address',
+          style: TextStyle(
+            color: Colors.white.withAlpha(active ? 220 : 130),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PointerArrowPainter extends CustomPainter {
+  final int stage;
+
+  _PointerArrowPainter({required this.stage});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final compact = size.width < 620;
+    final leftX = compact ? 18.0 : size.width * .09;
+    final rightX = compact ? 18.0 : size.width * .09;
+    final variableWidth = compact ? 170.0 : 230.0;
+    final memoryWidth = compact ? 150.0 : 210.0;
+    final y = size.height * .37;
+    final start = Offset(leftX + variableWidth, y);
+    final end = Offset(size.width - rightX - memoryWidth, y);
+
+    if (stage >= 1) {
+      _drawArrow(canvas, start, end, _lessonAccent(1), 'address');
+    }
+
+    if (stage >= 3) {
+      final p = Offset(size.width - rightX - 55, size.height * .62);
+      final memory = Offset(size.width - rightX - memoryWidth / 2, size.height * .37 + 40);
+      _drawArrow(canvas, p, memory, _lessonAccent(3), 'p → 1000');
+    }
+  }
+
+  void _drawArrow(Canvas canvas, Offset start, Offset end, Color color, String label) {
+    final paint = Paint()
+      ..color = color.withAlpha(220)
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final path = Path()..moveTo(start.dx, start.dy);
+    final midX = (start.dx + end.dx) / 2;
+    path.cubicTo(midX, start.dy, midX, end.dy, end.dx, end.dy);
+    canvas.drawPath(path, paint);
+
+    final direction = (end - start);
+    final distance = direction.distance;
+    if (distance > 1) {
+      final unit = direction / distance;
+      final side = Offset(-unit.dy, unit.dx);
+      final tip = end;
+      final p1 = tip - unit * 16 + side * 8;
+      final p2 = tip - unit * 16 - side * 8;
+      final arrow = Path()
+        ..moveTo(tip.dx, tip.dy)
+        ..lineTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy)
+        ..close();
+      canvas.drawPath(arrow, Paint()..color = color);
+    }
+
+    final tp = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          color: color,
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: 130);
+    tp.paint(canvas, Offset((start.dx + end.dx) / 2 - tp.width / 2, start.dy - 28));
+  }
+
+  @override
+  bool shouldRepaint(covariant _PointerArrowPainter oldDelegate) => oldDelegate.stage != stage;
+}
+
+class _DynamicTeachingScene extends StatelessWidget {
+  final String topic;
+  final int stage;
+  final List<Map<String, String>> steps;
+  final String centralIdea;
+  final Map<String, dynamic> data;
+
+  const _DynamicTeachingScene({
+    required this.topic,
+    required this.stage,
+    required this.steps,
+    required this.centralIdea,
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final count = math.max(1, math.min(5, steps.length));
+    final labels = steps.isEmpty
+        ? [topic]
+        : steps.take(count).map((step) {
+            final title = step['title'] ?? 'Step';
+            return title.isEmpty ? topic : title;
+          }).toList();
+
+    return Center(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final horizontal = constraints.maxWidth >= 760;
+          final visible = math.min(stage + 1, labels.length);
+          return SingleChildScrollView(
+            child: Flex(
+              direction: horizontal ? Axis.horizontal : Axis.vertical,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                for (int i = 0; i < visible; i++) ...[
+                  _ConceptBubble(
+                    label: labels[i],
+                    number: i + 1,
+                    accent: _lessonAccent(i),
+                    active: i == stage,
+                  ),
+                  if (i != visible - 1)
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontal ? 10 : 0,
+                        vertical: horizontal ? 0 : 9,
+                      ),
+                      child: Icon(
+                        horizontal
+                            ? Icons.arrow_forward_rounded
+                            : Icons.arrow_downward_rounded,
+                        color: _lessonAccent(i),
+                        size: 30,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ConceptBubble extends StatelessWidget {
+  final String label;
+  final int number;
+  final Color accent;
+  final bool active;
+
+  const _ConceptBubble({
+    required this.label,
+    required this.number,
+    required this.accent,
+    required this.active,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      constraints: const BoxConstraints(minWidth: 150, maxWidth: 230),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: BoxDecoration(
+        color: accent.withAlpha(active ? 45 : 22),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: accent.withAlpha(active ? 255 : 120), width: active ? 3 : 1.5),
+        boxShadow: active
+            ? [BoxShadow(color: accent.withAlpha(90), blurRadius: 24, spreadRadius: 2)]
+            : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$number',
+            style: TextStyle(color: accent, fontSize: 13, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: active ? Colors.white : const Color(0xFFD5D9E8),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeacherSpeechBubble extends StatelessWidget {
+  final String text;
+  final Color accent;
+
+  const _TeacherSpeechBubble({required this.text, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent,
+            boxShadow: [
+              BoxShadow(color: accent.withAlpha(75), blurRadius: 16),
+            ],
+          ),
+          child: const Text('✨', style: TextStyle(fontSize: 22)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 13, 16, 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111C38),
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              border: Border(left: BorderSide(color: accent, width: 4)),
+            ),
+            child: Text(
+              text,
+              softWrap: true,
+              style: const TextStyle(
+                color: Color(0xFFF4F6FF),
+                fontSize: 16,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LessonNavButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final bool iconOnRight;
+  final VoidCallback? onPressed;
+
+  const _LessonNavButton({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onPressed,
+    this.iconOnRight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final children = <Widget>[
+      Icon(icon, size: 20),
+      const SizedBox(width: 7),
+      Text(label),
+    ];
+    return OutlinedButton(
+      onPressed: enabled ? onPressed : null,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: enabled ? Colors.white : const Color(0xFF747A91),
+        backgroundColor: const Color(0xFF151E3A),
+        side: BorderSide(color: enabled ? const Color(0xFF42527A) : const Color(0xFF28314E)),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: iconOnRight ? children.reversed.toList() : children,
+      ),
+    );
+  }
+}
+
+class _LessonPlayButton extends StatelessWidget {
+  final bool isPlaying;
+  final Color accent;
+  final VoidCallback onPressed;
+
+  const _LessonPlayButton({
+    required this.isPlaying,
+    required this.accent,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: isPlaying ? 'Pause teacher voice' : 'Play teacher voice',
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(30),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent,
+            boxShadow: [
+              BoxShadow(
+                color: accent.withAlpha(isPlaying ? 120 : 70),
+                blurRadius: isPlaying ? 24 : 14,
+                spreadRadius: isPlaying ? 2 : 0,
+              ),
+            ],
+          ),
+          child: Icon(
+            isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            color: Colors.white,
+            size: 30,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Sparkle extends StatelessWidget {
+  final Color color;
+  final double size;
+
+  const _Sparkle({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(Icons.auto_awesome, color: color.withAlpha(190), size: size * 2);
   }
 }
 

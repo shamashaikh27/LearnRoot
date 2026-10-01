@@ -120,8 +120,8 @@ class _GraphScreenState extends State<GraphScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                   Color(0xFF8000FF), // Deep purple
-                   Color(0xFFB266FF), // Soft lavender
+                   Color(0xFF17142A), // Soft deep indigo
+                   Color(0xFF24203D), // Settled muted purple
                   ],
                 )
               : AppTheme.lightBackgroundGradient,
