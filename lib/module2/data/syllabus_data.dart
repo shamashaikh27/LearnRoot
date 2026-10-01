@@ -13,6 +13,63 @@ Topic _dsTopic(
   );
 }
 
+Topic _cTopic(
+  int id,
+  String name,
+  List<int> prerequisites,
+) {
+  return Topic(
+    id: 'c_$id',
+    name: name,
+    subject: 'C Programming',
+    prerequisites: prerequisites.map((p) => 'c_$p').toList(),
+  );
+}
+
+Topic _osTopic(
+  int id,
+  String name,
+  List<int> prerequisites,
+) {
+  return Topic(
+    id: 'os_$id',
+    name: name,
+    subject: 'Operating Systems',
+    prerequisites: prerequisites.map((p) => 'os_$p').toList(),
+  );
+}
+
+Topic _cnTopic(int id, String name, List<int> prerequisites) {
+  return Topic(
+    id: 'cn_$id',
+    name: name,
+    subject: 'Computer Networks',
+    prerequisites: prerequisites.map((p) => 'cn_$p').toList(),
+  );
+}
+
+Topic _javaTopic(int id, String name, List<int> prerequisites) {
+  return Topic(
+    id: 'java_$id',
+    name: name,
+    subject: 'OOPs – Java',
+    prerequisites: prerequisites.map((p) => 'java_$p').toList(),
+  );
+}
+
+Topic _dbmsTopic(
+  int id,
+  String name,
+  List<int> prerequisites,
+) {
+  return Topic(
+    id: 'dbms_$id',
+    name: name,
+    subject: 'DBMS',
+    prerequisites: prerequisites.map((p) => 'dbms_$p').toList(),
+  );
+}
+
 final List<Topic> syllabusTopics = [
   // UNIT 1: C PROGRAMMING FOUNDATIONS
   _dsTopic(1, 'Introduction to C', []),
@@ -329,1977 +386,1175 @@ final List<Topic> syllabusTopics = [
   _dsTopic(282, 'External Sorting', [247, 267]),
   _dsTopic(283, 'Multi-way Merge Sort for Files', [282]),
 
-  // =========================
-  // C PROGRAMMING
-  // =========================
-
-  // 1. Introduction to C
-  Topic(
-    id: 'c_introduction',
-    name: 'Introduction to C',
-    subject: 'C Programming',
-  ),
-
-  // 2. Structure of C Program
-  Topic(
-    id: 'c_structure',
-    name: 'Structure of C Program',
-    subject: 'C Programming',
-    prerequisites: ['c_introduction'],
-  ),
-
-  // 3. Compilation Process in C
-  Topic(
-    id: 'c_compilation',
-    name: 'Compilation Process in C',
-    subject: 'C Programming',
-    prerequisites: ['c_structure'],
-  ),
-
-  // 4. Variables & Data Types
-  Topic(
-    id: 'c_variables_datatypes',
-    name: 'Variables & Data Types',
-    subject: 'C Programming',
-    prerequisites: ['c_structure'],
-  ),
-
-  // 5. Constants and Literals
-  Topic(
-    id: 'c_constants_literals',
-    name: 'Constants and Literals',
-    subject: 'C Programming',
-    prerequisites: ['c_variables_datatypes'],
-  ),
-
-  // 6. Operators & Expressions
-  Topic(
-    id: 'c_operators_expressions',
-    name: 'Operators & Expressions',
-    subject: 'C Programming',
-    prerequisites: ['c_variables_datatypes'],
-  ),
-
-  // 7. Type Conversion
-  Topic(
-    id: 'c_type_conversion',
-    name: 'Type Conversion',
-    subject: 'C Programming',
-    prerequisites: ['c_operators_expressions'],
-  ),
-
-  // 8. Input and Output
-  Topic(
-    id: 'c_input_output',
-    name: 'Input and Output (printf, scanf)',
-    subject: 'C Programming',
-    prerequisites: ['c_structure'],
-  ),
-
-  // 9. Decision Making
-  Topic(
-    id: 'c_decision_making',
-    name: 'Decision Making (if, if-else, switch)',
-    subject: 'C Programming',
-    prerequisites: ['c_operators_expressions'],
-  ),
-
-  // 10. Loops
-  Topic(
-    id: 'c_loops',
-    name: 'Loops (while, do-while, for)',
-    subject: 'C Programming',
-    prerequisites: ['c_operators_expressions'],
-  ),
-
-  // 11. Break and Continue
-  Topic(
-    id: 'c_break_continue',
-    name: 'Break and Continue',
-    subject: 'C Programming',
-    prerequisites: ['c_loops'],
-  ),
-
-  // 12. Functions Overview
-  Topic(
-    id: 'c_functions',
-    name: 'Functions Overview',
-    subject: 'C Programming',
-    prerequisites: ['c_structure'],
-  ),
-
-  // 13. Function Prototypes & Definition
-  Topic(
-    id: 'c_function_prototypes',
-    name: 'Function Prototypes & Definition',
-    subject: 'C Programming',
-    prerequisites: ['c_functions'],
-  ),
-
-  // 14. Parameter Passing
-  Topic(
-    id: 'c_parameter_passing',
-    name: 'Parameter Passing (Call by Value)',
-    subject: 'C Programming',
-    prerequisites: ['c_function_prototypes'],
-  ),
-
-  // 15. Recursion in C
-  Topic(
-    id: 'c_recursion',
-    name: 'Recursion in C',
-    subject: 'C Programming',
-    prerequisites: ['c_functions', 'c_decision_making'],
-  ),
-
-  // 16. Scope & Storage Classes
-  Topic(
-    id: 'c_scope_storage',
-    name: 'Scope & Storage Classes',
-    subject: 'C Programming',
-    prerequisites: ['c_variables_datatypes', 'c_functions'],
-  ),
-
-  // 17. 1D Arrays
-  Topic(
-    id: 'c_1d_arrays',
-    name: '1D Arrays',
-    subject: 'C Programming',
-    prerequisites: ['c_variables_datatypes', 'c_loops'],
-  ),
-
-  // 18. 2D Arrays & Multi-Dimensional Arrays
-  Topic(
-    id: 'c_2d_arrays',
-    name: '2D Arrays & Multi-Dimensional Arrays',
-    subject: 'C Programming',
-    prerequisites: ['c_1d_arrays'],
-  ),
-
-  // 19. Passing Arrays to Functions
-  Topic(
-    id: 'c_arrays_functions',
-    name: 'Passing Arrays to Functions',
-    subject: 'C Programming',
-    prerequisites: ['c_1d_arrays', 'c_functions'],
-  ),
-
-  // 20. Strings Concept & Declaration
-  Topic(
-    id: 'c_strings',
-    name: 'Strings Concept & Declaration',
-    subject: 'C Programming',
-    prerequisites: ['c_1d_arrays'],
-  ),
-
-  // 21. String Handling Functions
-  Topic(
-    id: 'c_string_functions',
-    name: 'String Handling Functions (string.h)',
-    subject: 'C Programming',
-    prerequisites: ['c_strings'],
-  ),
-
-  // 22. Pointers Basics
-  Topic(
-    id: 'c_pointers',
-    name: 'Pointers Basics',
-    subject: 'C Programming',
-    prerequisites: ['c_variables_datatypes'],
-  ),
-
-  // 23. Pointer Arithmetic
-  Topic(
-    id: 'c_pointer_arithmetic',
-    name: 'Pointer Arithmetic',
-    subject: 'C Programming',
-    prerequisites: ['c_pointers'],
-  ),
-
-  // 24. Pointers and Arrays
-  Topic(
-    id: 'c_pointers_arrays',
-    name: 'Pointers and Arrays',
-    subject: 'C Programming',
-    prerequisites: ['c_pointers', 'c_1d_arrays'],
-  ),
-
-  // 25. Call by Reference
-  Topic(
-    id: 'c_call_by_reference',
-    name: 'Call by Reference',
-    subject: 'C Programming',
-    prerequisites: ['c_pointers', 'c_functions'],
-  ),
-
-  // 26. Pointers to Pointers
-  Topic(
-    id: 'c_pointer_to_pointer',
-    name: 'Pointers to Pointers',
-    subject: 'C Programming',
-    prerequisites: ['c_pointers'],
-  ),
-
-  // 27. Pointers and Strings
-  Topic(
-    id: 'c_pointers_strings',
-    name: 'Pointers and Strings',
-    subject: 'C Programming',
-    prerequisites: ['c_pointers', 'c_strings'],
-  ),
-
-  // 28. Dynamic Memory Allocation
-  Topic(
-    id: 'c_dynamic_memory',
-    name: 'Dynamic Memory Allocation (malloc, calloc, realloc, free)',
-    subject: 'C Programming',
-    prerequisites: ['c_pointers'],
-  ),
-
-  // 29. Function Pointers
-  Topic(
-    id: 'c_function_pointers',
-    name: 'Function Pointers',
-    subject: 'C Programming',
-    prerequisites: ['c_pointers', 'c_functions'],
-  ),
-
-  // 30. Structures Basics
-  Topic(
-    id: 'c_structures',
-    name: 'Structures Basics',
-    subject: 'C Programming',
-    prerequisites: ['c_variables_datatypes'],
-  ),
-
-  // 31. Array of Structures
-  Topic(
-    id: 'c_array_structures',
-    name: 'Array of Structures',
-    subject: 'C Programming',
-    prerequisites: ['c_structures', 'c_1d_arrays'],
-  ),
-
-  // 32. Pointers to Structures
-  Topic(
-    id: 'c_pointer_structures',
-    name: 'Pointers to Structures',
-    subject: 'C Programming',
-    prerequisites: ['c_structures', 'c_pointers'],
-  ),
-
-  // 33. Nested Structures
-  Topic(
-    id: 'c_nested_structures',
-    name: 'Nested Structures',
-    subject: 'C Programming',
-    prerequisites: ['c_structures'],
-  ),
-
-  // 34. Unions
-  Topic(
-    id: 'c_unions',
-    name: 'Unions',
-    subject: 'C Programming',
-    prerequisites: ['c_structures'],
-  ),
-
-  // 35. Typedef and Enum
-  Topic(
-    id: 'c_typedef_enum',
-    name: 'Typedef and Enum',
-    subject: 'C Programming',
-    prerequisites: ['c_variables_datatypes'],
-  ),
-
-  // 36. Bit Fields
-  Topic(
-    id: 'c_bit_fields',
-    name: 'Bit Fields',
-    subject: 'C Programming',
-    prerequisites: ['c_structures', 'c_operators_expressions'],
-  ),
-
-  // 37. File Handling Basics
-  Topic(
-    id: 'c_file_handling',
-    name: 'File Handling Basics',
-    subject: 'C Programming',
-    prerequisites: ['c_functions', 'c_pointers'],
-  ),
-
-  // 38. File Reading and Writing
-  Topic(
-    id: 'c_file_read_write',
-    name: 'File Reading and Writing',
-    subject: 'C Programming',
-    prerequisites: ['c_file_handling'],
-  ),
-
-  // 39. Command Line Arguments
-  Topic(
-    id: 'c_command_line',
-    name: 'Command Line Arguments',
-    subject: 'C Programming',
-    prerequisites: ['c_functions', 'c_1d_arrays', 'c_pointers'],
-  ),
-
-  // 40. Preprocessor Directives
-  Topic(
-    id: 'c_preprocessor',
-    name: 'Preprocessor Directives (#include, #define)',
-    subject: 'C Programming',
-    prerequisites: ['c_structure'],
-  ),
-
-  // 41. Macros and Conditional Compilation
-  Topic(
-    id: 'c_macros',
-    name: 'Macros and Conditional Compilation',
-    subject: 'C Programming',
-    prerequisites: ['c_preprocessor'],
-  ),
-  // 42. Header Files and Multi-File Programs
-  Topic(
-    id: 'c_header_files',
-    name: 'Header Files and Multi-File Programs',
-    subject: 'C Programming',
-    prerequisites: ['c_preprocessor', 'c_functions'],
-  ),
-
-  // =========================
-  // OPERATING SYSTEMS
-  // =========================
-
-  // 1. Introduction to Operating Systems
-  Topic(
-    id: 'os_introduction',
-    name: 'Introduction to Operating Systems',
-    subject: 'Operating Systems',
-  ),
-
-  // 2. OS Functions & Services
-  Topic(
-    id: 'os_functions_services',
-    name: 'OS Functions & Services',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 3. Types of Operating Systems
-  Topic(
-    id: 'os_types',
-    name: 'Types of Operating Systems',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 4. OS Structures
-  Topic(
-    id: 'os_structures',
-    name: 'OS Structures',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 5. System Calls
-  Topic(
-    id: 'os_system_calls',
-    name: 'System Calls',
-    subject: 'Operating Systems',
-    prerequisites: ['os_functions_services'],
-  ),
-
-  // 6. User & Kernel Mode
-  Topic(
-    id: 'os_user_kernel_mode',
-    name: 'User & Kernel Mode',
-    subject: 'Operating Systems',
-    prerequisites: ['os_functions_services'],
-  ),
-
-  // 7. Processes
-  Topic(
-    id: 'os_processes',
-    name: 'Processes',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 8. Process States
-  Topic(
-    id: 'os_process_states',
-    name: 'Process States',
-    subject: 'Operating Systems',
-    prerequisites: ['os_processes'],
-  ),
-
-  // 9. Process Control Block (PCB)
-  Topic(
-    id: 'os_pcb',
-    name: 'Process Control Block (PCB)',
-    subject: 'Operating Systems',
-    prerequisites: ['os_processes'],
-  ),
-
-  // 10. Process Scheduling
-  Topic(
-    id: 'os_process_scheduling',
-    name: 'Process Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_processes'],
-  ),
-
-  // 11. Scheduling Criteria
-  Topic(
-    id: 'os_scheduling_criteria',
-    name: 'Scheduling Criteria',
-    subject: 'Operating Systems',
-    prerequisites: ['os_process_scheduling'],
-  ),
-
-  // 12. FCFS Scheduling
-  Topic(
-    id: 'os_fcfs_scheduling',
-    name: 'FCFS Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_process_scheduling', 'os_scheduling_criteria'],
-  ),
-
-  // 13. SJF Scheduling
-  Topic(
-    id: 'os_sjf_scheduling',
-    name: 'SJF Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_process_scheduling', 'os_scheduling_criteria'],
-  ),
-
-  // 14. Priority Scheduling
-  Topic(
-    id: 'os_priority_scheduling',
-    name: 'Priority Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_process_scheduling', 'os_scheduling_criteria'],
-  ),
-
-  // 15. Round Robin Scheduling
-  Topic(
-    id: 'os_round_robin',
-    name: 'Round Robin Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_process_scheduling', 'os_scheduling_criteria'],
-  ),
-
-  // 16. Inter-Process Communication (IPC)
-  Topic(
-    id: 'os_ipc',
-    name: 'Inter-Process Communication (IPC)',
-    subject: 'Operating Systems',
-    prerequisites: ['os_processes'],
-  ),
-
-  // 17. Shared Memory
-  Topic(
-    id: 'os_shared_memory',
-    name: 'Shared Memory',
-    subject: 'Operating Systems',
-    prerequisites: ['os_ipc'],
-  ),
-
-  // 18. Message Passing
-  Topic(
-    id: 'os_message_passing',
-    name: 'Message Passing',
-    subject: 'Operating Systems',
-    prerequisites: ['os_ipc'],
-  ),
-
-  // 19. Threads
-  Topic(
-    id: 'os_threads',
-    name: 'Threads',
-    subject: 'Operating Systems',
-    prerequisites: ['os_processes'],
-  ),
-
-  // 20. Multithreading
-  Topic(
-    id: 'os_multithreading',
-    name: 'Multithreading',
-    subject: 'Operating Systems',
-    prerequisites: ['os_threads'],
-  ),
-
-  // 21. Process Synchronization
-  Topic(
-    id: 'os_process_synchronization',
-    name: 'Process Synchronization',
-    subject: 'Operating Systems',
-    prerequisites: ['os_processes'],
-  ),
-
-  // 22. Race Condition
-  Topic(
-    id: 'os_race_condition',
-    name: 'Race Condition',
-    subject: 'Operating Systems',
-    prerequisites: ['os_process_synchronization'],
-  ),
-
-  // 23. Critical Section
-  Topic(
-    id: 'os_critical_section',
-    name: 'Critical Section',
-    subject: 'Operating Systems',
-    prerequisites: ['os_race_condition'],
-  ),
-
-  // 24. Semaphores
-  Topic(
-    id: 'os_semaphores',
-    name: 'Semaphores',
-    subject: 'Operating Systems',
-    prerequisites: ['os_critical_section'],
-  ),
-
-  // 25. Mutex
-  Topic(
-    id: 'os_mutex',
-    name: 'Mutex',
-    subject: 'Operating Systems',
-    prerequisites: ['os_critical_section'],
-  ),
-
-  // 26. Deadlock
-  Topic(
-    id: 'os_deadlock',
-    name: 'Deadlock',
-    subject: 'Operating Systems',
-    prerequisites: ['os_process_synchronization'],
-  ),
-
-  // 27. Deadlock Prevention
-  Topic(
-    id: 'os_deadlock_prevention',
-    name: 'Deadlock Prevention',
-    subject: 'Operating Systems',
-    prerequisites: ['os_deadlock'],
-  ),
-
-  // 28. Deadlock Avoidance
-  Topic(
-    id: 'os_deadlock_avoidance',
-    name: 'Deadlock Avoidance',
-    subject: 'Operating Systems',
-    prerequisites: ['os_deadlock'],
-  ),
-
-  // 29. Banker's Algorithm
-  Topic(
-    id: 'os_bankers_algorithm',
-    name: "Banker's Algorithm",
-    subject: 'Operating Systems',
-    prerequisites: ['os_deadlock_avoidance'],
-  ),
-
-  // 30. Deadlock Detection & Recovery
-  Topic(
-    id: 'os_deadlock_detection_recovery',
-    name: 'Deadlock Detection & Recovery',
-    subject: 'Operating Systems',
-    prerequisites: ['os_deadlock'],
-  ),
-
-  // 31. Memory Management
-  Topic(
-    id: 'os_memory_management',
-    name: 'Memory Management',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 32. Contiguous Memory Allocation
-  Topic(
-    id: 'os_contiguous_memory',
-    name: 'Contiguous Memory Allocation',
-    subject: 'Operating Systems',
-    prerequisites: ['os_memory_management'],
-  ),
-
-  // 33. Paging
-  Topic(
-    id: 'os_paging',
-    name: 'Paging',
-    subject: 'Operating Systems',
-    prerequisites: ['os_memory_management'],
-  ),
-
-  // 34. Page Table
-  Topic(
-    id: 'os_page_table',
-    name: 'Page Table',
-    subject: 'Operating Systems',
-    prerequisites: ['os_paging'],
-  ),
-
-  // 35. Translation Lookaside Buffer (TLB)
-  Topic(
-    id: 'os_tlb',
-    name: 'Translation Lookaside Buffer (TLB)',
-    subject: 'Operating Systems',
-    prerequisites: ['os_page_table'],
-  ),
-
-  // 36. Segmentation
-  Topic(
-    id: 'os_segmentation',
-    name: 'Segmentation',
-    subject: 'Operating Systems',
-    prerequisites: ['os_memory_management'],
-  ),
-
-  // 37. Virtual Memory
-  Topic(
-    id: 'os_virtual_memory',
-    name: 'Virtual Memory',
-    subject: 'Operating Systems',
-    prerequisites: ['os_paging'],
-  ),
-
-  // 38. Demand Paging
-  Topic(
-    id: 'os_demand_paging',
-    name: 'Demand Paging',
-    subject: 'Operating Systems',
-    prerequisites: ['os_virtual_memory'],
-  ),
-
-  // 39. Page Replacement
-  Topic(
-    id: 'os_page_replacement',
-    name: 'Page Replacement',
-    subject: 'Operating Systems',
-    prerequisites: ['os_demand_paging'],
-  ),
-
-  // 40. FIFO Page Replacement
-  Topic(
-    id: 'os_fifo_page_replacement',
-    name: 'FIFO Page Replacement',
-    subject: 'Operating Systems',
-    prerequisites: ['os_page_replacement'],
-  ),
-
-  // 41. LRU Page Replacement
-  Topic(
-    id: 'os_lru_page_replacement',
-    name: 'LRU Page Replacement',
-    subject: 'Operating Systems',
-    prerequisites: ['os_page_replacement'],
-  ),
-
-  // 42. Optimal Page Replacement
-  Topic(
-    id: 'os_optimal_page_replacement',
-    name: 'Optimal Page Replacement',
-    subject: 'Operating Systems',
-    prerequisites: ['os_page_replacement'],
-  ),
-
-  // 43. File System
-  Topic(
-    id: 'os_file_system',
-    name: 'File System',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 44. File Concept & Attributes
-  Topic(
-    id: 'os_file_concept_attributes',
-    name: 'File Concept & Attributes',
-    subject: 'Operating Systems',
-    prerequisites: ['os_file_system'],
-  ),
-
-  // 45. File Operations
-  Topic(
-    id: 'os_file_operations',
-    name: 'File Operations',
-    subject: 'Operating Systems',
-    prerequisites: ['os_file_concept_attributes'],
-  ),
-
-  // 46. Directory Structure
-  Topic(
-    id: 'os_directory_structure',
-    name: 'Directory Structure',
-    subject: 'Operating Systems',
-    prerequisites: ['os_file_system'],
-  ),
-
-  // 47. File Allocation Methods
-  Topic(
-    id: 'os_file_allocation',
-    name: 'File Allocation Methods',
-    subject: 'Operating Systems',
-    prerequisites: ['os_file_system'],
-  ),
-
-  // 48. Free Space Management
-  Topic(
-    id: 'os_free_space',
-    name: 'Free Space Management',
-    subject: 'Operating Systems',
-    prerequisites: ['os_file_system'],
-  ),
-
-  // 49. Disk Structure
-  Topic(
-    id: 'os_disk_structure',
-    name: 'Disk Structure',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 50. Disk Scheduling
-  Topic(
-    id: 'os_disk_scheduling',
-    name: 'Disk Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_disk_structure'],
-  ),
-
-  // 51. FCFS Disk Scheduling
-  Topic(
-    id: 'os_fcfs_disk_scheduling',
-    name: 'FCFS Disk Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_disk_scheduling'],
-  ),
-
-  // 52. SSTF Disk Scheduling
-  Topic(
-    id: 'os_sstf_disk_scheduling',
-    name: 'SSTF Disk Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_disk_scheduling'],
-  ),
-
-  // 53. SCAN Disk Scheduling
-  Topic(
-    id: 'os_scan_disk_scheduling',
-    name: 'SCAN Disk Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_disk_scheduling'],
-  ),
-
-  // 54. C-SCAN Disk Scheduling
-  Topic(
-    id: 'os_cscan_disk_scheduling',
-    name: 'C-SCAN Disk Scheduling',
-    subject: 'Operating Systems',
-    prerequisites: ['os_disk_scheduling'],
-  ),
-
-  // 55. I/O Management
-  Topic(
-    id: 'os_io_management',
-    name: 'I/O Management',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 56. I/O Hardware
-  Topic(
-    id: 'os_io_hardware',
-    name: 'I/O Hardware',
-    subject: 'Operating Systems',
-    prerequisites: ['os_io_management'],
-  ),
-
-  // 57. Device Drivers
-  Topic(
-    id: 'os_device_drivers',
-    name: 'Device Drivers',
-    subject: 'Operating Systems',
-    prerequisites: ['os_io_hardware'],
-  ),
-
-  // 58. Protection & Security
-  Topic(
-    id: 'os_protection_security',
-    name: 'Protection & Security',
-    subject: 'Operating Systems',
-    prerequisites: ['os_introduction'],
-  ),
-
-  // 59. Access Control
-  Topic(
-    id: 'os_access_control',
-    name: 'Access Control',
-    subject: 'Operating Systems',
-    prerequisites: ['os_protection_security'],
-  ),
-
-    // 60. Authentication
-  Topic(
-    id: 'os_authentication',
-    name: 'Authentication',
-    subject: 'Operating Systems',
-    prerequisites: ['os_protection_security'],
-  ),
-
-  // =========================
-  // COMPUTER NETWORKS
-  // =========================
-
-  // 1. Introduction to Computer Networks
-  Topic(
-    id: 'cn_introduction',
-    name: 'Introduction to Computer Networks',
-    subject: 'Computer Networks',
-  ),
-
-  // 2. Network Topologies
-  Topic(
-    id: 'cn_network_topologies',
-    name: 'Network Topologies',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_introduction'],
-  ),
-
-  // 3. Network Types
-  Topic(
-    id: 'cn_network_types',
-    name: 'Network Types (LAN, MAN, WAN)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_introduction'],
-  ),
-
-  // 4. OSI Reference Model
-  Topic(
-    id: 'cn_osi_model',
-    name: 'OSI Reference Model',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_introduction'],
-  ),
-
-  // 5. TCP/IP Reference Model
-  Topic(
-    id: 'cn_tcp_ip_model',
-    name: 'TCP/IP Reference Model',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_osi_model'],
-  ),
-
-  // 6. Physical Layer Overview
-  Topic(
-    id: 'cn_physical_layer',
-    name: 'Physical Layer Overview',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_osi_model'],
-  ),
-
-  // 7. Transmission Media
-  Topic(
-    id: 'cn_transmission_media',
-    name: 'Transmission Media (Guided & Unguided)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_physical_layer'],
-  ),
-
-  // 8. Switching Techniques
-  Topic(
-    id: 'cn_switching',
-    name: 'Switching Techniques (Circuit, Packet)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_physical_layer'],
-  ),
-
-  // 9. Multiplexing
-  Topic(
-    id: 'cn_multiplexing',
-    name: 'Multiplexing (FDM, TDM, WDM)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_physical_layer'],
-  ),
-
-  // 10. Data Link Layer Overview
-  Topic(
-    id: 'cn_data_link_layer',
-    name: 'Data Link Layer Overview',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_osi_model'],
-  ),
-
-  // 11. Framing Techniques
-  Topic(
-    id: 'cn_framing',
-    name: 'Framing Techniques',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_data_link_layer'],
-  ),
-
-  // 12. Error Detection
-  Topic(
-    id: 'cn_error_detection',
-    name: 'Error Detection (Parity, Checksum, CRC)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_data_link_layer'],
-  ),
-
-  // 13. Error Correction
-  Topic(
-    id: 'cn_error_correction',
-    name: 'Error Correction (Hamming Code)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_error_detection'],
-  ),
-
-  // 14. Flow Control Protocols
-  Topic(
-    id: 'cn_flow_control',
-    name: 'Flow Control Protocols (Stop-and-Wait, Sliding Window)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_data_link_layer'],
-  ),
-
-  // 15. Go-Back-N & Selective Repeat ARQ
-  Topic(
-    id: 'cn_arq',
-    name: 'Go-Back-N & Selective Repeat ARQ',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_flow_control'],
-  ),
-
-  // 16. Medium Access Control
-  Topic(
-    id: 'cn_mac',
-    name: 'Medium Access Control (MAC)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_data_link_layer'],
-  ),
-
-  // 17. ALOHA
-  Topic(
-    id: 'cn_aloha',
-    name: 'ALOHA (Pure and Slotted)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_mac'],
-  ),
-
-  // 18. CSMA, CSMA/CD, CSMA/CA
-  Topic(
-    id: 'cn_csma',
-    name: 'CSMA, CSMA/CD, CSMA/CA',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_mac'],
-  ),
-
-  // 19. Ethernet Standards
-  Topic(
-    id: 'cn_ethernet',
-    name: 'Ethernet Standards',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_mac'],
-  ),
-
-  // 20. Data Link Layer Devices
-  Topic(
-    id: 'cn_data_link_devices',
-    name: 'Data Link Layer Devices (Switches, Bridges)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_data_link_layer'],
-  ),
-
-  // 21. Network Layer Overview
-  Topic(
-    id: 'cn_network_layer',
-    name: 'Network Layer Overview',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_osi_model'],
-  ),
-
-  // 22. IPv4 Addressing & Classes
-  Topic(
-    id: 'cn_ipv4',
-    name: 'IPv4 Addressing & Classes',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_network_layer'],
-  ),
-
-  // 23. Subnetting and CIDR
-  Topic(
-    id: 'cn_subnetting',
-    name: 'Subnetting and CIDR',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_ipv4'],
-  ),
-
-  // 24. IPv6 Addressing
-  Topic(
-    id: 'cn_ipv6',
-    name: 'IPv6 Addressing',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_network_layer'],
-  ),
-
-  // 25. Address Resolution Protocol
-  Topic(
-    id: 'cn_arp',
-    name: 'Address Resolution Protocol (ARP & RARP)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_ipv4', 'cn_data_link_layer'],
-  ),
-
-  // 26. Internet Control Message Protocol
-  Topic(
-    id: 'cn_icmp',
-    name: 'Internet Control Message Protocol (ICMP)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_network_layer'],
-  ),
-
-  // 27. Dynamic Host Configuration Protocol
-  Topic(
-    id: 'cn_dhcp',
-    name: 'Dynamic Host Configuration Protocol (DHCP)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_ipv4'],
-  ),
-
-  // 28. Routing Algorithms Overview
-  Topic(
-    id: 'cn_routing_algorithms',
-    name: 'Routing Algorithms Overview',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_network_layer'],
-  ),
-
-  // 29. Distance Vector Routing
-  Topic(
-    id: 'cn_distance_vector',
-    name: 'Distance Vector Routing',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_routing_algorithms'],
-  ),
-
-  // 30. Link State Routing
-  Topic(
-    id: 'cn_link_state',
-    name: 'Link State Routing',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_routing_algorithms'],
-  ),
-
-  // 31. Unicast Routing Protocols
-  Topic(
-    id: 'cn_unicast_routing',
-    name: 'Unicast Routing Protocols (RIP, OSPF, BGP)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_distance_vector', 'cn_link_state'],
-  ),
-
-  // 32. Multicast Routing Protocols
-  Topic(
-    id: 'cn_multicast_routing',
-    name: 'Multicast Routing Protocols',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_routing_algorithms'],
-  ),
-
-  // 33. Network Layer Devices
-  Topic(
-    id: 'cn_routers',
-    name: 'Network Layer Devices (Routers)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_network_layer'],
-  ),
-
-  // 34. Transport Layer Overview
-  Topic(
-    id: 'cn_transport_layer',
-    name: 'Transport Layer Overview',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_osi_model'],
-  ),
-
-  // 35. Process-to-Process Delivery & Ports
-  Topic(
-    id: 'cn_process_delivery_ports',
-    name: 'Process-to-Process Delivery & Ports',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_transport_layer'],
-  ),
-
-  // 36. User Datagram Protocol
-  Topic(
-    id: 'cn_udp',
-    name: 'User Datagram Protocol (UDP)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_transport_layer'],
-  ),
-
-  // 37. Transmission Control Protocol
-  Topic(
-    id: 'cn_tcp',
-    name: 'Transmission Control Protocol (TCP)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_transport_layer'],
-  ),
-
-  // 38. TCP Segment Format
-  Topic(
-    id: 'cn_tcp_segment',
-    name: 'TCP Segment Format',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_tcp'],
-  ),
-
-  // 39. TCP Connection Management
-  Topic(
-    id: 'cn_tcp_connection',
-    name: 'TCP Connection Management (3-Way Handshake)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_tcp'],
-  ),
-
-  // 40. TCP Flow & Congestion Control
-  Topic(
-    id: 'cn_tcp_flow_congestion',
-    name: 'TCP Flow Control & Congestion Control',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_tcp'],
-  ),
-
-  // 41. Application Layer Overview
-  Topic(
-    id: 'cn_application_layer',
-    name: 'Application Layer Overview',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_osi_model'],
-  ),
-
-  // 42. Domain Name System
-  Topic(
-    id: 'cn_dns',
-    name: 'Domain Name System (DNS)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_application_layer'],
-  ),
-
-  // 43. HTTP / HTTPS
-  Topic(
-    id: 'cn_http',
-    name: 'Hypertext Transfer Protocol (HTTP / HTTPS)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_application_layer', 'cn_tcp'],
-  ),
-
-  // 44. File Transfer Protocol
-  Topic(
-    id: 'cn_ftp',
-    name: 'File Transfer Protocol (FTP)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_application_layer', 'cn_tcp'],
-  ),
-
-  // 45. Email Protocols
-  Topic(
-    id: 'cn_email_protocols',
-    name: 'Email Protocols (SMTP, POP3, IMAP)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_application_layer', 'cn_tcp'],
-  ),
-
-  // 46. Network Security Overview
-  Topic(
-    id: 'cn_network_security',
-    name: 'Network Security Overview',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_introduction'],
-  ),
-
-  // 47. Cryptography Basics
-  Topic(
-    id: 'cn_cryptography',
-    name: 'Cryptography Basics (Symmetric & Asymmetric)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_network_security'],
-  ),
-
-  // 48. Firewalls and Intrusion Detection Systems
-  Topic(
-    id: 'cn_firewalls_ids',
-    name: 'Firewalls and Intrusion Detection Systems',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_network_security'],
-  ),
-
-  // 49. Virtual Private Networks
-  Topic(
-    id: 'cn_vpn',
-    name: 'Virtual Private Networks (VPN)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_network_security', 'cn_network_layer'],
-  ),
-
-  // 50. Wireless Networks
-  Topic(
-    id: 'cn_wireless',
-    name: 'Wireless Networks (Wi-Fi, Bluetooth)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_physical_layer', 'cn_data_link_layer'],
-  ),
-
-    // 51. Network Performance
-  Topic(
-    id: 'cn_network_performance',
-    name: 'Network Performance (Bandwidth, Throughput, Latency)',
-    subject: 'Computer Networks',
-    prerequisites: ['cn_physical_layer'],
-  ),
-
-  // =========================
-  // DATABASE MANAGEMENT SYSTEM
-  // =========================
-
-  // 1. Introduction to DBMS
-  Topic(
-    id: 'dbms_introduction',
-    name: 'Introduction to DBMS',
-    subject: 'DBMS',
-  ),
-
-  // 2. File System vs DBMS
-  Topic(
-    id: 'dbms_file_system_vs_dbms',
-    name: 'File System vs DBMS',
-    subject: 'DBMS',
-    prerequisites: ['dbms_introduction'],
-  ),
-
-  // 3. DBMS Architecture
-  Topic(
-    id: 'dbms_architecture',
-    name: 'DBMS Architecture (1-Tier, 2-Tier, 3-Tier)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_introduction'],
-  ),
-
-  // 4. Three-Schema Architecture & Data Independence
-  Topic(
-    id: 'dbms_three_schema',
-    name: 'Three-Schema Architecture & Data Independence',
-    subject: 'DBMS',
-    prerequisites: ['dbms_architecture'],
-  ),
-
-  // 5. ER Model Concepts
-  Topic(
-    id: 'dbms_er_model',
-    name: 'ER Model Concepts',
-    subject: 'DBMS',
-    prerequisites: ['dbms_introduction'],
-  ),
-
-  // 6. Entities, Attributes & Relationships
-  Topic(
-    id: 'dbms_entities_attributes_relationships',
-    name: 'Entities, Attributes & Relationships',
-    subject: 'DBMS',
-    prerequisites: ['dbms_er_model'],
-  ),
-
-  // 7. ER Diagram Symbols & Notations
-  Topic(
-    id: 'dbms_er_symbols',
-    name: 'ER Diagram Symbols & Notations',
-    subject: 'DBMS',
-    prerequisites: ['dbms_entities_attributes_relationships'],
-  ),
-
-  // 8. Extended ER Features
-  Topic(
-    id: 'dbms_extended_er',
-    name: 'Extended ER Features (Generalization, Specialization, Aggregation)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_er_symbols'],
-  ),
-
-  // 9. Relational Model Concepts
-  Topic(
-    id: 'dbms_relational_model',
-    name: 'Relational Model Concepts',
-    subject: 'DBMS',
-    prerequisites: ['dbms_introduction'],
-  ),
-
-  // 10. ER to Relational Mapping
-  Topic(
-    id: 'dbms_er_to_relational',
-    name: 'ER to Relational Mapping',
-    subject: 'DBMS',
-    prerequisites: ['dbms_er_model', 'dbms_relational_model'],
-  ),
-
-  // 11. Keys in Relational Model
-  Topic(
-    id: 'dbms_keys',
-    name: 'Keys in Relational Model (Primary, Candidate, Super, Foreign)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_relational_model'],
-  ),
-
-  // 12. Relational Integrity Constraints
-  Topic(
-    id: 'dbms_integrity_constraints',
-    name: 'Relational Integrity Constraints',
-    subject: 'DBMS',
-    prerequisites: ['dbms_keys'],
-  ),
-
-  // 13. Relational Algebra
-  Topic(
-    id: 'dbms_relational_algebra',
-    name: 'Relational Algebra (Select, Project, Rename)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_relational_model'],
-  ),
-
-  // 14. Set Operations in Relational Algebra
-  Topic(
-    id: 'dbms_set_operations',
-    name: 'Set Operations in Relational Algebra (Union, Intersection, Set Difference, Cartesian Product)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_relational_algebra'],
-  ),
-
-  // 15. Join Operations
-  Topic(
-    id: 'dbms_join_operations',
-    name: 'Join Operations (Inner, Outer, Equi, Natural)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_relational_algebra'],
-  ),
-
-  // 16. Relational Calculus
-  Topic(
-    id: 'dbms_relational_calculus',
-    name: 'Relational Calculus (Tuple & Domain)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_relational_algebra'],
-  ),
-
-  // 17. Introduction to SQL
-  Topic(
-    id: 'dbms_sql_introduction',
-    name: 'Introduction to SQL',
-    subject: 'DBMS',
-    prerequisites: ['dbms_relational_model'],
-  ),
-
-  // 18. DDL Commands
-  Topic(
-    id: 'dbms_ddl',
-    name: 'DDL Commands (CREATE, ALTER, DROP, TRUNCATE)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_sql_introduction'],
-  ),
-
-  // 19. DML Commands
-  Topic(
-    id: 'dbms_dml',
-    name: 'DML Commands (INSERT, UPDATE, DELETE)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_sql_introduction'],
-  ),
-
-  // 20. DQL Commands
-  Topic(
-    id: 'dbms_dql',
-    name: 'DQL Commands (SELECT, WHERE, ORDER BY)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_sql_introduction'],
-  ),
-
-  // 21. Aggregate Functions & GROUP BY / HAVING
-  Topic(
-    id: 'dbms_aggregate_functions',
-    name: 'Aggregate Functions & GROUP BY / HAVING',
-    subject: 'DBMS',
-    prerequisites: ['dbms_dql'],
-  ),
-
-  // 22. SQL Joins
-  Topic(
-    id: 'dbms_sql_joins',
-    name: 'SQL Joins (INNER, LEFT, RIGHT, FULL)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_dql', 'dbms_join_operations'],
-  ),
-
-  // 23. Subqueries & Nested Queries
-  Topic(
-    id: 'dbms_subqueries',
-    name: 'Subqueries & Nested Queries',
-    subject: 'DBMS',
-    prerequisites: ['dbms_dql'],
-  ),
-
-  // 24. Views in SQL
-  Topic(
-    id: 'dbms_views',
-    name: 'Views in SQL',
-    subject: 'DBMS',
-    prerequisites: ['dbms_dql'],
-  ),
-
-  // 25. Constraints
-  Topic(
-    id: 'dbms_constraints',
-    name: 'Constraints (NOT NULL, UNIQUE, CHECK, DEFAULT, Foreign Key)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_ddl', 'dbms_integrity_constraints'],
-  ),
-
-  // 26. Functional Dependency
-  Topic(
-    id: 'dbms_functional_dependency',
-    name: 'Functional Dependency (FD)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_relational_model'],
-  ),
-
-  // 27. Inference Rules
-  Topic(
-    id: 'dbms_inference_rules',
-    name: "Inference Rules (Armstrong's Axioms)",
-    subject: 'DBMS',
-    prerequisites: ['dbms_functional_dependency'],
-  ),
-
-  // 28. Closure of Attribute Sets & Candidate Key Finding
-  Topic(
-    id: 'dbms_attribute_closure',
-    name: 'Closure of Attribute Sets & Candidate Key Finding',
-    subject: 'DBMS',
-    prerequisites: ['dbms_functional_dependency'],
-  ),
-
-  // 29. Normalization Overview
-  Topic(
-    id: 'dbms_normalization',
-    name: 'Normalization Overview',
-    subject: 'DBMS',
-    prerequisites: ['dbms_functional_dependency'],
-  ),
-
-  // 30. First Normal Form
-  Topic(
-    id: 'dbms_1nf',
-    name: 'First Normal Form (1NF)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_normalization'],
-  ),
-
-  // 31. Second Normal Form
-  Topic(
-    id: 'dbms_2nf',
-    name: 'Second Normal Form (2NF)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_1nf', 'dbms_attribute_closure'],
-  ),
-
-  // 32. Third Normal Form
-  Topic(
-    id: 'dbms_3nf',
-    name: 'Third Normal Form (3NF)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_2nf'],
-  ),
-
-  // 33. Boyce-Codd Normal Form
-  Topic(
-    id: 'dbms_bcnf',
-    name: 'Boyce-Codd Normal Form (BCNF)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_3nf'],
-  ),
-
-  // 34. Fourth Normal Form
-  Topic(
-    id: 'dbms_4nf',
-    name: 'Fourth Normal Form (4NF) & Multivalued Dependency',
-    subject: 'DBMS',
-    prerequisites: ['dbms_bcnf'],
-  ),
-
-  // 35. Lossless Join Decomposition
-  Topic(
-    id: 'dbms_lossless_join',
-    name: 'Lossless Join Decomposition',
-    subject: 'DBMS',
-    prerequisites: ['dbms_normalization'],
-  ),
-
-  // 36. Dependency Preservation
-  Topic(
-    id: 'dbms_dependency_preservation',
-    name: 'Dependency Preservation',
-    subject: 'DBMS',
-    prerequisites: ['dbms_normalization'],
-  ),
-
-  // 37. Transaction Concepts & ACID Properties
-  Topic(
-    id: 'dbms_transactions_acid',
-    name: 'Transaction Concepts & ACID Properties',
-    subject: 'DBMS',
-    prerequisites: ['dbms_introduction'],
-  ),
-
-  // 38. Transaction States
-  Topic(
-    id: 'dbms_transaction_states',
-    name: 'Transaction States',
-    subject: 'DBMS',
-    prerequisites: ['dbms_transactions_acid'],
-  ),
-
-  // 39. Concurrent Executions & Schedule
-  Topic(
-    id: 'dbms_concurrent_executions',
-    name: 'Concurrent Executions & Schedule',
-    subject: 'DBMS',
-    prerequisites: ['dbms_transactions_acid'],
-  ),
-
-  // 40. Serializability
-  Topic(
-    id: 'dbms_serializability',
-    name: 'Serializability (Conflict & View)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_concurrent_executions'],
-  ),
-
-  // 41. Recoverability of Schedules
-  Topic(
-    id: 'dbms_recoverability',
-    name: 'Recoverability of Schedules',
-    subject: 'DBMS',
-    prerequisites: ['dbms_concurrent_executions'],
-  ),
-
-  // 42. Concurrency Control Overview
-  Topic(
-    id: 'dbms_concurrency_control',
-    name: 'Concurrency Control Overview',
-    subject: 'DBMS',
-    prerequisites: ['dbms_transactions_acid'],
-  ),
-
-  // 43. Lock-Based Protocols
-  Topic(
-    id: 'dbms_lock_protocols',
-    name: 'Lock-Based Protocols (Shared/Exclusive, 2PL, Strict 2PL)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_concurrency_control'],
-  ),
-
-  // 44. Timestamp-Based Protocols
-  Topic(
-    id: 'dbms_timestamp_protocols',
-    name: 'Timestamp-Based Protocols',
-    subject: 'DBMS',
-    prerequisites: ['dbms_concurrency_control'],
-  ),
-
-  // 45. Deadlock Handling in DBMS
-  Topic(
-    id: 'dbms_deadlock_handling',
-    name: 'Deadlock Handling in DBMS',
-    subject: 'DBMS',
-    prerequisites: ['dbms_lock_protocols'],
-  ),
-
-  // 46. Database Recovery Concepts
-  Topic(
-    id: 'dbms_recovery',
-    name: 'Database Recovery Concepts',
-    subject: 'DBMS',
-    prerequisites: ['dbms_transactions_acid'],
-  ),
-
-  // 47. Log-Based Recovery
-  Topic(
-    id: 'dbms_log_recovery',
-    name: 'Log-Based Recovery',
-    subject: 'DBMS',
-    prerequisites: ['dbms_recovery'],
-  ),
-
-  // 48. Checkpoints in Recovery
-  Topic(
-    id: 'dbms_checkpoints',
-    name: 'Checkpoints in Recovery',
-    subject: 'DBMS',
-    prerequisites: ['dbms_log_recovery'],
-  ),
-
-  // 49. Indexing Concepts
-  Topic(
-    id: 'dbms_indexing',
-    name: 'Indexing Concepts',
-    subject: 'DBMS',
-    prerequisites: ['dbms_relational_model'],
-  ),
-
-  // 50. Primary, Secondary & Clustered Indexes
-  Topic(
-    id: 'dbms_index_types',
-    name: 'Primary, Secondary & Clustered Indexes',
-    subject: 'DBMS',
-    prerequisites: ['dbms_indexing'],
-  ),
-
-  // 51. B-Trees and B+ Trees Indexing
-  Topic(
-    id: 'dbms_btree',
-    name: 'B-Trees and B+ Trees Indexing',
-    subject: 'DBMS',
-    prerequisites: ['dbms_indexing'],
-  ),
-
-    // 52. Hashing in DBMS
-  Topic(
-    id: 'dbms_hashing',
-    name: 'Hashing in DBMS (Static & Dynamic)',
-    subject: 'DBMS',
-    prerequisites: ['dbms_indexing'],
-  ),
-
-  // =========================
-  // JAVA OBJECT-ORIENTED PROGRAMMING
-  // =========================
-
-  // 1. Introduction to Java
-  Topic(
-    id: 'java_introduction',
-    name: 'Introduction to Java',
-    subject: 'OOPs – Java',
-  ),
-
-  // 2. JDK, JRE, and JVM
-  Topic(
-    id: 'java_jdk_jre_jvm',
-    name: 'JDK, JRE, and JVM',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_introduction'],
-  ),
-
-  // 3. Java Basic Syntax & Structure
-  Topic(
-    id: 'java_basic_syntax',
-    name: 'Java Basic Syntax & Structure',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_introduction'],
-  ),
-
-  // 4. Variables & Data Types
-  Topic(
-    id: 'java_variables_datatypes',
-    name: 'Variables & Data Types',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_basic_syntax'],
-  ),
-
-  // 5. Operators in Java
-  Topic(
-    id: 'java_operators',
-    name: 'Operators in Java',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_variables_datatypes'],
-  ),
-
-  // 6. Control Flow Statements
-  Topic(
-    id: 'java_control_flow',
-    name: 'Control Flow Statements',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_operators'],
-  ),
-
-  // 7. Arrays in Java
-  Topic(
-    id: 'java_arrays',
-    name: 'Arrays in Java',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_control_flow'],
-  ),
-
-  // 8. OOP Concepts Overview
-  Topic(
-    id: 'java_oop_concepts',
-    name: 'OOP Concepts Overview',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_introduction'],
-  ),
-
-  // 9. Classes and Objects
-  Topic(
-    id: 'java_classes_objects',
-    name: 'Classes and Objects',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_oop_concepts'],
-  ),
-
-  // 10. Constructors
-  Topic(
-    id: 'java_constructors',
-    name: 'Constructors',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_classes_objects'],
-  ),
-
-  // 11. Access Modifiers
-  Topic(
-    id: 'java_access_modifiers',
-    name: 'Access Modifiers',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_classes_objects'],
-  ),
-
-  // 12. Encapsulation
-  Topic(
-    id: 'java_encapsulation',
-    name: 'Encapsulation',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_classes_objects', 'java_access_modifiers'],
-  ),
-
-  // 13. Inheritance
-  Topic(
-    id: 'java_inheritance',
-    name: 'Inheritance',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_classes_objects'],
-  ),
-
-  // 14. Types of Inheritance
-  Topic(
-    id: 'java_inheritance_types',
-    name: 'Types of Inheritance',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_inheritance'],
-  ),
-
-  // 15. Method Overriding
-  Topic(
-    id: 'java_method_overriding',
-    name: 'Method Overriding',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_inheritance'],
-  ),
-
-  // 16. Super Keyword
-  Topic(
-    id: 'java_super_keyword',
-    name: 'Super Keyword',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_inheritance'],
-  ),
-
-  // 17. Polymorphism
-  Topic(
-    id: 'java_polymorphism',
-    name: 'Polymorphism',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_classes_objects'],
-  ),
-
-  // 18. Method Overloading
-  Topic(
-    id: 'java_method_overloading',
-    name: 'Method Overloading',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_polymorphism'],
-  ),
-
-  // 19. Abstraction
-  Topic(
-    id: 'java_abstraction',
-    name: 'Abstraction',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_oop_concepts'],
-  ),
-
-  // 20. Abstract Classes
-  Topic(
-    id: 'java_abstract_classes',
-    name: 'Abstract Classes',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_abstraction', 'java_classes_objects'],
-  ),
-
-  // 21. Interfaces
-  Topic(
-    id: 'java_interfaces',
-    name: 'Interfaces',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_abstraction'],
-  ),
-
-  // 22. Multiple Inheritance via Interfaces
-  Topic(
-    id: 'java_multiple_inheritance',
-    name: 'Multiple Inheritance via Interfaces',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_interfaces', 'java_inheritance'],
-  ),
-
-  // 23. Static Keyword
-  Topic(
-    id: 'java_static_keyword',
-    name: 'Static Keyword',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_classes_objects'],
-  ),
-
-  // 24. Final Keyword
-  Topic(
-    id: 'java_final_keyword',
-    name: 'Final Keyword',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_variables_datatypes', 'java_inheritance'],
-  ),
-
-  // 25. Package and Importing
-  Topic(
-    id: 'java_packages',
-    name: 'Package and Importing',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_access_modifiers'],
-  ),
-
-  // 26. Strings in Java
-  Topic(
-    id: 'java_strings',
-    name: 'Strings in Java',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_arrays', 'java_classes_objects'],
-  ),
-
-  // 27. StringBuilder and StringBuffer
-  Topic(
-    id: 'java_string_builder_buffer',
-    name: 'StringBuilder and StringBuffer',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_strings'],
-  ),
-
-  // 28. Exception Handling Overview
-  Topic(
-    id: 'java_exception_handling',
-    name: 'Exception Handling Overview',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_control_flow'],
-  ),
-
-  // 29. Try, Catch, and Finally
-  Topic(
-    id: 'java_try_catch_finally',
-    name: 'Try, Catch, and Finally',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_exception_handling'],
-  ),
-
-  // 30. Throw and Throws
-  Topic(
-    id: 'java_throw_throws',
-    name: 'Throw and Throws',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_exception_handling'],
-  ),
-
-  // 31. Custom Exceptions
-  Topic(
-    id: 'java_custom_exceptions',
-    name: 'Custom Exceptions',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_exception_handling', 'java_inheritance'],
-  ),
-
-  // 32. Collections Framework Overview
-  Topic(
-    id: 'java_collections',
-    name: 'Collections Framework Overview',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_interfaces', 'java_classes_objects'],
-  ),
-
-  // 33. List Interface & Implementations
-  Topic(
-    id: 'java_list',
-    name: 'List Interface & Implementations',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_collections'],
-  ),
-
-  // 34. Set Interface & Implementations
-  Topic(
-    id: 'java_set',
-    name: 'Set Interface & Implementations',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_collections'],
-  ),
-
-  // 35. Map Interface & Implementations
-  Topic(
-    id: 'java_map',
-    name: 'Map Interface & Implementations',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_collections'],
-  ),
-
-  // 36. Multithreading Overview
-  Topic(
-    id: 'java_multithreading',
-    name: 'Multithreading Overview',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_classes_objects'],
-  ),
-
-  // 37. Thread Life Cycle
-  Topic(
-    id: 'java_thread_lifecycle',
-    name: 'Thread Life Cycle',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_multithreading'],
-  ),
-
-  // 38. Creating Threads
-  Topic(
-    id: 'java_creating_threads',
-    name: 'Creating Threads (Runnable & Thread Class)',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_multithreading', 'java_interfaces', 'java_inheritance'],
-  ),
-
-  // 39. Synchronization in Java
-  Topic(
-    id: 'java_synchronization',
-    name: 'Synchronization in Java',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_multithreading'],
-  ),
-
-  // 40. File I/O in Java
-  Topic(
-    id: 'java_file_io',
-    name: 'File I/O in Java',
-    subject: 'OOPs – Java',
-    prerequisites: ['java_exception_handling', 'java_strings'],
-  ),
+// =========================
+// C PROGRAMMING
+// =========================
+
+  // UNIT 1: INTRODUCTION TO C
+  _cTopic(1, 'Introduction to Programming', []),
+  _cTopic(2, 'Introduction to C', [1]),
+  _cTopic(3, 'Features and Applications of C', [2]),
+  _cTopic(4, 'Structure of a C Program', [2]),
+  _cTopic(5, 'Basic Syntax of C', [4]),
+  _cTopic(6, 'Character Set in C', [2]),
+  _cTopic(7, 'Tokens in C', [5]),
+  _cTopic(8, 'Identifiers and Keywords', [7]),
+  _cTopic(9, 'Constants and Literals', [7]),
+  _cTopic(10, 'Comments in C', [5]),
+  _cTopic(11, 'Compilation Process', [2]),
+  _cTopic(12, 'Preprocessing, Compilation and Linking', [11]),
+  _cTopic(13, 'Executing a C Program', [12]),
+  _cTopic(14, 'Types of Errors in C', [13]),
+// UNIT 2: DATA TYPES AND VARIABLES
+  _cTopic(15, 'Data Types in C', [2]),
+  _cTopic(16, 'Integer Data Types', [15]),
+  _cTopic(17, 'Floating-Point Data Types', [15]),
+  _cTopic(18, 'Character and Void Data Types', [15]),
+  _cTopic(19, 'Type Modifiers', [16]),
+  _cTopic(20, 'Signed and Unsigned Types', [19]),
+  _cTopic(21, 'Short and Long Types', [19]),
+  _cTopic(22, 'Variables in C', [15]),
+  _cTopic(23, 'Variable Declaration and Initialization', [22]),
+  _cTopic(24, 'Scope of Variables', [22]),
+  _cTopic(25, 'Lifetime of Variables', [22]),
+  _cTopic(26, 'Constants Using const', [22]),
+  _cTopic(27, 'Symbolic Constants', [9]),
+  _cTopic(28, 'sizeof Operator', [15]),
+  _cTopic(29, 'Type Conversion', [15]),
+  _cTopic(30, 'Implicit Type Conversion', [29]),
+  _cTopic(31, 'Explicit Type Casting', [29]),
+// UNIT 3: OPERATORS AND EXPRESSIONS
+  _cTopic(32, 'Operators in C', [22]),
+  _cTopic(33, 'Arithmetic Operators', [32]),
+  _cTopic(34, 'Relational Operators', [32]),
+  _cTopic(35, 'Logical Operators', [32]),
+  _cTopic(36, 'Assignment Operators', [32]),
+  _cTopic(37, 'Increment and Decrement Operators', [32]),
+  _cTopic(38, 'Bitwise Operators', [32]),
+  _cTopic(39, 'Conditional Operator', [32]),
+  _cTopic(40, 'Comma Operator', [32]),
+  _cTopic(41, 'Operator Precedence', [32]),
+  _cTopic(42, 'Operator Associativity', [41]),
+  _cTopic(43, 'Expressions in C', [32]),
+  _cTopic(44, 'Evaluation of Expressions', [41, 43]),
+// UNIT 4: INPUT AND OUTPUT
+  _cTopic(45, 'Standard Input and Output', [2]),
+  _cTopic(46, 'printf() and Format Specifiers', [45]),
+  _cTopic(47, 'Escape Sequences', [46]),
+  _cTopic(48, 'scanf() and Formatted Input', [45]),
+  _cTopic(49, 'Character Input and Output', [45]),
+  _cTopic(50, 'Input Buffer and Common Input Issues', [48]),
+// UNIT 5: DECISION MAKING
+  _cTopic(51, 'Decision Making in C', [43]),
+  _cTopic(52, 'if Statement', [51]),
+  _cTopic(53, 'if-else Statement', [52]),
+  _cTopic(54, 'else-if Ladder', [53]),
+  _cTopic(55, 'Nested if Statements', [53]),
+  _cTopic(56, 'Multiple Logical Conditions', [35, 53]),
+  _cTopic(57, 'switch Statement', [51]),
+  _cTopic(58, 'case, default and break in switch', [57]),
+  _cTopic(59, 'Nested switch Statements', [57]),
+  _cTopic(60, 'Conditional Operator in Decision Making', [39, 51]),
+// UNIT 6: LOOPS
+  _cTopic(61, 'Introduction to Loops', [51]),
+  _cTopic(62, 'while Loop', [61]),
+  _cTopic(63, 'do-while Loop', [61]),
+  _cTopic(64, 'for Loop', [61]),
+  _cTopic(65, 'Nested Loops', [64]),
+  _cTopic(66, 'Infinite Loops', [62, 64]),
+  _cTopic(67, 'break Statement', [61]),
+  _cTopic(68, 'continue Statement', [61]),
+  _cTopic(69, 'goto Statement', [61]),
+  _cTopic(70, 'Loop Control Techniques', [67, 68]),
+  _cTopic(71, 'Pattern Generation Using Loops', [65]),
+// UNIT 7: FUNCTIONS
+  _cTopic(72, 'Introduction to Functions', [64]),
+  _cTopic(73, 'Function Declaration and Prototype', [72]),
+  _cTopic(74, 'Function Definition', [72]),
+  _cTopic(75, 'Function Calling', [73]),
+  _cTopic(76, 'Parameters and Arguments', [75]),
+  _cTopic(77, 'Return Values', [75]),
+  _cTopic(78, 'Call by Value', [76]),
+  _cTopic(79, 'Scope of Functions', [72]),
+  _cTopic(80, 'Variadic Functions', [76]),
+// UNIT 8: RECURSION
+  _cTopic(81, 'Introduction to Recursion', [72]),
+  _cTopic(82, 'Base Case and Recursive Case', [81]),
+  _cTopic(83, 'Direct Recursion', [82]),
+  _cTopic(84, 'Indirect Recursion', [82]),
+  _cTopic(85, 'Tail and Non-Tail Recursion', [83]),
+  _cTopic(86, 'Recursion vs Iteration', [81, 64]),
+  _cTopic(87, 'Recursion and Memory', [81]),
+  _cTopic(88, 'Call Stack', [87]),
+  _cTopic(89, 'Recursive Problem Solving', [82]),
+// UNIT 9: ARRAYS
+  _cTopic(90, 'Introduction to Arrays', [15]),
+  _cTopic(91, 'One-Dimensional Arrays', [90]),
+  _cTopic(92, 'Array Declaration and Initialization', [91]),
+  _cTopic(93, 'Accessing Array Elements', [92]),
+  _cTopic(94, 'Traversing Arrays', [93]),
+  _cTopic(95, 'Updating Array Elements', [93]),
+  _cTopic(96, 'Inserting Elements into Arrays', [94]),
+  _cTopic(97, 'Deleting Elements from Arrays', [94]),
+  _cTopic(98, 'Searching in Arrays', [94]),
+  _cTopic(99, 'Sorting Arrays', [94]),
+  _cTopic(100, 'Passing Arrays to Functions', [75, 94]),
+  _cTopic(101, 'Multidimensional Arrays', [90]),
+  _cTopic(102, 'Two-Dimensional Arrays', [101]),
+  _cTopic(103, 'Row-Major and Column-Major Ordering', [102]),
+  _cTopic(104, 'Arrays and Memory Layout', [103]),
+  _cTopic(105, 'Variable-Length Arrays', [91]),
+// UNIT 10: STRINGS
+  _cTopic(106, 'Introduction to Strings', [90]),
+  _cTopic(107, 'Character Arrays and String Representation', [106]),
+  _cTopic(108, 'String Initialization', [107]),
+  _cTopic(109, 'String Input and Output', [107, 49]),
+  _cTopic(110, 'String Traversal', [107]),
+  _cTopic(111, 'String Length and Comparison', [110]),
+  _cTopic(112, 'String Copy and Concatenation', [110]),
+  _cTopic(113, 'String Searching and Manipulation', [110]),
+  _cTopic(114, 'Standard String Library Functions', [107]),
+  _cTopic(115, 'String Tokenization', [114]),
+  _cTopic(116, 'String Pattern Matching', [113]),
+  _cTopic(117, 'Common String Handling Problems', [111, 112, 113]),
+// UNIT 11: POINTERS
+  _cTopic(118, 'Introduction to Pointers', [22]),
+  _cTopic(119, 'Pointer Variables', [118]),
+  _cTopic(120, 'Address-of and Dereference Operators', [119]),
+  _cTopic(121, 'Pointer Initialization', [119]),
+  _cTopic(122, 'Null Pointers', [121]),
+  _cTopic(123, 'Pointer Arithmetic', [28, 119]),
+  _cTopic(124, 'Pointer Comparison', [123]),
+  _cTopic(125, 'Pointer to Pointer', [119]),
+  _cTopic(126, 'Multiple Indirection', [125]),
+  _cTopic(127, 'Generic Pointers (void*)', [119]),
+  _cTopic(128, 'Constant Pointers and Pointers to Constants', [119]),
+  _cTopic(129, 'Dangling and Wild Pointers', [119, 122]),
+// UNIT 12: POINTERS AND FUNCTIONS
+  _cTopic(130, 'Pointers and Arrays', [91, 120, 123]),
+  _cTopic(131, 'Pointers and Strings', [107, 120, 123]),
+  _cTopic(132, 'Arrays of Pointers', [130]),
+  _cTopic(133, 'Pointers to Arrays', [130]),
+  _cTopic(134, 'Pointers as Function Arguments', [119, 75]),
+  _cTopic(135, 'Call by Reference Using Pointers', [134]),
+  _cTopic(136, 'Function Pointers', [73, 119]),
+  _cTopic(137, 'Callback Functions', [136]),
+  _cTopic(138, 'Returning Pointers from Functions', [134]),
+// UNIT 13: DYNAMIC MEMORY MANAGEMENT
+  _cTopic(139, 'Static vs Dynamic Memory', [118]),
+  _cTopic(140, 'Heap Memory', [139]),
+  _cTopic(141, 'Dynamic Memory Allocation', [140]),
+  _cTopic(142, 'Dynamic Memory Allocation Functions', [141]),
+  _cTopic(143, 'Dynamic Arrays', [123, 130, 142]),
+  _cTopic(144, 'Dynamic Strings', [108, 142]),
+  _cTopic(145, 'Memory Allocation Failure', [142]),
+  _cTopic(146, 'Memory Leaks', [142]),
+  _cTopic(147, 'Dangling Memory', [142]),
+  _cTopic(148, 'Double Free and Use-After-Free', [142]),
+  _cTopic(149, 'Safe Dynamic Memory Management', [146, 148]),
+// UNIT 14: STRUCTURES
+  _cTopic(150, 'Introduction to Structures', [15]),
+  _cTopic(151, 'Structure Declaration and Initialization', [150]),
+  _cTopic(152, 'Accessing Structure Members', [151]),
+  _cTopic(153, 'Array of Structures', [90, 151]),
+  _cTopic(154, 'Nested Structures', [151]),
+  _cTopic(155, 'Pointer to Structure', [119, 120, 151]),
+  _cTopic(156, 'Self-Referential Structures', [119, 155]),
+  _cTopic(157, 'Passing Structures to Functions', [75, 151]),
+  _cTopic(158, 'Returning Structures from Functions', [157]),
+  _cTopic(159, 'Dynamic Structures', [142, 155]),
+  _cTopic(160, 'Structure Padding and Alignment', [28, 152]),
+  _cTopic(161, 'Bit Fields in Structures', [152]),
+  _cTopic(162, 'Flexible Array Members', [151]),
+// UNIT 15: UNIONS, ENUMERATIONS AND TYPEDEFS
+  _cTopic(163, 'Introduction to Unions', [150]),
+  _cTopic(164, 'Union Declaration and Initialization', [163]),
+  _cTopic(165, 'Structure vs Union', [163]),
+  _cTopic(166, 'Applications of Unions', [163]),
+  _cTopic(167, 'Enumerations', [15]),
+  _cTopic(168, 'enum Declaration and Usage', [167]),
+  _cTopic(169, 'typedef Keyword', [15]),
+  _cTopic(170, 'typedef with Structures and Unions', [169, 151]),
+  _cTopic(171, 'User-Defined Data Types', [170]),
+// UNIT 16: STORAGE CLASSES AND LINKAGE
+  _cTopic(172, 'Storage Classes', [22]),
+  _cTopic(173, 'auto and register Storage Classes', [172]),
+  _cTopic(174, 'static Storage Class', [172]),
+  _cTopic(175, 'extern Storage Class', [172]),
+  _cTopic(176, 'Storage Duration', [172]),
+  _cTopic(177, 'Linkage in C', [172]),
+  _cTopic(178, 'Internal and External Linkage', [177]),
+  _cTopic(179, 'Translation Units', [177]),
+// UNIT 17: C PREPROCESSOR
+  _cTopic(180, 'C Preprocessor', [11]),
+  _cTopic(181, 'Preprocessor Directives', [180]),
+  _cTopic(182, '#include Directive', [181]),
+  _cTopic(183, '#define and Macro Definitions', [181]),
+  _cTopic(184, 'Object-Like and Function-Like Macros', [183]),
+  _cTopic(185, 'Macro Arguments and Expansion', [184]),
+  _cTopic(186, '#undef Directive', [183]),
+  _cTopic(187, 'Conditional Compilation', [181]),
+  _cTopic(188, 'Predefined Macros', [181]),
+  _cTopic(189, 'Header Guards', [182, 187]),
+  _cTopic(190, 'Variadic Macros', [184]),
+  _cTopic(191, 'Macros vs Functions', [73, 74, 184]),
+// UNIT 18: HEADER FILES AND MODULAR PROGRAMMING
+  _cTopic(192, 'Header Files', [182]),
+  _cTopic(193, 'Standard Header Files', [192]),
+  _cTopic(194, 'User-Defined Header Files', [192]),
+  _cTopic(195, 'Multiple Source Files', [179, 194]),
+  _cTopic(196, 'Separate Compilation', [195]),
+  _cTopic(197, 'Modular C Programming', [196]),
+// UNIT 19: FILE HANDLING
+  _cTopic(198, 'Introduction to File Handling', [45]),
+  _cTopic(199, 'File Pointers', [198]),
+  _cTopic(200, 'Opening and Closing Files', [199]),
+  _cTopic(201, 'Reading from Files', [200]),
+  _cTopic(202, 'Writing to Files', [200]),
+  _cTopic(203, 'Appending to Files', [200]),
+  _cTopic(204, 'Text Files', [201]),
+  _cTopic(205, 'Binary Files', [201]),
+  _cTopic(206, 'Character and String-Based File I/O', [204]),
+  _cTopic(207, 'Formatted File I/O', [204]),
+  _cTopic(208, 'Binary File I/O', [205]),
+  _cTopic(209, 'File Positioning', [199]),
+  _cTopic(210, 'fseek(), ftell() and rewind()', [209]),
+  _cTopic(211, 'End-of-File Handling', [201]),
+  _cTopic(212, 'EOF and feof()', [211]),
+  _cTopic(213, 'File Error Handling', [200]),
+  _cTopic(214, 'Random File Access', [210]),
+  _cTopic(215, 'File-Based Data Storage', [208, 214]),
+// UNIT 20: BIT MANIPULATION
+  _cTopic(216, 'Binary Representation of Data', [15]),
+  _cTopic(217, 'Bits and Bytes', [216]),
+  _cTopic(218, 'Bitwise AND, OR and XOR', [38, 217]),
+  _cTopic(219, 'Bitwise NOT', [38, 217]),
+  _cTopic(220, 'Left and Right Shift', [38, 217]),
+  _cTopic(221, 'Bit Masks', [218]),
+  _cTopic(222, 'Setting and Clearing Bits', [221]),
+  _cTopic(223, 'Toggling and Checking Bits', [221]),
+  _cTopic(224, 'Bit Manipulation Applications', [222, 223]),
+// UNIT 21: ADVANCED C LANGUAGE FEATURES
+  _cTopic(225, 'Inline Functions', [74]),
+  _cTopic(226, 'Compound Literals', [151]),
+  _cTopic(227, 'Designated Initializers', [151]),
+  _cTopic(228, '_Generic Selection', [29]),
+  _cTopic(229, '_Static_assert', [15]),
+  _cTopic(230, 'Alignment and _Alignof', [160]),
+  _cTopic(231, '_Alignas', [230]),
+// UNIT 22: C MEMORY MODEL
+  _cTopic(232, 'C Memory Model', [139]),
+  _cTopic(233, 'Program Memory Layout', [232]),
+  _cTopic(234, 'Code/Text Segment', [233]),
+  _cTopic(235, 'Read-Only Data Segment', [233]),
+  _cTopic(236, 'Initialized Data Segment', [233]),
+  _cTopic(237, 'BSS Segment', [233]),
+  _cTopic(238, 'Heap and Stack', [233, 140]),
+  _cTopic(239, 'Stack Frames', [238, 88]),
+  _cTopic(240, 'Memory Alignment', [160, 238]),
+  _cTopic(241, 'Endianness', [240]),
+  _cTopic(242, 'Volatile Variables', [240]),
+  _cTopic(243, 'volatile Keyword', [242]),
+  _cTopic(244, 'restrict Keyword', [119]),
+// UNIT 23: UNDEFINED, IMPLEMENTATION-DEFINED AND UNSPECIFIED BEHAVIOR
+  _cTopic(245, 'Undefined Behavior', [44, 233]),
+  _cTopic(246, 'Implementation-Defined Behavior', [245]),
+  _cTopic(247, 'Unspecified Behavior', [245]),
+  _cTopic(248, 'Sequence and Evaluation Rules', [44, 245]),
+  _cTopic(249, 'Integer Overflow', [245]),
+  _cTopic(250, 'Pointer Safety and Undefined Behavior', [129, 245]),
+// UNIT 24: RUNTIME ERROR HANDLING AND DEBUGGING
+  _cTopic(251, 'Runtime Error Handling', [14]),
+  _cTopic(252, 'errno', [251]),
+  _cTopic(253, 'perror() and strerror()', [252]),
+  _cTopic(254, 'Assertions', [251]),
+  _cTopic(255, 'assert()', [254]),
+  _cTopic(256, 'Debugging C Programs', [14]),
+  _cTopic(257, 'Debugging with GDB', [256]),
+  _cTopic(258, 'Breakpoints and Watchpoints', [257]),
+  _cTopic(259, 'Stack Traces', [257]),
+  _cTopic(260, 'Memory Debugging', [146, 256]),
+// UNIT 25: C STANDARDS AND PORTABILITY
+  _cTopic(261, 'C Language Standards', [2]),
+  _cTopic(262, 'C89/C90 and C99', [261]),
+  _cTopic(263, 'C11 and C17', [261]),
+  _cTopic(264, 'C23 Overview', [261]),
+  _cTopic(265, 'C Standard Library', [261]),
+  _cTopic(266, 'Implementation-Defined Features', [246]),
+  _cTopic(267, 'Compiler Extensions', [266]),
+  _cTopic(268, 'Portable C Programming', [267]),
+  _cTopic(269, 'Standards Compliance', [268]),
+// ADVANCED APPROVED TOPICS
+  _cTopic(270, 'Advanced Function Pointer Usage', [136]),
+  _cTopic(271, 'Callback-Based Programming', [137]),
+  _cTopic(272, 'Variadic Functions with stdarg', [80]),
+  _cTopic(273, 'Call by Reference Using Pointers — Advanced Applications', [135]),
+
+// =========================
+// OPERATING SYSTEMS
+// =========================
+// UNIT 1: OPERATING SYSTEM FUNDAMENTALS
+_osTopic(1, 'Introduction to Operating Systems', []),
+_osTopic(2, 'Objectives of Operating Systems', [1]),
+_osTopic(3, 'Functions of Operating Systems', [1]),
+_osTopic(4, 'Types of Operating Systems', [1]),
+_osTopic(5, 'Batch Operating Systems', [4]),
+_osTopic(6, 'Multiprogramming Operating Systems', [4]),
+_osTopic(7, 'Multitasking Operating Systems', [4]),
+_osTopic(8, 'Time-Sharing Operating Systems', [7]),
+_osTopic(9, 'Real-Time Operating Systems', [4]),
+_osTopic(10, 'Distributed Operating Systems', [4]),
+_osTopic(11, 'Network Operating Systems', [4]),
+_osTopic(12, 'Operating System Services', [3]),
+_osTopic(13, 'Operating System Interfaces', [12]),
+
+// UNIT 2: OPERATING SYSTEM STRUCTURE
+_osTopic(14, 'Kernel in Operating Systems', [1]),
+_osTopic(15, 'User Mode and Kernel Mode', [14]),
+_osTopic(16, 'Monolithic Kernel', [14]),
+_osTopic(17, 'Microkernel', [14]),
+_osTopic(18, 'Layered Operating System', [14]),
+_osTopic(19, 'Modular Operating System', [14]),
+_osTopic(20, 'System Programs', [12]),
+_osTopic(21, 'System Calls', [15]),
+_osTopic(22, 'Types of System Calls', [21]),
+_osTopic(23, 'System Call Interface', [21]),
+_osTopic(24, 'Boot Process and System Initialization', [14, 21]),
+
+// UNIT 3: PROCESS MANAGEMENT
+_osTopic(25, 'Introduction to Processes', [12]),
+_osTopic(26, 'Process Components', [25]),
+_osTopic(27, 'Process States', [25]),
+_osTopic(28, 'Process State Transitions', [27]),
+_osTopic(29, 'Process Control Block (PCB)', [25]),
+_osTopic(30, 'Process Queues', [27]),
+_osTopic(31, 'Process Creation', [25]),
+_osTopic(32, 'Process Termination', [25]),
+_osTopic(33, 'Parent and Child Processes', [31]),
+_osTopic(34, 'Process Hierarchy', [33]),
+_osTopic(35, 'Context Switching', [26, 27, 29]),
+_osTopic(36, 'Process Scheduling', [30]),
+_osTopic(37, 'CPU-I/O Burst Cycle', [36]),
+
+// UNIT 4: CPU SCHEDULING
+_osTopic(38, 'CPU Scheduling Concepts', [36]),
+_osTopic(39, 'Scheduling Criteria', [38]),
+_osTopic(40, 'First-Come, First-Served (FCFS) Scheduling', [38]),
+_osTopic(41, 'Shortest Job First (SJF) Scheduling', [38]),
+_osTopic(42, 'Shortest Remaining Time First (SRTF) Scheduling', [41, 47]),
+_osTopic(43, 'Priority Scheduling', [38]),
+_osTopic(44, 'Round Robin Scheduling', [38]),
+_osTopic(45, 'Multilevel Queue Scheduling', [38]),
+_osTopic(46, 'Multilevel Feedback Queue Scheduling', [45]),
+_osTopic(47, 'Preemptive Scheduling', [38]),
+_osTopic(48, 'Non-Preemptive Scheduling', [38]),
+_osTopic(49, 'Dispatcher', [35, 38]),
+_osTopic(50, 'Starvation in CPU Scheduling', [43]),
+_osTopic(51, 'Aging in CPU Scheduling', [50]),
+_osTopic(52, 'Comparison of CPU Scheduling Algorithms', [40, 41, 43, 44]),
+
+// UNIT 5: THREADS AND MULTITHREADING
+_osTopic(53, 'Introduction to Threads', [25]),
+_osTopic(54, 'Benefits of Multithreading', [53]),
+_osTopic(55, 'User-Level Threads', [53]),
+_osTopic(56, 'Kernel-Level Threads', [53]),
+_osTopic(57, 'User-Level vs Kernel-Level Threads', [55, 56]),
+_osTopic(58, 'Multithreading Models', [57]),
+_osTopic(59, 'Many-to-One Multithreading Model', [58]),
+_osTopic(60, 'One-to-One Multithreading Model', [58]),
+_osTopic(61, 'Many-to-Many Multithreading Model', [58]),
+_osTopic(62, 'Process-Based vs Thread-Based Multitasking', [25, 53]),
+
+// UNIT 6: INTER-PROCESS COMMUNICATION
+_osTopic(63, 'Inter-Process Communication (IPC)', [25]),
+_osTopic(64, 'IPC Using Shared Memory', [63]),
+_osTopic(65, 'IPC Using Message Passing', [63]),
+_osTopic(66, 'Pipes', [65]),
+_osTopic(67, 'Named Pipes', [66]),
+_osTopic(68, 'Message Queues', [65]),
+_osTopic(69, 'Signals in Operating Systems', [63]),
+_osTopic(70, 'Sockets for Inter-Process Communication', [65]),
+
+// UNIT 7: PROCESS SYNCHRONIZATION
+_osTopic(71, 'Process Synchronization', [63]),
+_osTopic(72, 'Concurrent Processes', [71]),
+_osTopic(73, 'Race Condition', [72]),
+_osTopic(74, 'Critical Section', [73]),
+_osTopic(75, 'Requirements for Critical Section Solutions', [74]),
+_osTopic(76, 'Mutual Exclusion', [75]),
+_osTopic(77, 'Peterson’s Algorithm', [74, 76]),
+_osTopic(78, 'Dekker’s Algorithm', [74, 76]),
+_osTopic(79, 'Bakery Algorithm', [74, 76]),
+_osTopic(80, 'Hardware Synchronization', [76]),
+_osTopic(81, 'Atomic Operations', [80]),
+_osTopic(82, 'Semaphores', [76]),
+_osTopic(83, 'Binary and Counting Semaphores', [82]),
+_osTopic(84, 'Mutex Locks', [76]),
+_osTopic(85, 'Mutex vs Semaphore', [82, 84]),
+_osTopic(86, 'Monitors', [82]),
+_osTopic(87, 'Condition Variables', [86]),
+_osTopic(88, 'Priority Inversion', [43, 84]),
+
+// UNIT 8: CLASSICAL SYNCHRONIZATION PROBLEMS
+_osTopic(89, 'Classical Synchronization Problems', [82]),
+_osTopic(90, 'Producer-Consumer Problem', [89]),
+_osTopic(91, 'Readers-Writers Problem', [89]),
+_osTopic(92, 'Dining Philosophers Problem', [89]),
+
+// UNIT 9: DEADLOCKS
+_osTopic(93, 'Introduction to Deadlocks', [71]),
+_osTopic(94, 'Deadlock Conditions', [93]),
+_osTopic(95, 'Resource Allocation Graph', [94]),
+_osTopic(96, 'Deadlock Prevention', [94]),
+_osTopic(97, 'Deadlock Avoidance', [94]),
+_osTopic(98, 'Safe and Unsafe States', [97]),
+_osTopic(99, 'Banker’s Algorithm', [98]),
+_osTopic(100, 'Resource Request Algorithm', [99]),
+_osTopic(101, 'Deadlock Detection', [94]),
+_osTopic(102, 'Deadlock Recovery', [101]),
+_osTopic(103, 'Deadlock Prevention vs Avoidance', [96, 97]),
+_osTopic(104, 'Starvation and Livelock', [93]),
+
+// UNIT 10: MEMORY MANAGEMENT
+_osTopic(105, 'Introduction to Memory Management', [14]),
+_osTopic(106, 'Memory Hierarchy', [105]),
+_osTopic(107, 'Main Memory', [106]),
+_osTopic(108, 'Logical and Physical Addresses', [107]),
+_osTopic(109, 'Address Binding', [108]),
+_osTopic(110, 'Memory Protection', [108]),
+_osTopic(111, 'Contiguous Memory Allocation', [107]),
+_osTopic(112, 'Fixed Partitioning', [111]),
+_osTopic(113, 'Variable Partitioning', [111]),
+_osTopic(114, 'First Fit Memory Allocation', [113]),
+_osTopic(115, 'Best Fit Memory Allocation', [113]),
+_osTopic(116, 'Worst Fit Memory Allocation', [113]),
+_osTopic(117, 'Next Fit Memory Allocation', [113]),
+_osTopic(118, 'Internal Fragmentation', [112]),
+_osTopic(119, 'External Fragmentation', [113]),
+_osTopic(120, 'Compaction', [119]),
+
+// UNIT 11: PAGING AND SEGMENTATION
+_osTopic(121, 'Non-Contiguous Memory Allocation', [108]),
+_osTopic(122, 'Paging', [121]),
+_osTopic(123, 'Page Table', [122]),
+_osTopic(124, 'Address Translation in Paging', [123]),
+_osTopic(125, 'Translation Lookaside Buffer (TLB)', [124]),
+_osTopic(126, 'Multilevel Paging', [123]),
+_osTopic(127, 'Inverted Page Table', [123]),
+_osTopic(128, 'Segmentation', [121]),
+_osTopic(129, 'Segment Table', [128]),
+_osTopic(130, 'Address Translation in Segmentation', [129]),
+_osTopic(131, 'Segmentation with Paging', [124, 130]),
+_osTopic(132, 'Paging vs Segmentation', [122, 128]),
+
+// UNIT 12: VIRTUAL MEMORY
+_osTopic(133, 'Virtual Memory', [122]),
+_osTopic(134, 'Demand Paging', [133]),
+_osTopic(135, 'Page Fault Handling', [134, 196]),
+_osTopic(136, 'Copy-on-Write', [134]),
+_osTopic(137, 'Page Replacement Algorithms', [134]),
+_osTopic(138, 'FIFO Page Replacement', [137]),
+_osTopic(139, 'Optimal Page Replacement', [137]),
+_osTopic(140, 'Least Recently Used (LRU)', [137]),
+_osTopic(141, 'Second Chance Page Replacement', [137]),
+_osTopic(142, 'Clock Page Replacement', [141]),
+_osTopic(143, 'Belady’s Anomaly', [138, 144]),
+_osTopic(144, 'Frame Allocation', [137]),
+_osTopic(145, 'Thrashing', [144]),
+_osTopic(146, 'Working Set Model', [145]),
+_osTopic(147, 'Page-Fault Frequency', [145]),
+
+// UNIT 13: FILE SYSTEMS
+_osTopic(148, 'Introduction to File Systems', [12]),
+_osTopic(149, 'File Concepts', [148]),
+_osTopic(150, 'File Attributes', [149]),
+_osTopic(151, 'File Operations', [149]),
+_osTopic(152, 'File Types', [149]),
+_osTopic(153, 'File Access Methods', [149]),
+_osTopic(154, 'Sequential Access', [153]),
+_osTopic(155, 'Direct Access', [153]),
+_osTopic(156, 'Indexed Access', [153]),
+_osTopic(157, 'Directory Structure', [148]),
+_osTopic(158, 'Single-Level Directory', [157]),
+_osTopic(159, 'Two-Level Directory', [157]),
+_osTopic(160, 'Tree-Structured Directory', [157]),
+_osTopic(161, 'Acyclic-Graph Directory', [157]),
+_osTopic(162, 'File Sharing', [148]),
+_osTopic(163, 'File Protection', [148]),
+
+// UNIT 14: FILE SYSTEM IMPLEMENTATION
+_osTopic(164, 'File System Implementation', [148]),
+_osTopic(165, 'File Control Block', [164]),
+_osTopic(166, 'Inodes', [165]),
+_osTopic(167, 'File Allocation Methods', [164]),
+_osTopic(168, 'Contiguous File Allocation', [167]),
+_osTopic(169, 'Linked File Allocation', [167]),
+_osTopic(170, 'Indexed File Allocation', [167]),
+_osTopic(171, 'Comparison of File Allocation Methods', [168, 169, 170]),
+_osTopic(172, 'Free Space Management', [164]),
+_osTopic(173, 'Bit Vector', [172]),
+_osTopic(174, 'Linked List Free Space Management', [172]),
+_osTopic(175, 'Grouping and Counting', [172]),
+
+// UNIT 15: SECONDARY STORAGE
+_osTopic(176, 'Secondary Storage', [105]),
+_osTopic(177, 'Hard Disk Drive', [176]),
+_osTopic(178, 'Solid State Drive', [176]),
+_osTopic(179, 'Disk Structure', [177]),
+_osTopic(180, 'Disk Formatting', [179]),
+_osTopic(181, 'Disk Scheduling', [179]),
+_osTopic(182, 'FCFS Disk Scheduling', [181]),
+_osTopic(183, 'SSTF Disk Scheduling', [181]),
+_osTopic(184, 'SCAN Disk Scheduling', [181]),
+_osTopic(185, 'C-SCAN Disk Scheduling', [181]),
+_osTopic(186, 'LOOK Disk Scheduling', [181]),
+_osTopic(187, 'C-LOOK Disk Scheduling', [181]),
+_osTopic(188, 'Comparison of Disk Scheduling Algorithms', [182, 183, 184, 185]),
+_osTopic(189, 'RAID', [176]),
+_osTopic(190, 'RAID Levels', [189]),
+_osTopic(191, 'Swap Space Management', [134, 176]),
+
+// UNIT 16: I/O SYSTEMS
+_osTopic(192, 'I/O System', [12]),
+_osTopic(193, 'I/O Hardware', [192]),
+_osTopic(194, 'I/O Controllers', [193]),
+_osTopic(195, 'Device Drivers', [194]),
+_osTopic(196, 'Interrupts', [193]),
+_osTopic(197, 'Interrupt Handling', [196]),
+_osTopic(198, 'Polling', [196]),
+_osTopic(199, 'Direct Memory Access (DMA)', [194]),
+_osTopic(200, 'I/O Buffering', [192]),
+_osTopic(201, 'Caching in Operating Systems', [192]),
+_osTopic(202, 'Spooling', [176, 200]),
+_osTopic(203, 'Spooling vs Buffering', [200, 202]),
+
+// UNIT 17: PROTECTION AND SECURITY
+_osTopic(204, 'Protection in Operating Systems', [12]),
+_osTopic(205, 'Protection Domains', [204]),
+_osTopic(206, 'Access Matrix', [205]),
+_osTopic(207, 'Access Control Lists', [206]),
+_osTopic(208, 'Capability Lists', [206]),
+_osTopic(209, 'Authentication', [204]),
+_osTopic(210, 'Authorization', [209]),
+_osTopic(211, 'Operating System Security', [204]),
+_osTopic(212, 'Security Threats in Operating Systems', [211]),
+_osTopic(213, 'Malware in Operating Systems', [212]),
+_osTopic(214, 'Secure Operating System Practices', [211]),
+
+// UNIT 18: VIRTUALIZATION AND MODERN OS
+_osTopic(215, 'Operating System Virtualization', [14]),
+_osTopic(216, 'Virtual Machines', [215]),
+_osTopic(217, 'Hypervisors', [216]),
+_osTopic(218, 'Type 1 and Type 2 Hypervisors', [217]),
+_osTopic(219, 'Containers', [215]),
+_osTopic(220, 'Containers vs Virtual Machines', [216, 219]),
+_osTopic(221, 'Real-Time Scheduling', [9, 38]),
+_osTopic(222, 'Hard and Soft Real-Time Systems', [221]),
+_osTopic(223, 'Operating System Performance', [38]),
+_osTopic(224, 'Reliability and Fault Tolerance', [223]),
+
+
+// =========================
+// COMPUTER NETWORKS
+// =========================
+// UNIT 1: FUNDAMENTALS OF COMPUTER NETWORKS
+_cnTopic(1, 'Introduction to Computer Networks', []),
+_cnTopic(2, 'Network Devices', [1]),
+_cnTopic(3, 'Network Topology', [1]),
+_cnTopic(4, 'Client-Server Model', [1]),
+_cnTopic(5, 'Types of Computer Networks', [1]),
+
+// UNIT 2: NETWORK MODELS
+_cnTopic(6, 'Network Models', [1]),
+_cnTopic(7, 'Layered Network Architecture', [6]),
+_cnTopic(8, 'Protocol Layering', [7]),
+_cnTopic(9, 'OSI Model', [7]),
+_cnTopic(10, 'Functions of OSI Layers', [9]),
+_cnTopic(11, 'TCP/IP Model', [7]),
+_cnTopic(12, 'Functions of TCP/IP Layers', [11]),
+_cnTopic(13, 'OSI vs TCP/IP Model', [9, 11]),
+
+// UNIT 3: PHYSICAL LAYER
+_cnTopic(14, 'Physical Layer', [9, 10]),
+_cnTopic(15, 'Physical Layer Services', [14]),
+_cnTopic(16, 'Transmission Impairments', [14]),
+_cnTopic(17, 'Transmission Modes', [14]),
+_cnTopic(18, 'Simplex Transmission', [17]),
+_cnTopic(19, 'Half-Duplex Transmission', [17]),
+_cnTopic(20, 'Full-Duplex Transmission', [17]),
+_cnTopic(21, 'Multiplexing', [14]),
+_cnTopic(22, 'Frequency Division Multiplexing', [21]),
+_cnTopic(23, 'Time Division Multiplexing', [21]),
+_cnTopic(24, 'Transmission Media', [14]),
+_cnTopic(25, 'Guided Transmission Media', [24]),
+_cnTopic(26, 'Twisted Pair Cable', [25]),
+_cnTopic(27, 'Coaxial Cable', [25]),
+_cnTopic(28, 'Fiber Optic Cable', [25]),
+_cnTopic(29, 'Unguided Transmission Media', [24]),
+_cnTopic(30, 'Radio Waves', [29]),
+_cnTopic(31, 'Microwaves', [29]),
+
+// UNIT 4: DATA LINK LAYER
+_cnTopic(32, 'Data Link Layer', [9, 14]),
+_cnTopic(33, 'Framing', [32]),
+_cnTopic(34, 'Error Control', [32]),
+_cnTopic(35, 'Error Detection', [34]),
+_cnTopic(36, 'Parity Checking', [35]),
+_cnTopic(37, 'Cyclic Redundancy Check (CRC)', [35]),
+_cnTopic(38, 'Error Correction', [34]),
+_cnTopic(39, 'Hamming Code', [38]),
+_cnTopic(40, 'Automatic Repeat reQuest (ARQ)', [34]),
+_cnTopic(41, 'Stop-and-Wait ARQ', [40]),
+_cnTopic(42, 'Go-Back-N ARQ', [40]),
+_cnTopic(43, 'Selective Repeat ARQ', [40]),
+_cnTopic(44, 'Piggybacking', [34, 40]),
+_cnTopic(45, 'Switching Techniques', [32]),
+_cnTopic(46, 'Circuit Switching', [45]),
+_cnTopic(47, 'Packet Switching', [45]),
+_cnTopic(48, 'Virtual Circuit Networks', [47]),
+_cnTopic(49, 'Data Link Layer Switching', [32, 45]),
+_cnTopic(50, 'Virtual LAN (VLAN)', [49]),
+_cnTopic(51, 'Link Aggregation', [49]),
+_cnTopic(52, 'MAC Addressing', [32]),
+
+// UNIT 5: MEDIUM ACCESS CONTROL
+_cnTopic(53, 'Medium Access Control', [32, 52]),
+_cnTopic(54, 'Random Access Protocols', [53]),
+_cnTopic(55, 'Pure ALOHA', [54]),
+_cnTopic(56, 'Slotted ALOHA', [54]),
+_cnTopic(57, 'Carrier Sense Multiple Access (CSMA)', [54]),
+_cnTopic(58, 'CSMA/CD', [57]),
+_cnTopic(59, 'CSMA/CA', [57]),
+_cnTopic(60, 'Ethernet', [52, 53]),
+
+// UNIT 6: NETWORK LAYER
+_cnTopic(61, 'Network Layer', [9, 11, 32]),
+_cnTopic(62, 'Logical Addressing', [61]),
+_cnTopic(63, 'IPv4 Addressing', [62]),
+_cnTopic(64, 'Classful Addressing', [63]),
+_cnTopic(65, 'Classless Addressing', [63]),
+_cnTopic(66, 'CIDR', [65]),
+_cnTopic(67, 'IPv4 Header Format', [63]),
+_cnTopic(68, 'IPv4 Fragmentation', [67]),
+_cnTopic(69, 'IPv4 vs IPv6', [63]),
+_cnTopic(70, 'IPv6 Addressing', [69]),
+_cnTopic(71, 'IPv6 Header Format', [70]),
+_cnTopic(72, 'Private IP Addresses', [63]),
+_cnTopic(73, 'Internet Protocol (IP)', [61, 63]),
+_cnTopic(74, 'Public IP Addresses', [63]),
+_cnTopic(75, 'Network Address Translation (NAT)', [72, 74]),
+
+// UNIT 7: SUBNETTING
+_cnTopic(76, 'Introduction to Subnetting', [65, 66]),
+_cnTopic(77, 'Subnet Mask', [76]),
+_cnTopic(78, 'Network Address Calculation', [77]),
+_cnTopic(79, 'Broadcast Address Calculation', [77]),
+_cnTopic(80, 'Host Address Calculation', [77]),
+_cnTopic(81, 'CIDR-Based Subnetting', [66, 76]),
+_cnTopic(82, 'Variable-Length Subnet Masking (VLSM)', [81]),
+_cnTopic(83, 'VLSM Address Allocation', [82]),
+_cnTopic(84, 'Supernetting', [66, 76]),
+_cnTopic(85, 'Route Aggregation', [84]),
+
+// UNIT 8: ROUTING
+_cnTopic(86, 'Routing', [61, 73]),
+_cnTopic(87, 'Static Routing', [86]),
+_cnTopic(88, 'Dynamic Routing', [86]),
+_cnTopic(89, 'Routing Algorithms', [88]),
+_cnTopic(90, 'Shortest Path Routing', [89]),
+_cnTopic(91, "Dijkstra's Algorithm", [90]),
+_cnTopic(92, 'Distance Vector Routing', [89]),
+_cnTopic(93, 'Link State Routing', [89]),
+_cnTopic(94, 'RIP', [92]),
+_cnTopic(95, 'OSPF', [93]),
+_cnTopic(96, 'IS-IS', [93]),
+_cnTopic(97, 'EIGRP', [92]),
+_cnTopic(98, 'BGP', [88, 89]),
+_cnTopic(99, 'MPLS', [86, 88]),
+
+// UNIT 9: NETWORK LAYER PROTOCOLS
+_cnTopic(100, 'Address Resolution Protocol (ARP)', [63, 73]),
+_cnTopic(101, 'Reverse Address Resolution Protocol (RARP)', [63, 73]),
+_cnTopic(102, 'Dynamic Host Configuration Protocol (DHCP)', [63, 100]),
+_cnTopic(103, 'Internet Control Message Protocol (ICMP)', [73]),
+_cnTopic(104, 'Internet Group Management Protocol (IGMP)', [73]),
+
+// UNIT 10: TRANSPORT LAYER
+_cnTopic(105, 'Transport Layer', [10, 12, 61]),
+_cnTopic(106, 'Transport Layer Services', [105]),
+_cnTopic(107, 'Process-to-Process Delivery', [105, 106]),
+_cnTopic(108, 'Port Numbers', [107]),
+_cnTopic(109, 'Sockets', [107, 108]),
+_cnTopic(110, 'TCP Protocol', [105, 106]),
+_cnTopic(111, 'TCP Services', [110]),
+_cnTopic(112, 'TCP Segment', [110]),
+_cnTopic(113, 'TCP 3-Way Handshake', [110, 112]),
+_cnTopic(114, 'TCP Connection Establishment', [113]),
+_cnTopic(115, 'TCP Flow Control', [110, 112]),
+_cnTopic(116, 'TCP Sliding Window', [115]),
+_cnTopic(117, 'TCP Timers', [110, 112]),
+_cnTopic(118, 'TCP Congestion Control', [110, 115]),
+_cnTopic(119, 'TCP Termination', [110]),
+_cnTopic(120, 'UDP Protocol', [105, 106]),
+_cnTopic(121, 'UDP Datagram Structure', [120]),
+_cnTopic(122, 'TCP vs UDP', [110, 120]),
+_cnTopic(123, 'Stream Control Transmission Protocol (SCTP)', [105, 106]),
+_cnTopic(124, 'Datagram Congestion Control Protocol (DCCP)', [105, 106]),
+
+// UNIT 11: SESSION LAYER
+_cnTopic(125, 'Session Layer', [10, 12]),
+_cnTopic(126, 'Functions of Session Layer', [125]),
+_cnTopic(127, 'Remote Procedure Call (RPC)', [126]),
+_cnTopic(128, 'Point-to-Point Tunneling Protocol (PPTP)', [126]),
+
+// UNIT 12: PRESENTATION LAYER
+_cnTopic(129, 'Presentation Layer', [10, 12]),
+_cnTopic(130, 'Functions of Presentation Layer', [129]),
+_cnTopic(131, 'Application Filing Protocol (AFP)', [130]),
+_cnTopic(132, 'NetWare Core Protocol (NCP)', [130]),
+_cnTopic(133, 'Secure Sockets Layer (SSL)', [130]),
+_cnTopic(134, 'Multipurpose Internet Mail Extensions (MIME)', [130]),
+
+// UNIT 13: APPLICATION LAYER
+_cnTopic(135, 'Application Layer', [10, 12]),
+_cnTopic(136, 'World Wide Web (WWW)', [135]),
+_cnTopic(137, 'Web Architecture', [136, 4]),
+_cnTopic(138, 'Electronic Mail', [135]),
+_cnTopic(139, 'Content Distribution Network (CDN)', [136, 137]),
+
+// UNIT 14: APPLICATION LAYER PROTOCOLS
+_cnTopic(140, 'Domain Name System (DNS)', [135]),
+_cnTopic(141, 'DNS Hierarchy', [140]),
+_cnTopic(142, 'DNS Name Resolution', [140, 141]),
+_cnTopic(143, 'File Transfer Protocol (FTP)', [135]),
+_cnTopic(144, 'Simple Mail Transfer Protocol (SMTP)', [138]),
+_cnTopic(145, 'Simple Network Management Protocol (SNMP)', [135]),
+_cnTopic(146, 'HyperText Transfer Protocol (HTTP)', [136, 137]),
+_cnTopic(147, 'HTTP Request and Response', [146]),
+_cnTopic(148, 'HyperText Transfer Protocol Secure (HTTPS)', [146, 133]),
+_cnTopic(149, 'HTTP vs HTTPS', [146, 148]),
+_cnTopic(150, 'Post Office Protocol Version 3 (POP3)', [138]),
+_cnTopic(151, 'Internet Message Access Protocol (IMAP)', [138]),
+_cnTopic(152, 'Lightweight Directory Access Protocol (LDAP)', [135]),
+_cnTopic(153, 'Network Time Protocol (NTP)', [135]),
+_cnTopic(154, 'Trivial File Transfer Protocol (TFTP)', [143]),
+_cnTopic(155, 'Network News Transfer Protocol (NNTP)', [135]),
+_cnTopic(156, 'Message Queuing Telemetry Transport (MQTT)', [135, 107]),
+_cnTopic(157, 'Session Initiation Protocol (SIP)', [135, 107]),
+
+// UNIT 15: NETWORK PERFORMANCE AND QUALITY
+_cnTopic(158, 'Network Performance', [61, 105]),
+_cnTopic(159, 'Congestion Control', [158]),
+_cnTopic(160, 'Quality of Service (QoS)', [158]),
+_cnTopic(161, 'QoS for Multimedia', [160]),
+_cnTopic(162, 'Techniques for Achieving QoS', [160]),
+_cnTopic(163, 'Token Bucket', [162]),
+_cnTopic(164, 'Leaky Bucket', [162]),
+
+// UNIT 16: NETWORK SECURITY
+_cnTopic(165, 'Network Security', [61, 105]),
+_cnTopic(166, 'Network Security Threats', [165]),
+_cnTopic(167, 'Authentication', [165]),
+_cnTopic(168, 'Encryption', [165]),
+_cnTopic(169, 'Symmetric Encryption', [168]),
+_cnTopic(170, 'Asymmetric Encryption', [168]),
+_cnTopic(171, 'Secure Communication', [168, 170]),
+_cnTopic(172, 'Firewalls', [165]),
+_cnTopic(173, 'Firewall Types', [172]),
+_cnTopic(174, 'MAC Address Filtering', [52, 165]),
+_cnTopic(175, 'Intrusion Detection System (IDS)', [165]),
+_cnTopic(176, 'Intrusion Prevention System (IPS)', [175]),
+_cnTopic(177, 'Virtual Private Network (VPN)', [165, 168]),
+
+// UNIT 17: WIRELESS AND SPECIAL NETWORKS
+_cnTopic(178, 'Wireless and Special Networks', [1]),
+_cnTopic(179, 'Wi-Fi Standards', [178]),
+_cnTopic(180, 'Wireless LAN', [178, 179]),
+_cnTopic(181, 'Bluetooth', [178]),
+_cnTopic(182, 'Zigbee', [178]),
+_cnTopic(183, 'Mobile Networks', [178]),
+_cnTopic(184, '2G, 3G, 4G and 5G', [183]),
+
+// UNIT 18: MODERN NETWORKING CONCEPTS
+_cnTopic(185, 'Modern Networking Concepts', [1]),
+_cnTopic(186, 'Types of Cloud Services', [185]),
+_cnTopic(187, 'Software Defined Networking (SDN)', [86, 185]),
+_cnTopic(188, 'SDN Architecture', [187]),
+_cnTopic(189, 'Network Function Virtualization (NFV)', [185]),
+_cnTopic(190, 'IoT Networking', [185, 178]),
+_cnTopic(191, 'Network Slicing in 5G', [184, 185]),
+
+// =========================
+// OOPS-JAVA
+// =========================
+
+// UNIT 1: JAVA FUNDAMENTALS
+_javaTopic(1, 'Introduction to Java', []),
+_javaTopic(2, 'History and Evolution of Java', [1]),
+_javaTopic(3, 'Features of Java', [1]),
+_javaTopic(4, 'Applications of Java', [3]),
+_javaTopic(5, 'Java Editions', [1]),
+_javaTopic(6, 'JDK, JRE and JVM', [1]),
+_javaTopic(7, 'JVM Architecture', [6]),
+_javaTopic(8, 'Java Compilation Process', [6, 7]),
+_javaTopic(9, 'Bytecode in Java', [8]),
+_javaTopic(10, 'Platform Independence in Java', [7, 9]),
+_javaTopic(11, 'Java Program Structure', [8]),
+_javaTopic(12, 'main() Method', [11]),
+_javaTopic(13, 'Java Keywords', [11]),
+_javaTopic(14, 'Identifiers and Naming Conventions', [11, 13]),
+_javaTopic(15, 'Comments in Java', [11]),
+
+// UNIT 2: DATA TYPES, VARIABLES AND OPERATORS
+_javaTopic(16, 'Data Types in Java', [11]),
+_javaTopic(17, 'Primitive Data Types', [16]),
+_javaTopic(18, 'Integer Data Types', [17]),
+_javaTopic(19, 'Floating-Point Data Types', [17]),
+_javaTopic(20, 'Character and Boolean Data Types', [17]),
+_javaTopic(21, 'Non-Primitive Data Types', [16]),
+_javaTopic(22, 'Variables in Java', [16]),
+_javaTopic(23, 'Local Variables', [22]),
+_javaTopic(24, 'Instance Variables', [22]),
+_javaTopic(25, 'Static Variables', [22]),
+_javaTopic(26, 'Constants and final Variables', [22]),
+_javaTopic(27, 'Literals in Java', [16]),
+_javaTopic(28, 'Type Conversion', [16]),
+_javaTopic(29, 'Type Casting', [28]),
+_javaTopic(30, 'Wrapper Classes', [21, 17]),
+_javaTopic(31, 'Operators in Java', [16, 22]),
+_javaTopic(32, 'Arithmetic Operators', [31]),
+_javaTopic(33, 'Relational and Logical Operators', [31]),
+_javaTopic(34, 'Assignment and Unary Operators', [31]),
+_javaTopic(35, 'Bitwise and Shift Operators', [31]),
+_javaTopic(36, 'Conditional Operator', [31]),
+_javaTopic(37, 'Operator Precedence and Associativity', [31]),
+
+// UNIT 3: CONTROL FLOW
+_javaTopic(38, 'Control Flow Statements', [31]),
+_javaTopic(39, 'if Statement', [38]),
+_javaTopic(40, 'if-else Statement', [39]),
+_javaTopic(41, 'else-if Ladder', [40]),
+_javaTopic(42, 'Nested if Statements', [40]),
+_javaTopic(43, 'switch Statement', [38]),
+_javaTopic(44, 'switch Expressions', [43]),
+_javaTopic(45, 'while Loop', [38]),
+_javaTopic(46, 'do-while Loop', [38]),
+_javaTopic(47, 'for Loop', [38]),
+_javaTopic(48, 'Enhanced for Loop', [47]),
+_javaTopic(49, 'Nested Loops', [47]),
+_javaTopic(50, 'break and continue Statements', [45, 47]),
+_javaTopic(51, 'return Statement', [38]),
+
+// UNIT 4: ARRAYS AND STRINGS
+_javaTopic(52, 'Introduction to Arrays', [16]),
+_javaTopic(53, 'Array Declaration and Initialization', [52]),
+_javaTopic(54, 'One-Dimensional Arrays', [53]),
+_javaTopic(55, 'Array Traversal', [54, 48]),
+_javaTopic(56, 'Array Searching', [55]),
+_javaTopic(57, 'Array Sorting', [55]),
+_javaTopic(58, 'Multidimensional Arrays', [52]),
+_javaTopic(59, 'Two-Dimensional Arrays', [58]),
+_javaTopic(60, 'Jagged Arrays', [58]),
+_javaTopic(61, 'Arrays of Objects', [21, 52]),
+_javaTopic(62, 'Passing Arrays to Methods', [54]),
+_javaTopic(63, 'Introduction to Strings', [21]),
+_javaTopic(64, 'String Creation', [63]),
+_javaTopic(65, 'String Literals', [63, 27]),
+_javaTopic(66, 'String Immutability', [64]),
+_javaTopic(67, 'String Methods', [64]),
+_javaTopic(68, 'String Comparison', [67]),
+_javaTopic(69, 'String Searching and Manipulation', [67]),
+_javaTopic(70, 'StringBuilder and StringBuffer', [63, 67]),
+_javaTopic(71, 'String Tokenization', [69]),
+
+// UNIT 5: CLASSES, OBJECTS AND METHODS
+_javaTopic(72, 'Object-Oriented Programming Concepts', [1]),
+_javaTopic(73, 'Classes in Java', [21, 72]),
+_javaTopic(74, 'Objects in Java', [73]),
+_javaTopic(75, 'Class Members', [73]),
+_javaTopic(76, 'Object References', [74, 21]),
+_javaTopic(77, 'Object Creation', [74]),
+_javaTopic(78, 'Object Initialization', [77]),
+_javaTopic(79, 'Methods in Java', [73]),
+_javaTopic(80, 'Method Declaration and Definition', [79]),
+_javaTopic(81, 'Method Calling', [80]),
+_javaTopic(82, 'Parameters and Arguments', [80]),
+_javaTopic(83, 'Return Values', [80, 51]),
+_javaTopic(84, 'Method Overloading', [80, 82]),
+_javaTopic(85, 'Constructors', [73, 78]),
+_javaTopic(86, 'Default Constructor', [85]),
+_javaTopic(87, 'Parameterized Constructor', [85, 82]),
+_javaTopic(88, 'Constructor Overloading', [85, 87]),
+_javaTopic(89, 'Constructor Chaining', [85, 88]),
+_javaTopic(90, 'this Keyword', [73, 85]),
+_javaTopic(91, 'Static Members', [75, 25]),
+_javaTopic(92, 'Static Methods and Blocks', [91, 79]),
+
+// UNIT 6: ENCAPSULATION AND ACCESS CONTROL
+_javaTopic(93, 'Encapsulation', [73, 75]),
+_javaTopic(94, 'Data Hiding', [93]),
+_javaTopic(95, 'Access Modifiers', [73]),
+_javaTopic(96, 'Public Access', [95]),
+_javaTopic(97, 'Private Access', [95]),
+_javaTopic(98, 'Protected Access', [95]),
+_javaTopic(99, 'Default Access', [95]),
+_javaTopic(100, 'Getters and Setters', [93, 97]),
+_javaTopic(101, 'Encapsulation using Classes', [93, 100]),
+_javaTopic(102, 'Immutable Objects', [66, 93]),
+
+// UNIT 7: INHERITANCE
+_javaTopic(103, 'Inheritance in Java', [73, 74]),
+_javaTopic(104, 'Benefits of Inheritance', [103]),
+_javaTopic(105, 'Single Inheritance', [103]),
+_javaTopic(106, 'Multilevel Inheritance', [105]),
+_javaTopic(107, 'Hierarchical Inheritance', [105]),
+_javaTopic(108, 'Multiple Inheritance through Interfaces', [103]),
+_javaTopic(109, 'Hybrid Inheritance through Interfaces', [108]),
+_javaTopic(110, 'super Keyword', [103, 85]),
+_javaTopic(111, 'Constructor Execution in Inheritance', [103, 85, 110]),
+_javaTopic(112, 'Method Overriding', [103, 79]),
+_javaTopic(113, 'Inheritance and Access Control', [103, 95]),
+_javaTopic(114, 'Inheritance vs Composition', [103, 73]),
+
+// UNIT 8: POLYMORPHISM AND ABSTRACTION
+_javaTopic(115, 'Polymorphism in Java', [103, 112]),
+_javaTopic(116, 'Compile-Time Polymorphism', [84, 115]),
+_javaTopic(117, 'Runtime Polymorphism', [112, 115]),
+_javaTopic(118, 'Dynamic Method Dispatch', [117]),
+_javaTopic(119, 'Upcasting and Downcasting', [103, 117]),
+_javaTopic(120, 'Abstraction', [72, 93]),
+_javaTopic(121, 'Abstract Classes', [120, 73]),
+_javaTopic(122, 'Abstract Methods', [121, 79]),
+_javaTopic(123, 'Interfaces', [120, 73]),
+_javaTopic(124, 'Interface Declaration', [123]),
+_javaTopic(125, 'Interface Implementation', [123, 124]),
+_javaTopic(126, 'Multiple Interface Implementation', [125]),
+_javaTopic(127, 'Default Methods in Interfaces', [125]),
+_javaTopic(128, 'Static Methods in Interfaces', [125]),
+_javaTopic(129, 'Functional Interfaces', [123, 125]),
+_javaTopic(130, 'Abstract Class vs Interface', [121, 123]),
+
+// UNIT 9: PACKAGES AND OBJECT CLASS
+_javaTopic(131, 'Packages in Java', [73]),
+_javaTopic(132, 'Creating User-Defined Packages', [131]),
+_javaTopic(133, 'Importing Packages', [131]),
+_javaTopic(134, 'Package Access Control', [95, 131]),
+_javaTopic(135, 'Java Standard Packages', [131]),
+_javaTopic(136, 'java.lang Package', [135]),
+_javaTopic(137, 'java.util Package', [135]),
+_javaTopic(138, 'Object Class', [73]),
+_javaTopic(139, 'toString() Method', [138, 79]),
+_javaTopic(140, 'equals() Method', [138, 79]),
+_javaTopic(141, 'hashCode() Method', [138, 79]),
+_javaTopic(142, 'Object Equality vs Reference Equality', [76, 140]),
+
+// UNIT 10: EXCEPTION HANDLING
+_javaTopic(143, 'Introduction to Exception Handling', [72]),
+_javaTopic(144, 'Errors vs Exceptions', [143]),
+_javaTopic(145, 'Exception Hierarchy', [143]),
+_javaTopic(146, 'Checked Exceptions', [145]),
+_javaTopic(147, 'Unchecked Exceptions', [145]),
+_javaTopic(148, 'try Block', [143]),
+_javaTopic(149, 'catch Block', [148]),
+_javaTopic(150, 'Multiple catch Blocks', [149]),
+_javaTopic(151, 'finally Block', [148]),
+_javaTopic(152, 'throw Statement', [149]),
+_javaTopic(153, 'throws Keyword', [149]),
+_javaTopic(154, 'Exception Propagation', [153]),
+_javaTopic(155, 'Nested Exception Handling', [148, 149]),
+_javaTopic(156, 'Custom Exceptions', [145, 152]),
+_javaTopic(157, 'Try-with-Resources', [151]),
+
+// UNIT 11: COLLECTIONS FRAMEWORK
+_javaTopic(158, 'Introduction to Collections Framework', [137]),
+_javaTopic(159, 'Collection Interfaces', [158]),
+_javaTopic(160, 'List Interface', [159]),
+_javaTopic(161, 'ArrayList', [160, 54]),
+_javaTopic(162, 'LinkedList', [160]),
+_javaTopic(163, 'Vector and Stack', [160]),
+_javaTopic(164, 'Set Interface', [159]),
+_javaTopic(165, 'HashSet', [164]),
+_javaTopic(166, 'LinkedHashSet', [165]),
+_javaTopic(167, 'TreeSet', [164, 57]),
+_javaTopic(168, 'Queue and Deque', [159]),
+_javaTopic(169, 'PriorityQueue', [168]),
+_javaTopic(170, 'ArrayDeque', [168]),
+_javaTopic(171, 'Map Interface', [159]),
+_javaTopic(172, 'HashMap', [171]),
+_javaTopic(173, 'LinkedHashMap', [172]),
+_javaTopic(174, 'TreeMap', [171, 57]),
+_javaTopic(175, 'Iterator and ListIterator', [159, 160]),
+_javaTopic(176, 'Comparable Interface', [123, 159]),
+_javaTopic(177, 'Comparator Interface', [159, 176]),
+_javaTopic(178, 'Sorting Collections', [160, 176, 177]),
+
+// UNIT 12: GENERICS AND FILE I/O
+_javaTopic(179, 'Introduction to Generics', [73, 158]),
+_javaTopic(180, 'Generic Classes and Methods', [179, 73, 79]),
+_javaTopic(181, 'Bounded Type Parameters', [180]),
+_javaTopic(182, 'Wildcards in Generics', [180]),
+_javaTopic(183, 'Type Erasure', [179]),
+_javaTopic(184, 'Java I/O Architecture', [135]),
+_javaTopic(185, 'Byte Streams and Character Streams', [184]),
+_javaTopic(186, 'File Handling using File Class', [184, 185]),
+_javaTopic(187, 'Reading and Writing Files', [186]),
+_javaTopic(188, 'Buffered I/O', [185, 187]),
+_javaTopic(189, 'Serialization and Deserialization', [186, 187]),
+_javaTopic(190, 'Java NIO Basics', [184, 186]),
+
+// =========================
+// DBMS
+// =========================
+  // UNIT 1: INTRODUCTION TO DBMS
+  _dbmsTopic(1, 'Introduction to DBMS', []),
+  _dbmsTopic(2, 'Need for DBMS', [1]),
+  _dbmsTopic(3, 'DBMS Architectures', [1]),
+  _dbmsTopic(4, 'Two-Tier Architecture', [3]),
+  _dbmsTopic(5, 'Three-Tier Architecture', [3]),
+
+  // UNIT 2: ENTITY RELATIONSHIP MODEL
+  _dbmsTopic(6, 'Entity Relationship Model', [1]),
+  _dbmsTopic(7, 'Entities and Entity Sets', [6]),
+  _dbmsTopic(8, 'Attributes', [6]),
+  _dbmsTopic(9, 'Types of Attributes', [8]),
+  _dbmsTopic(10, 'Relationships', [6]),
+  _dbmsTopic(11, 'Types of Relationships', [10]),
+  _dbmsTopic(12, 'Cardinality', [11]),
+  _dbmsTopic(13, 'ER Diagram', [7, 9, 11, 12]),
+  _dbmsTopic(14, 'Enhanced ER Model', [13]),
+  _dbmsTopic(15, 'Specialization', [14]),
+  _dbmsTopic(16, 'Generalization', [14]),
+  _dbmsTopic(17, 'Aggregation', [13]),
+  _dbmsTopic(18, 'Minimization of ER Diagram', [13]),
+  _dbmsTopic(19, 'Recursive Relationships', [10]),
+
+  // UNIT 3: RELATIONAL MODEL
+  _dbmsTopic(20, 'Relational Model', [1]),
+  _dbmsTopic(21, 'Relations and Tuples', [20]),
+  _dbmsTopic(22, 'Attributes in Relations', [20]),
+  _dbmsTopic(23, 'Domains', [20]),
+  _dbmsTopic(24, 'Keys in Relational Model', [21, 22, 23]),
+  _dbmsTopic(25, 'Candidate Key', [24]),
+  _dbmsTopic(26, 'Super Key', [24]),
+  _dbmsTopic(27, 'Primary Key', [24]),
+  _dbmsTopic(28, 'Alternate Key', [24]),
+  _dbmsTopic(29, 'Foreign Key', [24]),
+  _dbmsTopic(30, 'Integrity Constraints', [20]),
+  _dbmsTopic(31, 'Entity Integrity', [30]),
+  _dbmsTopic(32, 'Referential Integrity', [30, 28]),
+
+  // UNIT 4: FUNCTIONAL DEPENDENCIES
+  _dbmsTopic(33, 'Functional Dependency', [20, 22]),
+  _dbmsTopic(34, 'Types of Functional Dependencies', [33]),
+  _dbmsTopic(35, 'Trivial and Non-Trivial Functional Dependencies', [34]),
+  _dbmsTopic(36, 'Attribute Closure', [33]),
+  _dbmsTopic(37, 'Equivalence of Functional Dependencies', [33]),
+  _dbmsTopic(38, 'Canonical Cover', [37]),
+  _dbmsTopic(39, 'Minimal Cover', [38]),
+  _dbmsTopic(40, 'Anomalies in Relational Model', [33, 24]),
+  _dbmsTopic(41, 'Insertion Anomaly', [40]),
+  _dbmsTopic(42, 'Update Anomaly', [40]),
+  _dbmsTopic(43, 'Deletion Anomaly', [40]),
+  _dbmsTopic(44, 'Mapping ER Model to Relational Model', [13, 20]),
+  _dbmsTopic(45, 'Strategies for Schema Design', [44]),
+  _dbmsTopic(46, 'Schema Integration', [44, 45]),
+
+  // UNIT 5: NORMALIZATION
+  _dbmsTopic(47, 'Introduction to Normalization', [33, 40]),
+  _dbmsTopic(48, 'Need for Normalization', [47]),
+  _dbmsTopic(49, 'First Normal Form (1NF)', [47]),
+  _dbmsTopic(50, 'Second Normal Form (2NF)', [49]),
+  _dbmsTopic(51, 'Third Normal Form (3NF)', [50]),
+  _dbmsTopic(52, 'Functional Dependency and Normal Forms', [33, 49, 50, 51]),
+  _dbmsTopic(53, 'The Problem of Redundancy in Database', [40]),
+  _dbmsTopic(54, 'Dependency-Preserving Decomposition', [38, 52]),
+  _dbmsTopic(55, 'Lossless-Join Decomposition', [38, 52]),
+  _dbmsTopic(56, 'How to Find the Highest Normal Form of a Relation', [49, 50, 51]),
+  _dbmsTopic(57, 'Domain-Key Normal Form', [47]),
+  _dbmsTopic(58, 'Denormalization in Databases', [51]),
+  _dbmsTopic(59, 'Data Replication', [20, 58]),
+
+  // UNIT 6: ADVANCED NORMALIZATION
+  _dbmsTopic(60, 'Boyce-Codd Normal Form (BCNF)', [51, 33]),
+  _dbmsTopic(61, 'Multivalued Dependency', [33]),
+  _dbmsTopic(62, 'Fourth Normal Form (4NF)', [61]),
+  _dbmsTopic(63, 'Join Dependency', [61]),
+  _dbmsTopic(64, 'Fifth Normal Form (5NF)', [63]),
+  _dbmsTopic(65, 'Comparison of Normal Forms', [49, 50, 51, 60, 62, 64]),
+
+  // UNIT 7: RELATIONAL ALGEBRA AND CALCULUS
+  _dbmsTopic(66, 'Relational Algebra and Calculus', [20]),
+  _dbmsTopic(67, 'Basic Operators', [66]),
+  _dbmsTopic(68, 'Selection Operator', [67]),
+  _dbmsTopic(69, 'Projection Operator', [67]),
+  _dbmsTopic(70, 'Union Operator', [67]),
+  _dbmsTopic(71, 'Set Difference Operator', [67]),
+  _dbmsTopic(72, 'Cartesian Product', [67]),
+  _dbmsTopic(73, 'Extended Operators', [67]),
+  _dbmsTopic(74, 'Join Operations', [73]),
+  _dbmsTopic(75, 'Nested Queries', [73]),
+  _dbmsTopic(76, 'Tuple Relational Calculus', [66]),
+  _dbmsTopic(77, 'Row-Oriented vs Column-Oriented Data Stores', [20]),
+
+  // UNIT 8: TRANSACTIONS AND CONCURRENCY CONTROL
+  _dbmsTopic(78, 'Transactions', [20]),
+  _dbmsTopic(79, 'ACID Properties', [78]),
+  _dbmsTopic(80, 'Transaction States', [78]),
+  _dbmsTopic(81, 'Lock-Based Protocol', [79]),
+  _dbmsTopic(82, 'Basic Locking Protocol', [81]),
+  _dbmsTopic(83, 'Graph-Based Protocol', [81]),
+  _dbmsTopic(84, 'Multiple Granularity Locking', [81]),
+  _dbmsTopic(85, 'Timestamp Ordering Protocols', [79]),
+  _dbmsTopic(86, 'Timestamp Ordering Rules', [85]),
+  _dbmsTopic(87, 'Deadlock', [79, 81]),
+  _dbmsTopic(88, 'Deadlock Prevention Schemes', [87]),
+  _dbmsTopic(89, 'Deadlock Detection', [87]),
+  _dbmsTopic(90, 'Log-Based Recovery', [78]),
+  _dbmsTopic(91, 'Recovery Techniques', [90]),
+  _dbmsTopic(92, 'Transaction and Concurrency Control', [78, 79]),
+
+  // UNIT 9: FILE ORGANIZATION
+  _dbmsTopic(93, 'File Organization', [20]),
+  _dbmsTopic(94, 'File Structures', [93]),
+  _dbmsTopic(95, 'Record Organization', [93]),
+  _dbmsTopic(96, 'Sequential File Organization', [95]),
+  _dbmsTopic(97, 'Heap File Organization', [95]),
+  _dbmsTopic(98, 'Hash-Based File Organization', [93]),
+
+  // UNIT 10: INDEXING
+  _dbmsTopic(99, 'Indexing in Databases', [93]),
+  _dbmsTopic(100, 'Primary Index', [99, 94]),
+  _dbmsTopic(101, 'Secondary Index', [99, 94]),
+  _dbmsTopic(102, 'Clustered Index', [99, 94]),
+  _dbmsTopic(103, 'Non-Clustered Index', [99, 94]),
+  _dbmsTopic(104, 'Query Performance on Clustered vs Non-Clustered Indexes', [102, 103]),
+  _dbmsTopic(105, 'B-Tree', [99]),
+  _dbmsTopic(106, 'B+ Tree', [105]),
+  _dbmsTopic(107, 'B-Tree vs B+ Tree', [105, 106]),
+  _dbmsTopic(108, 'Bitmap Indexing', [99]),
+  _dbmsTopic(109, 'Inverted Index', [99]),
+
+  // UNIT 11: ADVANCED DATABASE TOPICS
+  _dbmsTopic(110, 'RAID', [93]),
+  _dbmsTopic(111, 'Distributed Database System', [20, 78]),
+  _dbmsTopic(112, 'Query Optimization', [66]),
+  _dbmsTopic(113, 'Database Security Challenges', [20]),
+  _dbmsTopic(114, 'Data Management Issues in Mobile Databases', [20]),
+  _dbmsTopic(115, 'Geographic Information Systems', [20]),
+  _dbmsTopic(116, 'Web Information Retrieval', [66]),
+  _dbmsTopic(117, 'Vector Space Model', [116]),
+
+  // UNIT 12: DATA WAREHOUSING AND DATA MINING
+  _dbmsTopic(118, 'Data Warehousing', [20]),
+  _dbmsTopic(119, 'Data Warehouse Architecture', [118]),
+  _dbmsTopic(120, 'Data Mining', [118]),
+  _dbmsTopic(121, 'Dimensional Data Modeling', [118]),
+  _dbmsTopic(122, 'Data Marts', [121]),
+  _dbmsTopic(123, 'Types of OLAP Systems', [118]),
+  _dbmsTopic(124, 'Apache HBase', [20]),
+  _dbmsTopic(125, 'RDBMS vs HBase', [20, 124]),
+  _dbmsTopic(126, 'Apache Hive', [118, 124]),
+  _dbmsTopic(127, 'Hive Architecture', [126]),
+  _dbmsTopic(128, 'Working of Hive', [127]),
+
 ];
