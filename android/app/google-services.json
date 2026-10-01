@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "361817694015",
+    "project_id": "learnroot-de5a8",
+    "storage_bucket": "learnroot-de5a8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361817694015:android:17383d2e038c327651fd8a",
+        "android_client_info": {
+          "package_name": "com.example.learnroot_71"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVkL-1_IJtxkRXOxngxlz6PqC1ARpYP6c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
