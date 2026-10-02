@@ -110,23 +110,17 @@ class _GraphScreenState extends State<GraphScreen> {
       body: Container(
         decoration: BoxDecoration(
           color: backgroundColor,
-
-          // =====================================================
-          // FINAL THEME BACKGROUNDS
-          // =====================================================
-
-           gradient: isDark
+          gradient: isDark
               ? const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                   Color(0xFF17142A), // Soft deep indigo
-                   Color(0xFF24203D), // Settled muted purple
+                    Color(0xFF030C1D),
+                    Color(0xFF0E1532),
                   ],
                 )
               : AppTheme.lightBackgroundGradient,
         ),
-
 
         child: SafeArea(
           child: Column(
@@ -433,8 +427,8 @@ class PrerequisiteGraphScreen extends StatelessWidget {
     // =========================================================
 
     final prerequisiteGreen = isDark
-    ? const Color(0xFF66A66B)
-    : AppTheme.prerequisiteBorder;
+        ? const Color(0xFF66A66B)
+        : AppTheme.prerequisiteBorder;
 
     final prerequisiteBackground = isDark
         ? const Color(0xFF24352B)
@@ -456,7 +450,8 @@ class PrerequisiteGraphScreen extends StatelessWidget {
         ? const Color(0xFFD8B98F)
         : AppTheme.postRequisiteText;
 
-    final currentTopic = const Color.fromARGB(255, 108, 94, 203);
+    final currentTopic =
+        const Color.fromARGB(255, 108, 94, 203);
 
     final prerequisites = prerequisiteTopics;
     final usedIn = usedInTopics;
@@ -528,10 +523,6 @@ class PrerequisiteGraphScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: backgroundColor,
 
-          // =====================================================
-          // FINAL GRAPH BACKGROUND GRADIENT
-          // =====================================================
-
           gradient: isDark
               ? const LinearGradient(
                   begin: Alignment.topCenter,
@@ -565,7 +556,8 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                       postRequisiteOrange,
                   postRequisiteBackground:
                       postRequisiteBackground,
-                  postRequisiteText: postRequisiteText,
+                  postRequisiteText:
+                      postRequisiteText,
                 ),
               ),
 
@@ -586,18 +578,23 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius:
+                          BorderRadius.circular(14),
                     ),
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
+                        backgroundColor:
+                            Colors.transparent,
                         foregroundColor: Colors.white,
-                        shadowColor: Colors.transparent,
+                        shadowColor:
+                            Colors.transparent,
                         elevation: 0,
                         padding: EdgeInsets.zero,
 
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                        shape:
+                            RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(14),
                         ),
                       ),
 
@@ -605,9 +602,12 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => TopicDetailsScreen(
-                              selectedTopic: selectedTopic,
-                              subject: selectedTopic.subject,
+                            builder: (_) =>
+                                TopicDetailsScreen(
+                              selectedTopic:
+                                  selectedTopic,
+                              subject:
+                                  selectedTopic.subject,
                             ),
                           ),
                         );
@@ -630,6 +630,7 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
               // =================================================
               // HOW TO READ
               // =================================================
@@ -644,49 +645,60 @@ class PrerequisiteGraphScreen extends StatelessWidget {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                      scrollDirection:
+                          Axis.horizontal,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          minWidth: constraints.maxWidth,
+                          minWidth:
+                              constraints.maxWidth,
                         ),
                         child: Row(
                           mainAxisAlignment:
                               MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisSize:
+                              MainAxisSize.min,
                           children: [
                             Text(
                               'How to read: ',
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: secondaryText,
+                                fontWeight:
+                                    FontWeight.w400,
+                                color:
+                                    secondaryText,
                                 height: 1.3,
                               ),
                             ),
 
                             _LegendItem(
-                              color: prerequisiteGreen,
+                              color:
+                                  prerequisiteGreen,
                               text:
                                   'Prerequisite — required concept',
-                              textColor: secondaryText,
+                              textColor:
+                                  secondaryText,
                             ),
 
                             const SizedBox(width: 16),
 
                             _LegendItem(
-                              color: currentTopic,
+                              color:
+                                  currentTopic,
                               text:
                                   'Current Topic — selected topic',
-                              textColor: secondaryText,
+                              textColor:
+                                  secondaryText,
                             ),
 
                             const SizedBox(width: 16),
 
                             _LegendItem(
-                              color: postRequisiteOrange,
+                              color:
+                                  postRequisiteOrange,
                               text:
                                   'Post requisite — where this topic is further used',
-                              textColor: secondaryText,
+                              textColor:
+                                  secondaryText,
                             ),
                           ],
                         ),
@@ -738,7 +750,8 @@ class _GraphArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark =
+        theme.brightness == Brightness.dark;
 
     final mainText = isDark
         ? AppTheme.darkMainText
@@ -752,9 +765,7 @@ class _GraphArea extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.06)
         : AppTheme.lightBorder;
 
-    final graphLine = isDark
-        ? const Color(0xFF74798F)
-        : const Color(0xFF74798F);
+    final graphLine = const Color(0xFF74798F);
 
     if (prerequisiteTopics.isEmpty &&
         usedInTopics.isEmpty) {
@@ -765,7 +776,8 @@ class _GraphArea extends StatelessWidget {
 
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius:
+                BorderRadius.circular(18),
             border: Border.all(
               color: borderColor,
             ),
@@ -818,7 +830,8 @@ class _GraphArea extends StatelessWidget {
         return InteractiveViewer(
           minScale: 0.7,
           maxScale: 2.5,
-          boundaryMargin: const EdgeInsets.all(100),
+          boundaryMargin:
+              const EdgeInsets.all(100),
 
           child: SizedBox(
             width: constraints.maxWidth,
@@ -829,7 +842,9 @@ class _GraphArea extends StatelessWidget {
                 prerequisiteCount:
                     prerequisiteTopics.length,
                 usedInCount:
-                    usedInTopics.length,
+                    usedInTopics.length > 6
+                        ? 6
+                        : usedInTopics.length,
                 graphLine: graphLine,
               ),
 
@@ -938,20 +953,29 @@ class _GraphArea extends StatelessWidget {
       return widgets;
     }
 
+    // Show only first 6 on graph.
+    final visibleTopics =
+        usedInTopics.take(6).toList();
+
+    // Remaining topics stay available
+    // through the clickable indicator.
+    final remainingTopics =
+        usedInTopics.skip(6).toList();
+
     final double availableWidth =
         constraints.maxWidth;
 
     final double spacing =
         availableWidth /
-            (usedInTopics.length + 1);
+            (visibleTopics.length + 1);
 
     for (int i = 0;
-        i < usedInTopics.length;
+        i < visibleTopics.length;
         i++) {
       widgets.add(
         _positionedNode(
           context: context,
-          topic: usedInTopics[i],
+          topic: visibleTopics[i],
           type: _NodeType.usedIn,
 
           left:
@@ -965,7 +989,278 @@ class _GraphArea extends StatelessWidget {
       );
     }
 
+    // =========================================================
+    // CLICKABLE "+ X MORE" BUTTON
+    // =========================================================
+
+    if (remainingTopics.isNotEmpty) {
+      widgets.add(
+        Positioned(
+          right: 18,
+          bottom: 12,
+
+          child: Material(
+            color: Colors.transparent,
+
+            child: InkWell(
+              borderRadius:
+                  BorderRadius.circular(10),
+
+              onTap: () {
+                _showRemainingPostRequisites(
+                  context,
+                  remainingTopics,
+                );
+              },
+
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+
+                decoration: BoxDecoration(
+                  color:
+                      postRequisiteBackground,
+
+                  borderRadius:
+                      BorderRadius.circular(10),
+
+                  border: Border.all(
+                    color:
+                        postRequisiteOrange
+                            .withValues(alpha: 0.55),
+                  ),
+                ),
+
+                child: Row(
+                  mainAxisSize:
+                      MainAxisSize.min,
+
+                  children: [
+                    Text(
+                      '+ ${remainingTopics.length} more',
+                      style: TextStyle(
+                        color:
+                            postRequisiteText,
+                        fontSize: 12,
+                        fontWeight:
+                            FontWeight.w500,
+                      ),
+                    ),
+
+                    const SizedBox(width: 4),
+
+                    Icon(
+                      Icons
+                          .arrow_forward_ios_rounded,
+                      size: 10,
+                      color:
+                          postRequisiteText,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return widgets;
+  }
+
+  // ===========================================================
+  // SHOW REMAINING POST-REQUISITES
+  // ===========================================================
+
+  void _showRemainingPostRequisites(
+    BuildContext context,
+    List<Topic> remainingTopics,
+  ) {
+    final theme = Theme.of(context);
+    final isDark =
+        theme.brightness == Brightness.dark;
+
+    final mainText = isDark
+        ? AppTheme.darkMainText
+        : AppTheme.lightMainText;
+
+    final secondaryText = isDark
+        ? AppTheme.darkSecondaryText
+        : AppTheme.lightSecondaryText;
+
+    final cardColor = isDark
+        ? AppTheme.darkCard
+        : AppTheme.lightCard;
+
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppTheme.lightBorder;
+
+    final postOrange = isDark
+        ? const Color(0xFFE6A34A)
+        : AppTheme.postRequisiteBorder;
+
+    showDialog(
+      context: context,
+
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: cardColor,
+
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(18),
+            side: BorderSide(
+              color: borderColor,
+            ),
+          ),
+
+          title: Text(
+            'More Used In',
+            style: TextStyle(
+              color: mainText,
+              fontSize: 19,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          content: SizedBox(
+            width: double.maxFinite,
+
+            child: ConstrainedBox(
+              constraints:
+                  const BoxConstraints(
+                maxHeight: 320,
+              ),
+
+              child: ListView.separated(
+                shrinkWrap: true,
+
+                itemCount:
+                    remainingTopics.length,
+
+                separatorBuilder: (_, _) => Divider(
+                  color:
+                      borderColor,
+                  height: 1,
+                ),
+
+                itemBuilder:
+                    (context, index) {
+                  final topic =
+                      remainingTopics[index];
+
+                  return ListTile(
+                    contentPadding:
+                        const EdgeInsets
+                            .symmetric(
+                      horizontal: 4,
+                      vertical: 4,
+                    ),
+
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+
+                      decoration:
+                          BoxDecoration(
+                        color:
+                            isDark
+                                ? const Color(
+                                    0xFF382C20,
+                                  )
+                                : AppTheme
+                                    .postRequisiteBackground,
+
+                        borderRadius:
+                            BorderRadius
+                                .circular(10),
+
+                        border: Border.all(
+                          color:
+                              postOrange
+                                  .withValues(
+                            alpha: 0.55,
+                          ),
+                        ),
+                      ),
+
+                      child: Icon(
+                        Icons
+                            .account_tree_rounded,
+                        color:
+                            postOrange,
+                        size: 18,
+                      ),
+                    ),
+
+                    title: Text(
+                      topic.name,
+                      style: TextStyle(
+                        color: mainText,
+                        fontSize: 14,
+                        fontWeight:
+                            FontWeight.w500,
+                      ),
+                    ),
+
+                    trailing: Icon(
+                      Icons
+                          .arrow_forward_ios_rounded,
+                      size: 13,
+                      color:
+                          secondaryText,
+                    ),
+
+                    onTap: () {
+                      Navigator.pop(
+                        dialogContext,
+                      );
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              PrerequisiteGraphScreen(
+                            selectedTopic:
+                                topic,
+                            subject:
+                                topic.subject,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(
+                  dialogContext,
+                );
+              },
+
+              child: Text(
+                'Close',
+                style: TextStyle(
+                  color:
+                      AppTheme.primaryPurple,
+                  fontWeight:
+                      FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // ===========================================================
@@ -1073,7 +1368,10 @@ class _GraphArea extends StatelessWidget {
             gradient: isCurrent
                 ? AppTheme.primaryGradient
                 : null,
-            color: isCurrent ? null : backgroundColor,
+
+            color: isCurrent
+                ? null
+                : backgroundColor,
 
             border: Border.all(
               color: borderColor,
@@ -1089,9 +1387,14 @@ class _GraphArea extends StatelessWidget {
               BoxShadow(
                 color:
                     Colors.black.withValues(
-                  alpha: isCurrent ? 0.20 : 0.16,
+                  alpha:
+                      isCurrent
+                          ? 0.20
+                          : 0.16,
                 ),
+
                 blurRadius: 8,
+
                 offset:
                     const Offset(0, 3),
               ),
@@ -1104,11 +1407,15 @@ class _GraphArea extends StatelessWidget {
 
             style: TextStyle(
               color: textColor,
+
               fontSize:
                   isCurrent ? 16 : 14,
+
               fontWeight:
                   FontWeight.w500,
+
               height: 1.25,
+
               letterSpacing: 0,
             ),
           ),
