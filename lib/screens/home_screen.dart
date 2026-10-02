@@ -2,7 +2,8 @@
 // ============================================================
 // IMPORTS, HOME SCREEN AND VARIABLES
 // ============================================================
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 
@@ -37,16 +38,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedName = prefs.getString('registered_name');
+    try {
+      final user = FirebaseAuth.instance.currentUser;
 
-    if (!mounted) return;
+      if (user == null) {
+        return;
+      }
 
-    print('Saved name: $savedName');
-    if (savedName != null && savedName.isNotEmpty) {
+      String? name;
+
+      // First use the name stored in the user's Firestore profile.
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final data = userDoc.data();
+      if (data != null && data['name'] != null) {
+        final firestoreName = data['name'].toString().trim();
+        if (firestoreName.isNotEmpty) {
+          name = firestoreName;
+        }
+      }
+
+      // Google/Firebase account display name is the next fallback.
+      if (name == null || name.isEmpty) {
+        final displayName = user.displayName?.trim();
+        if (displayName != null && displayName.isNotEmpty) {
+          name = displayName;
+        }
+      }
+
+      // Last fallback: use the part before @ in the email.
+      if (name == null || name.isEmpty) {
+        final email = user.email?.trim();
+        if (email != null && email.isNotEmpty) {
+          name = email.split('@').first;
+        }
+      }
+
+      if (!mounted || name == null || name.isEmpty) {
+        return;
+      }
+
       setState(() {
-        _userName = savedName;
+        _userName = name!;
       });
+    } catch (_) {
+      // Keep the default name if the profile cannot be loaded.
     }
   }
 
