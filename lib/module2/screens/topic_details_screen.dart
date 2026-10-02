@@ -75,6 +75,7 @@ Map<String, dynamic>? _aiVisualData;
 // =============================================================
 
 final AudioPlayer _audioPlayer = AudioPlayer();
+final GlobalKey _visualLessonKey = GlobalKey();
 
 // =============================================================
 // DOUBT CONTROLLER
@@ -196,6 +197,18 @@ try {
       _isLoadingAI = false;
     });
     _refreshLessonView();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final lessonContext = _visualLessonKey.currentContext;
+      if (lessonContext != null && mounted) {
+        Scrollable.ensureVisible(
+          lessonContext,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          alignment: 0.08,
+        );
+      }
+    });
 
     // The visual lesson and the teacher voice are one lesson.
     // Voice starts from the same teacher_script returned with the visual data.
@@ -556,39 +569,23 @@ int _lessonStageCount() {
 }
 
 void _updateActiveLessonStage(Duration position) {
-  if (_voiceDuration <= Duration.zero) return;
+  final texts = _lessonStageTexts();
+  if (texts.isEmpty) return;
 
-  final stages = _lessonStageTexts();
-  if (stages.isEmpty) return;
+  final durationMs = _voiceDuration.inMilliseconds;
+  final positionMs = position.inMilliseconds.clamp(0, durationMs > 0 ? durationMs : position.inMilliseconds);
 
-  final progress =
-      (position.inMilliseconds / _voiceDuration.inMilliseconds)
-          .clamp(0.0, 1.0);
-
-  final weights = stages.map((text) {
-    final words = text.split(RegExp(r'\s+')).length;
-    return (words + 8).toDouble();
-  }).toList();
-
-  final totalWeight =
-      weights.fold<double>(0, (sum, value) => sum + value);
-  final target = progress * totalWeight;
-
-  double running = 0;
-  int selected = 0;
-
-  for (int i = 0; i < weights.length; i++) {
-    running += weights[i];
-    if (target <= running) {
-      selected = i;
-      break;
-    }
-    selected = i;
+  int nextStage;
+  if (durationMs <= 0) {
+    nextStage = _activeLessonStage.clamp(0, texts.length - 1).toInt();
+  } else {
+    final progress = (positionMs / durationMs).clamp(0.0, 0.999999);
+    nextStage = (progress * texts.length).floor().clamp(0, texts.length - 1);
   }
 
-  if (selected != _activeLessonStage) {
+  if (nextStage != _activeLessonStage && mounted) {
     setState(() {
-      _activeLessonStage = selected;
+      _activeLessonStage = nextStage;
     });
   }
 }
@@ -1336,103 +1333,65 @@ Widget _buildVisualExplanationCard() {
     return _buildLessonEmptyState();
   }
 
-  return _mainCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _cardHeader(
-          icon: Icons.smart_toy_rounded,
-          iconColor: const Color(0xFF4DD0E1),
-          iconBackground: const Color(0xFF172B4A),
-          title: 'AI Tutor',
-          onMaximize: () {
-            _openAIFullscreen(
-              title: 'AI Visual Lesson',
-              icon: Icons.smart_toy_rounded,
-              builder: () => lessonContent(),
-            );
-          },
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Watch the AI teacher build the concept visually, one step at a time.',
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.45,
-            color: _themeSecondaryText,
+  return KeyedSubtree(
+    key: _visualLessonKey,
+    child: _mainCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cardHeader(
+            icon: Icons.smart_toy_rounded,
+            iconColor: const Color(0xFF4DD0E1),
+            iconBackground: const Color(0xFF172B4A),
+            title: 'AI Tutor',
+            onMaximize: () {
+              _openAIFullscreen(
+                title: 'AI Visual Lesson',
+                icon: Icons.smart_toy_rounded,
+                builder: () => lessonContent(),
+              );
+            },
           ),
-        ),
-        const SizedBox(height: 14),
-        // Compact voice control matching the reference design.
-        SizedBox(
-          width: double.infinity,
-          child: Material(
-            color: _isDarkTheme
-                ? const Color(0xFF14284A)
-                : const Color(0xFFF0F4FF),
-            borderRadius: BorderRadius.circular(15),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(15),
-              onTap: _isLoadingAI
-                  ? null
-                  : _aiVisualData == null
-                      ? _startAIExplanation
-                      : _isVoicePlaying
-                          ? _stopVoiceExplanation
-                          : _playVoiceExplanation,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 13,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _isVoicePlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      color: const Color(0xFFEAFBFF),
-                      size: 26,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _isLoadingAI
-                            ? 'Preparing visual lesson...'
-                            : _isVoicePlaying
-                                ? 'Pause teacher'
-                                : 'Explain with Voice',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFF5E7299),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.volume_up_rounded,
-                        color: Color(0xFFDAE7FF),
-                        size: 19,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          const SizedBox(height: 8),
+          Text(
+            'Watch the AI teacher build the concept visually, one step at a time.',
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.45,
+              color: _themeSecondaryText,
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        lessonContent(),
-      ],
+          const SizedBox(height: 16),
+
+          // The visual lesson is the hero of this section.
+          // Keep the voice action BELOW the visual, matching the other
+          // AI tools instead of using a separate full-width voice bar.
+          lessonContent(),
+
+          const SizedBox(height: 16),
+          _primaryButton(
+            onPressed: _isLoadingAI
+                ? null
+                : _aiVisualData == null
+                    ? _startAIExplanation
+                    : _isVoicePlaying
+                        ? _stopVoiceExplanation
+                        : _playVoiceExplanation,
+            icon: _isLoadingAI
+                ? Icons.hourglass_top
+                : _isVoicePlaying
+                    ? Icons.pause_rounded
+                    : Icons.volume_up_rounded,
+            label: _isLoadingAI
+                ? 'Preparing lesson...'
+                : _isVoicePlaying
+                    ? 'Pause teacher'
+                    : _aiVisualData == null
+                        ? 'Explain with Voice'
+                        : 'Explain with Voice',
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -1533,6 +1492,8 @@ Widget _buildStructuredVisualResult(Map<String, dynamic> data) {
             : _playVoiceExplanation,
   );
 }
+
+
 
 Widget _buildLessonProgress(List<String> labels, int activeStage) {
   return Column(
@@ -3417,7 +3378,7 @@ Widget _buildVisualResultFromText(String text) {
           icon: Icons.school_rounded,
           iconBackground: const Color(0xFFEDEBFA),
           iconColor: const Color(0xFF6C63A8),
-          title: '🔍 Step $i',
+          title: 'Lesson point',
           text: lines[i],
         ),
       ],
@@ -3577,15 +3538,18 @@ Widget _buildSummaryCard() {
                       ),
                     ),
                   const SizedBox(height: 20),
-                  _primaryButton(
-                    onPressed: _isLoadingSummary ? null : _generateAISummary,
-                    icon: _isLoadingSummary
-                        ? Icons.hourglass_top
-                        : Icons.summarize_outlined,
-                    label: _isLoadingSummary
-                        ? 'Generating...'
-                        : 'Generate AI Summary',
-                  ),
+                  if (_aiSummary == null)
+                    _primaryButton(
+                      onPressed: _isLoadingSummary
+                          ? null
+                          : _generateAISummary,
+                      icon: _isLoadingSummary
+                          ? Icons.hourglass_top
+                          : Icons.summarize_outlined,
+                      label: _isLoadingSummary
+                          ? 'Generating...'
+                          : 'Generate AI Summary',
+                    ),
                 ],
               ),
             );
@@ -3635,16 +3599,18 @@ Widget _buildSummaryCard() {
               color: _themeSecondaryText,
             ),
           ),
-        const SizedBox(height: 20),
-        _primaryButton(
-          onPressed: _isLoadingSummary ? null : _generateAISummary,
-          icon: _isLoadingSummary
-              ? Icons.hourglass_top
-              : Icons.summarize_outlined,
-          label: _isLoadingSummary
-              ? 'Generating...'
-              : 'Generate AI Summary',
-        ),
+        if (_aiSummary == null) ...[
+          const SizedBox(height: 20),
+          _primaryButton(
+            onPressed: _isLoadingSummary ? null : _generateAISummary,
+            icon: _isLoadingSummary
+                ? Icons.hourglass_top
+                : Icons.summarize_outlined,
+            label: _isLoadingSummary
+                ? 'Generating...'
+                : 'Generate AI Summary',
+          ),
+        ],
       ],
     ),
   );
@@ -3708,13 +3674,16 @@ Widget _buildDoubtSolverCard() {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _primaryButton(
-                    onPressed: _isLoadingDoubt ? null : _askAIDoubt,
-                    icon: _isLoadingDoubt
-                        ? Icons.hourglass_top_rounded
-                        : Icons.auto_awesome_rounded,
-                    label: _isLoadingDoubt ? 'Thinking...' : 'Ask AI Teacher',
-                  ),
+                  if (_aiDoubtAnswer == null)
+                    _primaryButton(
+                      onPressed: _isLoadingDoubt ? null : _askAIDoubt,
+                      icon: _isLoadingDoubt
+                          ? Icons.hourglass_top_rounded
+                          : Icons.auto_awesome_rounded,
+                      label: _isLoadingDoubt
+                          ? 'Thinking...'
+                          : 'Ask AI Teacher',
+                    ),
                   if (_isLoadingDoubt)
                     Padding(
                       padding: const EdgeInsets.only(top: 18),
@@ -3845,14 +3814,18 @@ Widget _buildDoubtSolverCard() {
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        _primaryButton(
-          onPressed: _isLoadingDoubt ? null : _askAIDoubt,
-          icon: _isLoadingDoubt
-              ? Icons.hourglass_top_rounded
-              : Icons.auto_awesome_rounded,
-          label: _isLoadingDoubt ? 'Thinking...' : 'Ask AI Teacher',
-        ),
+        if (_aiDoubtAnswer == null) ...[
+          const SizedBox(height: 14),
+          _primaryButton(
+            onPressed: _isLoadingDoubt ? null : _askAIDoubt,
+            icon: _isLoadingDoubt
+                ? Icons.hourglass_top_rounded
+                : Icons.auto_awesome_rounded,
+            label: _isLoadingDoubt
+                ? 'Thinking...'
+                : 'Ask AI Teacher',
+          ),
+        ],
         if (_isLoadingDoubt)
           Padding(
             padding: const EdgeInsets.only(top: 18),
@@ -4062,15 +4035,18 @@ Widget _buildSkipCard() {
                       ),
                     ),
                   const SizedBox(height: 20),
-                  _primaryButton(
-                    onPressed: _isLoadingSkip ? null : _checkWhatIfISkip,
-                    icon: _isLoadingSkip
-                        ? Icons.hourglass_top_rounded
-                        : Icons.alt_route_rounded,
-                    label: _isLoadingSkip
-                        ? 'Analyzing...'
-                        : 'See Learning Impact',
-                  ),
+                  if (_aiSkipAnswer == null)
+                    _primaryButton(
+                      onPressed: _isLoadingSkip
+                          ? null
+                          : _checkWhatIfISkip,
+                      icon: _isLoadingSkip
+                          ? Icons.hourglass_top_rounded
+                          : Icons.alt_route_rounded,
+                      label: _isLoadingSkip
+                          ? 'Analyzing...'
+                          : 'See Learning Impact',
+                    ),
                 ],
               ),
             );
@@ -4187,13 +4163,16 @@ Widget _buildSkipCard() {
           ),
         if (_aiSkipAnswer != null || _isLoadingSkip)
           const SizedBox(height: 16),
-        _primaryButton(
-          onPressed: _isLoadingSkip ? null : _checkWhatIfISkip,
-          icon: _isLoadingSkip
-              ? Icons.hourglass_top_rounded
-              : Icons.alt_route_rounded,
-          label: _isLoadingSkip ? 'Analyzing...' : 'See Learning Impact',
-        ),
+        if (_aiSkipAnswer == null)
+          _primaryButton(
+            onPressed: _isLoadingSkip ? null : _checkWhatIfISkip,
+            icon: _isLoadingSkip
+                ? Icons.hourglass_top_rounded
+                : Icons.alt_route_rounded,
+            label: _isLoadingSkip
+                ? 'Analyzing...'
+                : 'See Learning Impact',
+          ),
       ],
     ),
   );
@@ -4321,9 +4300,12 @@ void _openAIFullscreen({
 // =============================================================
 
 Widget _mainCard({required Widget child}) {
+  // Keep the cards aligned with the full content area. The page already
+  // provides its own horizontal padding, so don't add a desktop max-width
+  // here. This keeps every AI card consistently wide on large screens.
   return Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(20),
+    padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: _themeCardColor,
       borderRadius: BorderRadius.circular(20),
@@ -4399,8 +4381,45 @@ Widget _cardHeader({
   );
 }
 
-Widget _primaryButton({required VoidCallback? onPressed, required IconData icon, required String label}) {
-  return SizedBox(width: double.infinity, height: 50, child: ElevatedButton.icon(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7165D9), disabledBackgroundColor: const Color(0xFF3B3764), foregroundColor: Colors.white, disabledForegroundColor: const Color(0xFFAAA6C5), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), onPressed: onPressed, icon: Icon(icon, size: 20), label: Text(label, softWrap: false, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800))));
+Widget _primaryButton({
+  required VoidCallback? onPressed,
+  required IconData icon,
+  required String label,
+}) {
+  return Align(
+    alignment: Alignment.center,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF7165D9),
+            disabledBackgroundColor: const Color(0xFF3B3764),
+            foregroundColor: Colors.white,
+            disabledForegroundColor: const Color(0xFFAAA6C5),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: onPressed,
+          icon: Icon(icon, size: 20),
+          label: Text(
+            label,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 Widget _greenButton({required VoidCallback? onPressed, required IconData icon, required String label}) => _primaryButton(onPressed: onPressed, icon: icon, label: label);
@@ -4944,998 +4963,6 @@ Widget _resultContainer({required Widget child}) {
 // =============================================================
 // GRAPH NAVIGATION
 // =============================================================
-
-class _InteractiveAILesson extends StatelessWidget {
-  final String topic;
-  final String centralIdea;
-  final List<Map<String, String>> steps;
-  final Map<String, dynamic> data;
-  final int activeStage;
-  final bool isVoicePlaying;
-  final VoidCallback? onPrevious;
-  final VoidCallback? onNext;
-  final Future<void> Function() onPlayPause;
-
-  const _InteractiveAILesson({
-    required this.topic,
-    required this.centralIdea,
-    required this.steps,
-    required this.data,
-    required this.activeStage,
-    required this.isVoicePlaying,
-    required this.onPrevious,
-    required this.onNext,
-    required this.onPlayPause,
-  });
-
-  bool get _isPointer => topic.toLowerCase().contains('pointer') ||
-      data['visual_type']?.toString().toLowerCase().contains('pointer') == true;
-
-  int get _stageCount => _isPointer ? 5 : math.max(1, math.min(5, steps.length)).toInt();
-
-  String _stageExplanation() {
-    if (_isPointer) {
-      const pointerText = [
-        'A variable stores a value in memory.',
-        'Every variable is stored at a specific memory address.',
-        'A pointer is a special variable used to store an address.',
-        'Here, p stores the address 1000.',
-        'Using *p lets us access the value stored at that address.',
-      ];
-      return pointerText[activeStage.clamp(0, 4)];
-    }
-
-    if (steps.isNotEmpty) {
-      final index = activeStage.clamp(0, steps.length - 1);
-      final title = steps[index]['title'] ?? '';
-      final description = steps[index]['description'] ?? '';
-      return [title, description]
-          .where((value) => value.trim().isNotEmpty)
-          .join('. ');
-    }
-    return centralIdea;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final accent = _lessonAccent(activeStage);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _LessonBoard(
-          topic: topic,
-          activeStage: activeStage,
-          isPointer: _isPointer,
-          steps: steps,
-          explanation: _stageExplanation(),
-          centralIdea: centralIdea,
-          data: data,
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _LessonNavButton(
-                icon: Icons.arrow_back_rounded,
-                label: 'Previous',
-                enabled: onPrevious != null,
-                onPressed: onPrevious,
-              ),
-            ),
-            const SizedBox(width: 12),
-            _LessonPlayButton(
-              isPlaying: isVoicePlaying,
-              accent: accent,
-              onPressed: () => onPlayPause(),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _LessonNavButton(
-                icon: Icons.arrow_forward_rounded,
-                label: 'Next',
-                iconOnRight: true,
-                enabled: onNext != null,
-                onPressed: onNext,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 9),
-        Center(
-          child: Text(
-            'Step ${activeStage + 1} / $_stageCount',
-            style: TextStyle(
-              color: dark ? const Color(0xFFD7D9EA) : const Color(0xFF4E5270),
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-Color _lessonAccent(int stage) {
-  const colors = [
-    Color(0xFF45D7E8),
-    Color(0xFFFFC857),
-    Color(0xFFFF7AA2),
-    Color(0xFF9B7BFF),
-    Color(0xFF63E6BE),
-  ];
-  return colors[stage.clamp(0, colors.length - 1)];
-}
-
-class _LessonBoard extends StatelessWidget {
-  final String topic;
-  final int activeStage;
-  final bool isPointer;
-  final List<Map<String, String>> steps;
-  final String explanation;
-  final String centralIdea;
-  final Map<String, dynamic> data;
-
-  const _LessonBoard({
-    required this.topic,
-    required this.activeStage,
-    required this.isPointer,
-    required this.steps,
-    required this.explanation,
-    required this.centralIdea,
-    required this.data,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final boardHeight = math.max(520.0, math.min(680.0, constraints.maxWidth * .56));
-        return Container(
-          width: double.infinity,
-          height: boardHeight,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0A1731), Color(0xFF121F43), Color(0xFF1A2350)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFF263C68), width: 1.4),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x40000000),
-                blurRadius: 22,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const Text('🤖', style: TextStyle(fontSize: 28)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        topic,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 25,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: _lessonAccent(activeStage).withAlpha(35),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: _lessonAccent(activeStage).withAlpha(150)),
-                      ),
-                      child: Text(
-                        'STEP ${activeStage + 1}',
-                        style: TextStyle(
-                          color: _lessonAccent(activeStage),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: .8,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'AI teacher • watch the idea happen',
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(170),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 450),
-                    switchInCurve: Curves.easeOutBack,
-                    switchOutCurve: Curves.easeIn,
-                    child: KeyedSubtree(
-                      key: ValueKey<int>(activeStage),
-                      child: isPointer
-                          ? _PointerTeachingScene(stage: activeStage)
-                          : _DynamicTeachingScene(
-                              topic: topic,
-                              stage: activeStage,
-                              steps: steps,
-                              centralIdea: centralIdea,
-                              data: data,
-                            ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _TeacherSpeechBubble(
-                  text: explanation,
-                  accent: _lessonAccent(activeStage),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _PointerTeachingScene extends StatelessWidget {
-  final int stage;
-
-  const _PointerTeachingScene({required this.stage});
-
-  double _opacityFor(int itemStage) {
-    if (itemStage > stage) return 0.0;
-    if (itemStage == stage) return 1.0;
-    return 0.52;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 620;
-        final variableWidth = compact ? math.min(240.0, constraints.maxWidth * .72) : 230.0;
-        final memoryWidth = compact ? math.min(220.0, constraints.maxWidth * .66) : 210.0;
-        final arrowLabel = stage >= 3 ? 'stores address' : 'memory';
-
-        if (compact) {
-          return SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 350),
-                  opacity: _opacityFor(0),
-                  child: _TeachingVariable(
-                    width: variableWidth,
-                    active: stage == 0,
-                  ),
-                ),
-                if (stage >= 1) ...[
-                  const SizedBox(height: 8),
-                  Icon(Icons.arrow_downward_rounded, color: _lessonAccent(1), size: 32),
-                  Text(
-                    'stored in memory',
-                    style: TextStyle(color: _lessonAccent(1), fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 8),
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 350),
-                    opacity: _opacityFor(1),
-                    child: _MemoryBlock(width: memoryWidth, active: stage == 1 || stage >= 3),
-                  ),
-                ],
-                if (stage >= 2) ...[
-                  const SizedBox(height: 12),
-                  Icon(Icons.arrow_downward_rounded, color: _lessonAccent(3), size: 32),
-                  const SizedBox(height: 6),
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 350),
-                    opacity: _opacityFor(2),
-                    child: _PointerBubble(active: stage == 2 || stage >= 3),
-                  ),
-                ],
-                if (stage >= 3) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    stage == 4 ? '*p  →  10' : 'p  →  1000',
-                    style: TextStyle(
-                      color: _lessonAccent(stage),
-                      fontSize: stage == 4 ? 30 : 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
-        }
-
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _PointerArrowPainter(stage: stage),
-              ),
-            ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutBack,
-              left: compact ? 18 : constraints.maxWidth * .09,
-              top: constraints.maxHeight * .19,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 350),
-                opacity: _opacityFor(0),
-                child: _TeachingVariable(
-                  width: variableWidth,
-                  active: stage == 0,
-                ),
-              ),
-            ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutBack,
-              right: compact ? 18 : constraints.maxWidth * .09,
-              top: constraints.maxHeight * .19,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 350),
-                opacity: _opacityFor(1),
-                child: _MemoryBlock(
-                  width: memoryWidth,
-                  active: stage == 1 || stage >= 3,
-                ),
-              ),
-            ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutBack,
-              right: compact ? 28 : constraints.maxWidth * .12,
-              top: constraints.maxHeight * .62,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 350),
-                opacity: _opacityFor(2),
-                child: _PointerBubble(active: stage == 2 || stage >= 3),
-              ),
-            ),
-            if (stage >= 3)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: constraints.maxHeight * .49,
-                child: Center(
-                  child: AnimatedScale(
-                    scale: stage == 3 ? 1.06 : 1.0,
-                    duration: const Duration(milliseconds: 350),
-                    child: Text(
-                      arrowLabel,
-                      style: TextStyle(
-                        color: _lessonAccent(stage),
-                        fontSize: compact ? 14 : 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            if (stage == 4)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: constraints.maxHeight * .71,
-                child: Center(
-                  child: AnimatedScale(
-                    scale: 1.08,
-                    duration: const Duration(milliseconds: 400),
-                    child: Text(
-                      '*p  →  10',
-                      style: TextStyle(
-                        color: _lessonAccent(4),
-                        fontSize: compact ? 28 : 38,
-                        fontWeight: FontWeight.w900,
-                        shadows: const [
-                          Shadow(color: Color(0x8863E6BE), blurRadius: 18),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            Positioned(
-              left: 12,
-              top: 20,
-              child: _Sparkle(color: _lessonAccent(0), size: 10),
-            ),
-            Positioned(
-              right: 24,
-              top: 36,
-              child: _Sparkle(color: _lessonAccent(3), size: 8),
-            ),
-            Positioned(
-              left: constraints.maxWidth * .45,
-              bottom: 12,
-              child: _Sparkle(color: _lessonAccent(1), size: 7),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _TeachingVariable extends StatelessWidget {
-  final double width;
-  final bool active;
-
-  const _TeachingVariable({required this.width, required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          'Variable',
-          style: TextStyle(
-            color: active ? Colors.white : const Color(0xFFB8C1D8),
-            fontSize: width < 190 ? 17 : 20,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          'x = 10',
-          style: TextStyle(
-            color: _lessonAccent(0),
-            fontSize: width < 190 ? 18 : 22,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 10),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 350),
-          width: width,
-          height: width < 190 ? 72 : 88,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: const Color(0xFF132B35),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _lessonAccent(0),
-              width: active ? 3 : 1.5,
-            ),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: _lessonAccent(0).withAlpha(100),
-                      blurRadius: 22,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            '1000',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: width < 190 ? 25 : 31,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          'memory address',
-          style: TextStyle(
-            color: Colors.white.withAlpha(active ? 220 : 130),
-            fontSize: width < 190 ? 12 : 14,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MemoryBlock extends StatelessWidget {
-  final double width;
-  final bool active;
-
-  const _MemoryBlock({required this.width, required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          'Memory',
-          style: TextStyle(
-            color: active ? Colors.white : const Color(0xFFB8C1D8),
-            fontSize: width < 180 ? 17 : 20,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          'Address 1000',
-          style: TextStyle(
-            color: _lessonAccent(1),
-            fontSize: width < 180 ? 16 : 20,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 10),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 350),
-          width: width,
-          height: width < 180 ? 72 : 88,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: const Color(0xFF302A18),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _lessonAccent(1),
-              width: active ? 3 : 1.5,
-            ),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: _lessonAccent(1).withAlpha(90),
-                      blurRadius: 20,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            '10',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: width < 180 ? 26 : 31,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          'value stored here',
-          style: TextStyle(
-            color: Colors.white.withAlpha(active ? 220 : 130),
-            fontSize: width < 180 ? 12 : 14,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PointerBubble extends StatelessWidget {
-  final bool active;
-
-  const _PointerBubble({required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          'Pointer',
-          style: TextStyle(
-            color: active ? Colors.white : const Color(0xFFB8C1D8),
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          'p',
-          style: TextStyle(
-            color: _lessonAccent(3),
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 9),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 350),
-          width: 108,
-          height: 108,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFF251C3A),
-            border: Border.all(
-              color: _lessonAccent(3),
-              width: active ? 3 : 1.5,
-            ),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: _lessonAccent(3).withAlpha(105),
-                      blurRadius: 25,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
-          ),
-          child: const Text(
-            'p',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 38,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          'stores an address',
-          style: TextStyle(
-            color: Colors.white.withAlpha(active ? 220 : 130),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PointerArrowPainter extends CustomPainter {
-  final int stage;
-
-  _PointerArrowPainter({required this.stage});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final compact = size.width < 620;
-    final leftX = compact ? 18.0 : size.width * .09;
-    final rightX = compact ? 18.0 : size.width * .09;
-    final variableWidth = compact ? 170.0 : 230.0;
-    final memoryWidth = compact ? 150.0 : 210.0;
-    final y = size.height * .37;
-    final start = Offset(leftX + variableWidth, y);
-    final end = Offset(size.width - rightX - memoryWidth, y);
-
-    if (stage >= 1) {
-      _drawArrow(canvas, start, end, _lessonAccent(1), 'address');
-    }
-
-    if (stage >= 3) {
-      final p = Offset(size.width - rightX - 55, size.height * .62);
-      final memory = Offset(size.width - rightX - memoryWidth / 2, size.height * .37 + 40);
-      _drawArrow(canvas, p, memory, _lessonAccent(3), 'p → 1000');
-    }
-  }
-
-  void _drawArrow(Canvas canvas, Offset start, Offset end, Color color, String label) {
-    final paint = Paint()
-      ..color = color.withAlpha(220)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final path = Path()..moveTo(start.dx, start.dy);
-    final midX = (start.dx + end.dx) / 2;
-    path.cubicTo(midX, start.dy, midX, end.dy, end.dx, end.dy);
-    canvas.drawPath(path, paint);
-
-    final direction = (end - start);
-    final distance = direction.distance;
-    if (distance > 1) {
-      final unit = direction / distance;
-      final side = Offset(-unit.dy, unit.dx);
-      final tip = end;
-      final p1 = tip - unit * 16 + side * 8;
-      final p2 = tip - unit * 16 - side * 8;
-      final arrow = Path()
-        ..moveTo(tip.dx, tip.dy)
-        ..lineTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy)
-        ..close();
-      canvas.drawPath(arrow, Paint()..color = color);
-    }
-
-    final tp = TextPainter(
-      text: TextSpan(
-        text: label,
-        style: TextStyle(
-          color: color,
-          fontSize: 13,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: 130);
-    tp.paint(canvas, Offset((start.dx + end.dx) / 2 - tp.width / 2, start.dy - 28));
-  }
-
-  @override
-  bool shouldRepaint(covariant _PointerArrowPainter oldDelegate) => oldDelegate.stage != stage;
-}
-
-class _DynamicTeachingScene extends StatelessWidget {
-  final String topic;
-  final int stage;
-  final List<Map<String, String>> steps;
-  final String centralIdea;
-  final Map<String, dynamic> data;
-
-  const _DynamicTeachingScene({
-    required this.topic,
-    required this.stage,
-    required this.steps,
-    required this.centralIdea,
-    required this.data,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final count = math.max(1, math.min(5, steps.length));
-    final labels = steps.isEmpty
-        ? [topic]
-        : steps.take(count).map((step) {
-            final title = step['title'] ?? 'Step';
-            return title.isEmpty ? topic : title;
-          }).toList();
-
-    return Center(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final horizontal = constraints.maxWidth >= 760;
-          final visible = math.min(stage + 1, labels.length);
-          return SingleChildScrollView(
-            child: Flex(
-              direction: horizontal ? Axis.horizontal : Axis.vertical,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                for (int i = 0; i < visible; i++) ...[
-                  _ConceptBubble(
-                    label: labels[i],
-                    number: i + 1,
-                    accent: _lessonAccent(i),
-                    active: i == stage,
-                  ),
-                  if (i != visible - 1)
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontal ? 10 : 0,
-                        vertical: horizontal ? 0 : 9,
-                      ),
-                      child: Icon(
-                        horizontal
-                            ? Icons.arrow_forward_rounded
-                            : Icons.arrow_downward_rounded,
-                        color: _lessonAccent(i),
-                        size: 30,
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ConceptBubble extends StatelessWidget {
-  final String label;
-  final int number;
-  final Color accent;
-  final bool active;
-
-  const _ConceptBubble({
-    required this.label,
-    required this.number,
-    required this.accent,
-    required this.active,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      constraints: const BoxConstraints(minWidth: 150, maxWidth: 230),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        color: accent.withAlpha(active ? 45 : 22),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: accent.withAlpha(active ? 255 : 120), width: active ? 3 : 1.5),
-        boxShadow: active
-            ? [BoxShadow(color: accent.withAlpha(90), blurRadius: 24, spreadRadius: 2)]
-            : null,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$number',
-            style: TextStyle(color: accent, fontSize: 13, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: active ? Colors.white : const Color(0xFFD5D9E8),
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              height: 1.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TeacherSpeechBubble extends StatelessWidget {
-  final String text;
-  final Color accent;
-
-  const _TeacherSpeechBubble({required this.text, required this.accent});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: accent,
-            boxShadow: [
-              BoxShadow(color: accent.withAlpha(75), blurRadius: 16),
-            ],
-          ),
-          child: const Text('✨', style: TextStyle(fontSize: 22)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 13, 16, 14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF111C38),
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              border: Border(left: BorderSide(color: accent, width: 4)),
-            ),
-            child: Text(
-              text,
-              softWrap: true,
-              style: const TextStyle(
-                color: Color(0xFFF4F6FF),
-                fontSize: 16,
-                height: 1.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LessonNavButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool enabled;
-  final bool iconOnRight;
-  final VoidCallback? onPressed;
-
-  const _LessonNavButton({
-    required this.icon,
-    required this.label,
-    required this.enabled,
-    required this.onPressed,
-    this.iconOnRight = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final children = <Widget>[
-      Icon(icon, size: 20),
-      const SizedBox(width: 7),
-      Text(label),
-    ];
-    return OutlinedButton(
-      onPressed: enabled ? onPressed : null,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: enabled ? Colors.white : const Color(0xFF747A91),
-        backgroundColor: const Color(0xFF151E3A),
-        side: BorderSide(color: enabled ? const Color(0xFF42527A) : const Color(0xFF28314E)),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: iconOnRight ? children.reversed.toList() : children,
-      ),
-    );
-  }
-}
-
-class _LessonPlayButton extends StatelessWidget {
-  final bool isPlaying;
-  final Color accent;
-  final VoidCallback onPressed;
-
-  const _LessonPlayButton({
-    required this.isPlaying,
-    required this.accent,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: isPlaying ? 'Pause teacher voice' : 'Play teacher voice',
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(30),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: accent,
-            boxShadow: [
-              BoxShadow(
-                color: accent.withAlpha(isPlaying ? 120 : 70),
-                blurRadius: isPlaying ? 24 : 14,
-                spreadRadius: isPlaying ? 2 : 0,
-              ),
-            ],
-          ),
-          child: Icon(
-            isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            color: Colors.white,
-            size: 30,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Sparkle extends StatelessWidget {
-  final Color color;
-  final double size;
-
-  const _Sparkle({required this.color, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Icon(Icons.auto_awesome, color: color.withAlpha(190), size: size * 2);
-  }
-}
-
 
 class _GraphNavigationScreen extends StatelessWidget {
   final Topic selectedTopic;
@@ -7064,14 +6091,6 @@ class _FunVisualLessonPainter extends CustomPainter {
       _drawGeneric(canvas, size);
     }
 
-    // A tiny stage indicator keeps the visual synchronized with the lesson.
-    _drawTag(
-      canvas,
-      'STEP ${activeStage + 1}',
-      Offset(size.width / 2, size.height * .96),
-      _palette[4],
-      width: 78,
-    );
   }
 
   @override
@@ -7283,6 +6302,984 @@ class _AIDiagramConnectionPainter extends CustomPainter {
         oldDelegate.connections != connections ||
         oldDelegate.positions != positions ||
         oldDelegate.nodeWidth != nodeWidth;
+  }
+}
+
+class _InteractiveAILesson extends StatelessWidget {
+  final String topic;
+  final String centralIdea;
+  final List<Map<String, String>> steps;
+  final Map<String, dynamic> data;
+  final int activeStage;
+  final bool isVoicePlaying;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+  final Future<void> Function() onPlayPause;
+
+  const _InteractiveAILesson({
+    required this.topic,
+    required this.centralIdea,
+    required this.steps,
+    required this.data,
+    required this.activeStage,
+    required this.isVoicePlaying,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onPlayPause,
+  });
+
+  bool get _isPointer => topic.toLowerCase().contains('pointer') ||
+      data['visual_type']?.toString().toLowerCase().contains('pointer') == true;
+
+  int get _stageCount => _isPointer ? 5 : math.max(1, math.min(5, steps.length)).toInt();
+
+  String _stageExplanation() {
+    if (_isPointer) {
+      const pointerText = [
+        'A variable stores a value in memory.',
+        'Every variable is stored at a specific memory address.',
+        'A pointer is a special variable used to store an address.',
+        'Here, p stores the address 1000.',
+        'Using *p lets us access the value stored at that address.',
+      ];
+      return pointerText[activeStage.clamp(0, 4)];
+    }
+
+    if (steps.isNotEmpty) {
+      final index = activeStage.clamp(0, steps.length - 1);
+      final title = steps[index]['title'] ?? '';
+      final description = steps[index]['description'] ?? '';
+      return [title, description]
+          .where((value) => value.trim().isNotEmpty)
+          .join('. ');
+    }
+    return centralIdea;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = _lessonAccent(activeStage);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _LessonBoard(
+          topic: topic,
+          activeStage: activeStage,
+          isPointer: _isPointer,
+          steps: steps,
+          explanation: _stageExplanation(),
+          centralIdea: centralIdea,
+          data: data,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _LessonNavButton(
+                icon: Icons.arrow_back_rounded,
+                label: 'Previous',
+                enabled: onPrevious != null,
+                onPressed: onPrevious,
+              ),
+            ),
+            const SizedBox(width: 12),
+            _LessonPlayButton(
+              isPlaying: isVoicePlaying,
+              accent: accent,
+              onPressed: () => onPlayPause(),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _LessonNavButton(
+                icon: Icons.arrow_forward_rounded,
+                label: 'Next',
+                iconOnRight: true,
+                enabled: onNext != null,
+                onPressed: onNext,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 9),
+        Center(
+          child: Text(
+            'Step ${activeStage + 1} / $_stageCount',
+            style: TextStyle(
+              color: dark ? const Color(0xFFD7D9EA) : const Color(0xFF4E5270),
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Color _lessonAccent(int stage) {
+  const colors = [
+    Color(0xFF45D7E8),
+    Color(0xFFFFC857),
+    Color(0xFFFF7AA2),
+    Color(0xFF9B7BFF),
+    Color(0xFF63E6BE),
+  ];
+  return colors[stage.clamp(0, colors.length - 1)];
+}
+
+class _LessonBoard extends StatelessWidget {
+  final String topic;
+  final int activeStage;
+  final bool isPointer;
+  final List<Map<String, String>> steps;
+  final String explanation;
+  final String centralIdea;
+  final Map<String, dynamic> data;
+
+  const _LessonBoard({
+    required this.topic,
+    required this.activeStage,
+    required this.isPointer,
+    required this.steps,
+    required this.explanation,
+    required this.centralIdea,
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boardHeight = math.max(
+          500.0,
+          math.min(680.0, constraints.maxWidth * .52),
+        );
+        return Container(
+          width: double.infinity,
+          height: boardHeight,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0A1731), Color(0xFF121F43), Color(0xFF1A2350)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xFF263C68), width: 1.4),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x40000000),
+                blurRadius: 22,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Text('🤖', style: TextStyle(fontSize: 28)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        topic,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'AI teacher • watch the idea happen',
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(170),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 450),
+                    switchInCurve: Curves.easeOutBack,
+                    switchOutCurve: Curves.easeIn,
+                    child: KeyedSubtree(
+                      key: ValueKey<int>(activeStage),
+                      child: isPointer
+                          ? _PointerTeachingScene(stage: activeStage)
+                          : _DynamicTeachingScene(
+                              topic: topic,
+                              stage: activeStage,
+                              steps: steps,
+                              centralIdea: centralIdea,
+                              data: data,
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _TeacherSpeechBubble(
+                  text: explanation,
+                  accent: _lessonAccent(activeStage),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PointerTeachingScene extends StatelessWidget {
+  final int stage;
+
+  const _PointerTeachingScene({required this.stage});
+
+  double _opacityFor(int itemStage) {
+    if (itemStage > stage) return 0.0;
+    if (itemStage == stage) return 1.0;
+    return 0.52;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final variableWidth = compact ? math.min(240.0, constraints.maxWidth * .72) : 230.0;
+        final memoryWidth = compact ? math.min(220.0, constraints.maxWidth * .66) : 210.0;
+        final arrowLabel = stage >= 3 ? 'stores address' : 'memory';
+
+        if (compact) {
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 350),
+                  opacity: _opacityFor(0),
+                  child: _TeachingVariable(
+                    width: variableWidth,
+                    active: stage == 0,
+                  ),
+                ),
+                if (stage >= 1) ...[
+                  const SizedBox(height: 8),
+                  Icon(Icons.arrow_downward_rounded, color: _lessonAccent(1), size: 32),
+                  Text(
+                    'stored in memory',
+                    style: TextStyle(color: _lessonAccent(1), fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 350),
+                    opacity: _opacityFor(1),
+                    child: _MemoryBlock(width: memoryWidth, active: stage == 1 || stage >= 3),
+                  ),
+                ],
+                if (stage >= 2) ...[
+                  const SizedBox(height: 12),
+                  Icon(Icons.arrow_downward_rounded, color: _lessonAccent(3), size: 32),
+                  const SizedBox(height: 6),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 350),
+                    opacity: _opacityFor(2),
+                    child: _PointerBubble(active: stage == 2 || stage >= 3),
+                  ),
+                ],
+                if (stage >= 3) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    stage == 4 ? '*p  →  10' : 'p  →  1000',
+                    style: TextStyle(
+                      color: _lessonAccent(stage),
+                      fontSize: stage == 4 ? 30 : 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _PointerArrowPainter(stage: stage),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
+              left: compact ? 18 : constraints.maxWidth * .09,
+              top: constraints.maxHeight * .19,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 350),
+                opacity: _opacityFor(0),
+                child: _TeachingVariable(
+                  width: variableWidth,
+                  active: stage == 0,
+                ),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
+              right: compact ? 18 : constraints.maxWidth * .09,
+              top: constraints.maxHeight * .19,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 350),
+                opacity: _opacityFor(1),
+                child: _MemoryBlock(
+                  width: memoryWidth,
+                  active: stage == 1 || stage >= 3,
+                ),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
+              right: compact ? 28 : constraints.maxWidth * .12,
+              top: constraints.maxHeight * .62,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 350),
+                opacity: _opacityFor(2),
+                child: _PointerBubble(active: stage == 2 || stage >= 3),
+              ),
+            ),
+            if (stage >= 3)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: constraints.maxHeight * .49,
+                child: Center(
+                  child: AnimatedScale(
+                    scale: stage == 3 ? 1.06 : 1.0,
+                    duration: const Duration(milliseconds: 350),
+                    child: Text(
+                      arrowLabel,
+                      style: TextStyle(
+                        color: _lessonAccent(stage),
+                        fontSize: compact ? 14 : 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (stage == 4)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: constraints.maxHeight * .71,
+                child: Center(
+                  child: AnimatedScale(
+                    scale: 1.08,
+                    duration: const Duration(milliseconds: 400),
+                    child: Text(
+                      '*p  →  10',
+                      style: TextStyle(
+                        color: _lessonAccent(4),
+                        fontSize: compact ? 28 : 38,
+                        fontWeight: FontWeight.w900,
+                        shadows: const [
+                          Shadow(color: Color(0x8863E6BE), blurRadius: 18),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              left: 12,
+              top: 20,
+              child: _Sparkle(color: _lessonAccent(0), size: 10),
+            ),
+            Positioned(
+              right: 24,
+              top: 36,
+              child: _Sparkle(color: _lessonAccent(3), size: 8),
+            ),
+            Positioned(
+              left: constraints.maxWidth * .45,
+              bottom: 12,
+              child: _Sparkle(color: _lessonAccent(1), size: 7),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TeachingVariable extends StatelessWidget {
+  final double width;
+  final bool active;
+
+  const _TeachingVariable({required this.width, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          'Variable',
+          style: TextStyle(
+            color: active ? Colors.white : const Color(0xFFB8C1D8),
+            fontSize: width < 190 ? 17 : 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'x = 10',
+          style: TextStyle(
+            color: _lessonAccent(0),
+            fontSize: width < 190 ? 18 : 22,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          width: width,
+          height: width < 190 ? 72 : 88,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF132B35),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _lessonAccent(0),
+              width: active ? 3 : 1.5,
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: _lessonAccent(0).withAlpha(100),
+                      blurRadius: 22,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            '1000',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: width < 190 ? 25 : 31,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'memory address',
+          style: TextStyle(
+            color: Colors.white.withAlpha(active ? 220 : 130),
+            fontSize: width < 190 ? 12 : 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MemoryBlock extends StatelessWidget {
+  final double width;
+  final bool active;
+
+  const _MemoryBlock({required this.width, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          'Memory',
+          style: TextStyle(
+            color: active ? Colors.white : const Color(0xFFB8C1D8),
+            fontSize: width < 180 ? 17 : 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'Address 1000',
+          style: TextStyle(
+            color: _lessonAccent(1),
+            fontSize: width < 180 ? 16 : 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          width: width,
+          height: width < 180 ? 72 : 88,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF302A18),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _lessonAccent(1),
+              width: active ? 3 : 1.5,
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: _lessonAccent(1).withAlpha(90),
+                      blurRadius: 20,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            '10',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: width < 180 ? 26 : 31,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'value stored here',
+          style: TextStyle(
+            color: Colors.white.withAlpha(active ? 220 : 130),
+            fontSize: width < 180 ? 12 : 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PointerBubble extends StatelessWidget {
+  final bool active;
+
+  const _PointerBubble({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          'Pointer',
+          style: TextStyle(
+            color: active ? Colors.white : const Color(0xFFB8C1D8),
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'p',
+          style: TextStyle(
+            color: _lessonAccent(3),
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 9),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          width: 108,
+          height: 108,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF251C3A),
+            border: Border.all(
+              color: _lessonAccent(3),
+              width: active ? 3 : 1.5,
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: _lessonAccent(3).withAlpha(105),
+                      blurRadius: 25,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: const Text(
+            'p',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 38,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'stores an address',
+          style: TextStyle(
+            color: Colors.white.withAlpha(active ? 220 : 130),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PointerArrowPainter extends CustomPainter {
+  final int stage;
+
+  _PointerArrowPainter({required this.stage});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final compact = size.width < 620;
+    final leftX = compact ? 18.0 : size.width * .09;
+    final rightX = compact ? 18.0 : size.width * .09;
+    final variableWidth = compact ? 170.0 : 230.0;
+    final memoryWidth = compact ? 150.0 : 210.0;
+    final y = size.height * .37;
+    final start = Offset(leftX + variableWidth, y);
+    final end = Offset(size.width - rightX - memoryWidth, y);
+
+    if (stage >= 1) {
+      _drawArrow(canvas, start, end, _lessonAccent(1), 'address');
+    }
+
+    if (stage >= 3) {
+      final p = Offset(size.width - rightX - 55, size.height * .62);
+      final memory = Offset(size.width - rightX - memoryWidth / 2, size.height * .37 + 40);
+      _drawArrow(canvas, p, memory, _lessonAccent(3), 'p → 1000');
+    }
+  }
+
+  void _drawArrow(Canvas canvas, Offset start, Offset end, Color color, String label) {
+    final paint = Paint()
+      ..color = color.withAlpha(220)
+      ..strokeWidth = 4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final path = Path()..moveTo(start.dx, start.dy);
+    final midX = (start.dx + end.dx) / 2;
+    path.cubicTo(midX, start.dy, midX, end.dy, end.dx, end.dy);
+    canvas.drawPath(path, paint);
+
+    final direction = (end - start);
+    final distance = direction.distance;
+    if (distance > 1) {
+      final unit = direction / distance;
+      final side = Offset(-unit.dy, unit.dx);
+      final tip = end;
+      final p1 = tip - unit * 16 + side * 8;
+      final p2 = tip - unit * 16 - side * 8;
+      final arrow = Path()
+        ..moveTo(tip.dx, tip.dy)
+        ..lineTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy)
+        ..close();
+      canvas.drawPath(arrow, Paint()..color = color);
+    }
+
+    final tp = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          color: color,
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: 130);
+    tp.paint(canvas, Offset((start.dx + end.dx) / 2 - tp.width / 2, start.dy - 28));
+  }
+
+  @override
+  bool shouldRepaint(covariant _PointerArrowPainter oldDelegate) => oldDelegate.stage != stage;
+}
+
+class _DynamicTeachingScene extends StatelessWidget {
+  final String topic;
+  final int stage;
+  final List<Map<String, String>> steps;
+  final String centralIdea;
+  final Map<String, dynamic> data;
+
+  const _DynamicTeachingScene({
+    required this.topic,
+    required this.stage,
+    required this.steps,
+    required this.centralIdea,
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final count = math.max(1, math.min(5, steps.length));
+    final labels = steps.isEmpty
+        ? [topic]
+        : steps.take(count).map((step) {
+            final title = step['title'] ?? 'Step';
+            return title.isEmpty ? topic : title;
+          }).toList();
+
+    return Center(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final horizontal = constraints.maxWidth >= 760;
+          final visible = math.min(stage + 1, labels.length);
+          return SingleChildScrollView(
+            child: Flex(
+              direction: horizontal ? Axis.horizontal : Axis.vertical,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                for (int i = 0; i < visible; i++) ...[
+                  _ConceptBubble(
+                    label: labels[i],
+                    number: i + 1,
+                    accent: _lessonAccent(i),
+                    active: i == stage,
+                  ),
+                  if (i != visible - 1)
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontal ? 10 : 0,
+                        vertical: horizontal ? 0 : 9,
+                      ),
+                      child: Icon(
+                        horizontal
+                            ? Icons.arrow_forward_rounded
+                            : Icons.arrow_downward_rounded,
+                        color: _lessonAccent(i),
+                        size: 30,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ConceptBubble extends StatelessWidget {
+  final String label;
+  final int number;
+  final Color accent;
+  final bool active;
+
+  const _ConceptBubble({
+    required this.label,
+    required this.number,
+    required this.accent,
+    required this.active,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      constraints: const BoxConstraints(minWidth: 150, maxWidth: 230),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: BoxDecoration(
+        color: accent.withAlpha(active ? 45 : 22),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: accent.withAlpha(active ? 255 : 120), width: active ? 3 : 1.5),
+        boxShadow: active
+            ? [BoxShadow(color: accent.withAlpha(90), blurRadius: 24, spreadRadius: 2)]
+            : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$number',
+            style: TextStyle(color: accent, fontSize: 13, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: active ? Colors.white : const Color(0xFFD5D9E8),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeacherSpeechBubble extends StatelessWidget {
+  final String text;
+  final Color accent;
+
+  const _TeacherSpeechBubble({required this.text, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent,
+            boxShadow: [
+              BoxShadow(color: accent.withAlpha(75), blurRadius: 16),
+            ],
+          ),
+          child: const Text('✨', style: TextStyle(fontSize: 22)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 13, 16, 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111C38),
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+              border: Border(left: BorderSide(color: accent, width: 4)),
+            ),
+            child: Text(
+              text,
+              softWrap: true,
+              style: const TextStyle(
+                color: Color(0xFFF4F6FF),
+                fontSize: 16,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LessonNavButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final bool iconOnRight;
+  final VoidCallback? onPressed;
+
+  const _LessonNavButton({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onPressed,
+    this.iconOnRight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final children = <Widget>[
+      Icon(icon, size: 20),
+      const SizedBox(width: 7),
+      Text(label),
+    ];
+    return OutlinedButton(
+      onPressed: enabled ? onPressed : null,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: enabled ? Colors.white : const Color(0xFF747A91),
+        backgroundColor: const Color(0xFF151E3A),
+        side: BorderSide(color: enabled ? const Color(0xFF42527A) : const Color(0xFF28314E)),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: iconOnRight ? children.reversed.toList() : children,
+      ),
+    );
+  }
+}
+
+class _LessonPlayButton extends StatelessWidget {
+  final bool isPlaying;
+  final Color accent;
+  final VoidCallback onPressed;
+
+  const _LessonPlayButton({
+    required this.isPlaying,
+    required this.accent,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: isPlaying ? 'Pause teacher voice' : 'Play teacher voice',
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(30),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent,
+            boxShadow: [
+              BoxShadow(
+                color: accent.withAlpha(isPlaying ? 120 : 70),
+                blurRadius: isPlaying ? 24 : 14,
+                spreadRadius: isPlaying ? 2 : 0,
+              ),
+            ],
+          ),
+          child: Icon(
+            isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            color: Colors.white,
+            size: 30,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Sparkle extends StatelessWidget {
+  final Color color;
+  final double size;
+
+  const _Sparkle({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(Icons.auto_awesome, color: color.withAlpha(190), size: size * 2);
   }
 }
 
