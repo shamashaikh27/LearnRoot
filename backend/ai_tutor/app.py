@@ -1290,6 +1290,44 @@ def recommendation():
         }), 500
 
 
+# ============================================================
+# MODULE 4 - AI SMART NOTES
+# ============================================================
+
+@app.route("/notes", methods=["POST"])
+def notes():
+    try:
+        data = request.get_json(silent=True) or {}
+
+        topic = str(data.get("topic", "")).strip()
+
+        if not topic:
+            return jsonify({
+                "error": "Topic is required."
+            }), 400
+
+        from ai_notes import generate_notes
+
+        result = generate_notes(topic)
+
+        if not result:
+            return jsonify({
+                "error": "Could not generate notes."
+            }), 500
+
+        return jsonify({
+            "topic": topic,
+            "notes": result
+        })
+
+    except Exception as e:
+        print(f"Smart Notes error: {e}")
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+
 if __name__ == "__main__":
 
     app.run(
@@ -1297,4 +1335,5 @@ if __name__ == "__main__":
         port=5000,
         debug=True
     )
+
 
