@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+﻿from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
 from dotenv import load_dotenv
@@ -81,7 +81,7 @@ def clean_ai_text(text):
     text = re.sub(r"(?m)^\s{0,3}#{1,6}\s*", "", text)
 
     # Convert Markdown bullets to simple readable lines.
-    text = re.sub(r"(?m)^\s*[-*•]\s+", "• ", text)
+    text = re.sub(r"(?m)^\s*[-*â€¢]\s+", "â€¢ ", text)
 
     # Remove unnecessary Markdown link formatting:
     # [text](url) -> text
@@ -246,38 +246,38 @@ IMPORTANT TEACHING STYLE:
 FORMATTING:
 - Use clean plain text.
 - Use emojis as visual section markers.
-- Good section markers include 🧠, 👀, 💡, 💻, 🔍, 🎯, and 🔗.
+- Good section markers include ðŸ§ , ðŸ‘€, ðŸ’¡, ðŸ’», ðŸ”, ðŸŽ¯, and ðŸ”—.
 - Do NOT use Markdown bold markers such as **text**.
 - Do NOT use Markdown headings such as ##.
 - Do NOT use Markdown tables.
 - Do NOT wrap the response in a code block.
 - Do NOT use decorative stars.
 - Keep paragraphs short.
-- Use numbered steps such as 1️⃣, 2️⃣, 3️⃣ when teaching a process.
-- Include a final "🎯 Quick Check" with one simple question when
+- Use numbered steps such as 1ï¸âƒ£, 2ï¸âƒ£, 3ï¸âƒ£ when teaching a process.
+- Include a final "ðŸŽ¯ Quick Check" with one simple question when
   appropriate.
 
 Use this general structure, but adapt it naturally to the topic:
 
-🧠 BIG IDEA
+ðŸ§  BIG IDEA
 Explain the concept in simple words.
 
-👀 LET'S IMAGINE
+ðŸ‘€ LET'S IMAGINE
 Give a useful analogy or mental picture.
 
-🔍 HOW IT WORKS
+ðŸ” HOW IT WORKS
 Teach the important steps.
 
-💻 SIMPLE EXAMPLE
+ðŸ’» SIMPLE EXAMPLE
 Give a small example if useful.
 
-💡 IMPORTANT POINT
+ðŸ’¡ IMPORTANT POINT
 State the key thing the student should remember.
 
-🔗 CONNECTION
+ðŸ”— CONNECTION
 Explain how this topic connects to prerequisites or later concepts.
 
-🎯 QUICK CHECK
+ðŸŽ¯ QUICK CHECK
 Ask one simple question to make the student think.
 
 Return only the learner-facing explanation.
@@ -312,12 +312,12 @@ CONTENT:
   they apply.
 - Give one small example when useful.
 - Include common mistakes or a common confusion when relevant.
-- Finish with a "💡 Remember" section containing the most important
+- Finish with a "ðŸ’¡ Remember" section containing the most important
   takeaway.
 
 FORMATTING:
 - Use clean plain text, NOT Markdown.
-- Use emojis such as 🧠, 📌, 💻, ⚠️, and 💡.
+- Use emojis such as ðŸ§ , ðŸ“Œ, ðŸ’», âš ï¸, and ðŸ’¡.
 - Do NOT use **bold** markers.
 - Do NOT use ## headings.
 - Do NOT use Markdown tables.
@@ -368,7 +368,7 @@ IMPORTANT:
 
 FORMATTING:
 - Use clean plain text.
-- Use emojis such as ⚠️, 🔗, 🧠, and 💡.
+- Use emojis such as âš ï¸, ðŸ”—, ðŸ§ , and ðŸ’¡.
 - Do NOT use **bold**.
 - Do NOT use ## headings.
 - Do NOT use Markdown tables.
@@ -376,19 +376,19 @@ FORMATTING:
 
 Use a structure similar to:
 
-⚠️ WHAT YOU MAY MISS
+âš ï¸ WHAT YOU MAY MISS
 ...
 
-🔗 WHAT COMES AFTER IT
+ðŸ”— WHAT COMES AFTER IT
 ...
 
-🧠 WHY IT MATTERS
+ðŸ§  WHY IT MATTERS
 ...
 
-💡 SHOULD YOU SKIP IT?
+ðŸ’¡ SHOULD YOU SKIP IT?
 ...
 
-🎯 SIMPLE EXAMPLE
+ðŸŽ¯ SIMPLE EXAMPLE
 ...
 
 Return only the learner-facing explanation.
@@ -597,7 +597,7 @@ QUALITY CHECK BEFORE RETURNING:
                 "label": clean_visual_field(node.get("label", "")),
                 "value": clean_visual_field(node.get("value", "")),
                 "caption": clean_visual_field(node.get("caption", "")),
-                "emoji": clean_visual_field(node.get("emoji", "💡"))[:4],
+                "emoji": clean_visual_field(node.get("emoji", "ðŸ’¡"))[:4],
                 "kind": clean_visual_field(node.get("kind", "generic")).lower(),
                 "stage": max(0, min(5, stage)),
             })
@@ -744,7 +744,7 @@ FOR A RELATED QUESTION:
 
 FORMATTING:
 - Use clean plain text.
-- Use emojis such as 🧠, 🔍, 💡, and 💻 where useful.
+- Use emojis such as ðŸ§ , ðŸ”, ðŸ’¡, and ðŸ’» where useful.
 - Do NOT use **bold** markers.
 - Do NOT use ## headings.
 - Do NOT use Markdown tables.
@@ -1210,6 +1210,86 @@ def voice():
 # START SERVER
 # ============================================================
 
+# ============================================================
+# MODULE 4 - AI QUIZ
+# ============================================================
+
+@app.route("/quiz", methods=["POST"])
+def quiz():
+    try:
+        data = request.get_json(silent=True) or {}
+
+        topic = str(data.get("topic", "")).strip()
+
+        if not topic:
+            return jsonify({
+                "error": "Topic is required."
+            }), 400
+
+        from ai_quiz import generate_quiz
+
+        questions = generate_quiz(topic)
+
+        return jsonify({
+            "topic": topic,
+            "questions": questions
+        })
+
+    except Exception as e:
+        print(f"Quiz error: {e}")
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+
+# ============================================================
+# MODULE 4 - AI RECOMMENDATION
+# ============================================================
+
+@app.route("/recommendation", methods=["POST"])
+def recommendation():
+    try:
+        data = request.get_json(silent=True) or {}
+
+        topic = str(data.get("topic", "")).strip()
+
+        if not topic:
+            return jsonify({
+                "error": "Topic is required."
+            }), 400
+
+        if "score" not in data:
+            return jsonify({
+                "error": "Score is required."
+            }), 400
+
+        score = float(data["score"])
+
+        if score < 0 or score > 100:
+            return jsonify({
+                "error": "Score must be between 0 and 100."
+            }), 400
+
+        from ai_recommendation import generate_recommendation
+
+        result = generate_recommendation(topic, score)
+
+        return jsonify(result)
+
+    except ValueError:
+        return jsonify({
+            "error": "Score must be a valid number."
+        }), 400
+
+    except Exception as e:
+        print(f"Recommendation error: {e}")
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+
 if __name__ == "__main__":
 
     app.run(
@@ -1217,3 +1297,4 @@ if __name__ == "__main__":
         port=5000,
         debug=True
     )
+
