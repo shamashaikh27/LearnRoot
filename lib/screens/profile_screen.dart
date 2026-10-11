@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _name = 'Student';
   String _email = 'student@learnroot.com';
   String _learningLevel = 'Student';
+
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -29,6 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (user == null) {
         if (!mounted) return;
+
         setState(() {
           _isLoading = false;
         });
@@ -39,7 +42,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       String email = user.email?.trim() ?? '';
       String learningLevel = 'Student';
 
-      // Load the application profile from Firestore.
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -48,8 +50,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final data = userDoc.data();
 
       if (data != null) {
-        final firestoreName = data['name']?.toString().trim() ?? '';
-        final firestoreEmail = data['email']?.toString().trim() ?? '';
+        final firestoreName =
+            data['name']?.toString().trim() ?? '';
+        final firestoreEmail =
+            data['email']?.toString().trim() ?? '';
         final firestoreLevel =
             data['learningLevel']?.toString().trim() ?? '';
 
@@ -66,9 +70,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
 
-      // Final fallbacks from Firebase Authentication.
       if (name.isEmpty) {
-        name = email.isNotEmpty ? email.split('@').first : 'Student';
+        name = email.isNotEmpty
+            ? email.split('@').first
+            : 'Student';
       }
 
       if (email.isEmpty) {
@@ -119,9 +124,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final cleanName = name.trim().isEmpty ? 'Student' : name.trim();
-      final cleanLevel =
-          learningLevel.trim().isEmpty ? 'Student' : learningLevel.trim();
+      final cleanName =
+          name.trim().isEmpty ? 'Student' : name.trim();
+
+      final cleanLevel = learningLevel.trim().isEmpty
+          ? 'Student'
+          : learningLevel.trim();
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -136,7 +144,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         SetOptions(merge: true),
       );
 
-      // Keep Firebase Auth's display name synchronized too.
       if (user.displayName != cleanName) {
         await user.updateDisplayName(cleanName);
         await user.reload();
@@ -165,19 +172,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Could not update the profile. Please try again.'),
+          content: Text(
+            'Could not update the profile. Please try again.',
+          ),
         ),
       );
     }
   }
 
   void _editProfile() {
-    final nameController = TextEditingController(text: _name);
-    final levelController = TextEditingController(text: _learningLevel);
+    final nameController =
+        TextEditingController(text: _name);
+    final levelController =
+        TextEditingController(text: _learningLevel);
 
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text(
             'Edit Profile',
@@ -193,29 +204,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: 'Name',
-                    prefixIcon: Icon(Icons.person_outline),
+                    prefixIcon:
+                        Icon(Icons.person_outline),
                   ),
                 ),
-
                 const SizedBox(height: 15),
-
                 TextFormField(
                   initialValue: _email,
                   readOnly: true,
-                  keyboardType: TextInputType.emailAddress,
+                  keyboardType:
+                      TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
+                    prefixIcon:
+                        Icon(Icons.email_outlined),
                   ),
                 ),
-
                 const SizedBox(height: 15),
-
                 TextField(
                   controller: levelController,
                   decoration: const InputDecoration(
                     labelText: 'Learning Level',
-                    prefixIcon: Icon(Icons.school_outlined),
+                    prefixIcon:
+                        Icon(Icons.school_outlined),
                   ),
                 ),
               ],
@@ -226,23 +237,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: _isSaving
                   ? null
                   : () {
-                      Navigator.pop(context);
+                      Navigator.pop(dialogContext);
                     },
               child: const Text('Cancel'),
             ),
-
             ElevatedButton(
               onPressed: _isSaving
                   ? null
                   : () async {
                       await _saveProfile(
                         name: nameController.text,
-                        learningLevel: levelController.text,
+                        learningLevel:
+                            levelController.text,
                       );
 
-                      if (context.mounted) {
-                        Navigator.pop(context);
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext);
                       }
+
+                      nameController.dispose();
+                      levelController.dispose();
                     },
               child: _isSaving
                   ? const SizedBox(
@@ -257,25 +271,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         );
       },
-    );
+    ).then((_) {
+      nameController.dispose();
+      levelController.dispose();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Read colors from the currently active app theme.
+    final themeColors =
+        Theme.of(context).extension<LearnRootThemeColors>()!;
+
     return Scaffold(
-      backgroundColor: LearnRootColors.background,
+      backgroundColor: themeColors.background,
 
       appBar: AppBar(
-        backgroundColor: LearnRootColors.background,
-        title: const Text(
+        backgroundColor: themeColors.background,
+        surfaceTintColor: Colors.transparent,
+        title: Text(
           'Profile',
           style: TextStyle(
-            color: LearnRootColors.textPrimary,
+            color: themeColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
-        iconTheme: const IconThemeData(
-          color: LearnRootColors.textPrimary,
+        iconTheme: IconThemeData(
+          color: themeColors.textPrimary,
         ),
       ),
 
@@ -296,7 +318,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       CircleAvatar(
                         radius: 50,
-                        backgroundColor: LearnRootColors.primary,
+                        backgroundColor:
+                            LearnRootColors.primary,
                         child: Text(
                           _getInitials(_name),
                           style: const TextStyle(
@@ -311,8 +334,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       Text(
                         _name,
-                        style: const TextStyle(
-                          color: LearnRootColors.textPrimary,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: themeColors.textPrimary,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -322,8 +346,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       Text(
                         _email,
-                        style: const TextStyle(
-                          color: LearnRootColors.textSecondary,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: themeColors.textSecondary,
                           fontSize: 14,
                         ),
                       ),
@@ -331,18 +356,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 30),
 
                       _profileCard(
+                        context,
                         Icons.person_outline,
                         'Name',
                         _name,
                       ),
 
                       _profileCard(
+                        context,
                         Icons.email_outlined,
                         'Email',
                         _email,
                       ),
 
                       _profileCard(
+                        context,
                         Icons.school_outlined,
                         'Learning Level',
                         _learningLevel,
@@ -354,16 +382,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _editProfile,
-                          icon: const Icon(Icons.edit_outlined),
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                          ),
                           label: const Text('Edit Profile'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: LearnRootColors.primary,
+                            backgroundColor:
+                                LearnRootColors.primary,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
+                            padding:
+                                const EdgeInsets.symmetric(
                               vertical: 15,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius:
+                                  BorderRadius.circular(12),
                             ),
                           ),
                         ),
@@ -377,16 +410,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onPressed: () {
                             Navigator.pop(context);
                           },
-                          icon: const Icon(Icons.arrow_back),
-                          label: const Text('Back to Dashboard'),
+                          icon: const Icon(
+                            Icons.arrow_back,
+                          ),
+                          label: const Text(
+                            'Back to Dashboard',
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: LearnRootColors.primary,
+                            backgroundColor:
+                                LearnRootColors.primary,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
+                            padding:
+                                const EdgeInsets.symmetric(
                               vertical: 15,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius:
+                                  BorderRadius.circular(12),
                             ),
                           ),
                         ),
@@ -400,17 +440,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _profileCard(
+    BuildContext context,
     IconData icon,
     String title,
     String value,
   ) {
+    final themeColors =
+        Theme.of(context).extension<LearnRootThemeColors>()!;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: LearnRootColors.card,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: themeColors.border,
+        ),
       ),
       child: Row(
         children: [
@@ -424,12 +471,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: LearnRootColors.textSecondary,
+                  style: TextStyle(
+                    color: themeColors.textSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -438,8 +486,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 Text(
                   value,
-                  style: const TextStyle(
-                    color: LearnRootColors.textPrimary,
+                  style: TextStyle(
+                    color: themeColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),

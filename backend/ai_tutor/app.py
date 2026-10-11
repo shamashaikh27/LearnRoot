@@ -208,6 +208,67 @@ def get_request_subject(data):
     subject = data.get("subject", "General")
     return str(subject).strip() or "General"
 
+# ============================================================
+# ONE-SHOT REVISION
+# ============================================================
+
+def one_shot_revision(subject, topic):
+    prompt = f"""
+You are the One-Shot Revision teacher inside LearnRoot.
+
+Create a concise but complete revision sheet for this exact
+Computer Engineering topic.
+
+Subject: {subject}
+Topic: {topic}
+
+IMPORTANT:
+- Stay strictly related to the selected subject and topic.
+- Do not change the topic.
+- Do not introduce unrelated subjects.
+- Write for a Computer Engineering student.
+- Make the revision useful for quick exam preparation.
+- Prefer simple explanations over difficult textbook language.
+
+Include:
+
+🧠 Core Idea
+Give a simple definition and explain what the topic means.
+
+📌 Key Points
+Give the most important concepts, rules, properties, or steps.
+
+💻 Syntax / Formula
+Include important syntax, formulas, commands, or rules when
+they genuinely apply to this topic.
+
+🔍 How It Works
+Explain the main working or process in a simple sequence.
+
+💡 Simple Example
+Give one small, correct example where useful.
+
+⚠️ Common Mistakes
+Mention important mistakes or confusions students commonly make.
+
+🎯 Quick Recall
+Finish with the most important points the student should remember
+before an exam.
+
+FORMATTING:
+- Use plain text.
+- Use the emojis shown above as section markers.
+- Do not use Markdown tables.
+- Do not use code fences.
+- Keep sections compact.
+- Do not add unrelated information.
+
+Return only the learner-facing revision.
+"""
+
+    result = generate_with_retry(prompt)
+
+    return clean_ai_text(result)
 
 # ============================================================
 # 1. TEACHER-STYLE EXPLANATION
@@ -977,6 +1038,64 @@ def explain():
 
     except Exception as e:
         print(f"Explanation error: {e}")
+        return ai_error_response(e)
+
+# ============================================================
+# ONE-SHOT REVISION API
+# ============================================================
+
+@app.route("/revision", methods=["POST"])
+def revision():
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "error": "Request body is required."
+        }), 400
+
+    subject = get_request_subject(data)
+    topic = data.get("topic")
+
+    if not topic:
+        return jsonify({
+            "error": "Topic is required."
+        }), 400
+
+    topic = str(topic).strip()
+
+    try:
+        cached_before = get_cached_content(
+            subject,
+            topic,
+            "revision"
+        )
+
+        answer = get_cached_or_generate(
+            subject,
+            topic,
+            "revision",
+            lambda: one_shot_revision(
+                subject,
+                topic
+            )
+        )
+
+        return jsonify({
+            "subject": subject,
+            "topic": topic,
+            "revision": answer,
+            "source": (
+                "mysql"
+                if cached_before is not None
+                else "gemini"
+            )
+        })
+
+    except Exception as e:
+
+        print(f"Revision error: {e}")
+
         return ai_error_response(e)
 
 # ============================================================

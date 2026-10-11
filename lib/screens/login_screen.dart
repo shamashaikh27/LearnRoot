@@ -4,9 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import 'registration_screen.dart';
-import 'home_screen.dart';
 import '../theme/app_theme.dart';
+import '../widgets/learnroot_auth_background.dart';
+import 'home_screen.dart';
+import 'registration_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final void Function(ThemeMode) onThemeChanged;
@@ -30,6 +31,19 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isLoggingIn = false;
   bool isGoogleLoggingIn = false;
 
+  Color get _backgroundColor =>
+      widget.isDarkMode ? AppTheme.darkBackground : AppTheme.lightBackground;
+  Color get _cardColor =>
+      widget.isDarkMode ? AppTheme.darkCard : AppTheme.lightCard;
+  Color get _inputBackground =>
+      widget.isDarkMode ? AppTheme.darkSecondary : AppTheme.lightSecondary;
+  Color get _primaryColor => AppTheme.primaryPurple;
+  Color get _mainText =>
+      widget.isDarkMode ? AppTheme.darkMainText : AppTheme.lightMainText;
+  Color get _secondaryText => widget.isDarkMode
+      ? AppTheme.darkSecondaryText
+      : AppTheme.lightSecondaryText;
+
   @override
   void dispose() {
     emailController.dispose();
@@ -43,27 +57,22 @@ class _LoginScreenState extends State<LoginScreen> {
           .collection('users')
           .doc(user.uid)
           .get();
-
-      if (userDoc.exists) {
-        final data = userDoc.data();
-        if (data != null && data['gender'] != null) {
-          return data['gender'].toString();
-        }
+      final data = userDoc.data();
+      if (data != null && data['gender'] != null) {
+        return data['gender'].toString();
       }
     } catch (_) {
-      // Login should still continue if the profile document cannot be read.
+      // Authentication should still proceed if the profile cannot be read.
     }
-
     return 'Male';
   }
 
   void _openHome(String gender) {
     if (!mounted) return;
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => HomeScreen(
+        builder: (_) => HomeScreen(
           onThemeChanged: widget.onThemeChanged,
           isDarkMode: widget.isDarkMode,
           gender: gender,
@@ -72,32 +81,31 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+  }
+
   Future<void> _login() async {
     final email = emailController.text.trim().toLowerCase();
     final password = passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your email and password'),
-        ),
-      );
+      _showMessage('Please enter your email and password.');
       return;
     }
 
-    setState(() {
-      isLoggingIn = true;
-    });
-
+    setState(() => isLoggingIn = true);
     try {
-      final credential =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-
       final user = credential.user;
-
       if (user == null) {
         throw FirebaseAuthException(
           code: 'user-not-found',
@@ -106,106 +114,73 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final gender = await _getGender(user);
-
       if (!mounted) return;
-
-      setState(() {
-        isLoggingIn = false;
-      });
-
+      setState(() => isLoggingIn = false);
       _openHome(gender);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      setState(() => isLoggingIn = false);
 
-      setState(() {
-        isLoggingIn = false;
-      });
-
-      String message = 'Login failed. Please try again.';
-
+      String message;
       switch (e.code) {
         case 'invalid-email':
           message = 'Please enter a valid email address.';
           break;
-
         case 'user-not-found':
         case 'wrong-password':
         case 'invalid-credential':
-          message = 'Firebase error: ${e.code}\n${e.message ?? ''}';
+          message = 'Email or password is incorrect. Please try again.';
           break;
-
         case 'user-disabled':
           message = 'This account has been disabled.';
           break;
-
         case 'too-many-requests':
           message = 'Too many attempts. Please try again later.';
           break;
-
+        case 'network-request-failed':
+          message = 'Check your internet connection and try again.';
+          break;
         default:
           message = e.message ?? 'Login failed. Please try again.';
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      _showMessage(message);
     } catch (_) {
       if (!mounted) return;
-
-      setState(() {
-        isLoggingIn = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Something went wrong. Please try again.'),
-        ),
-      );
+      setState(() => isLoggingIn = false);
+      _showMessage('Something went wrong. Please try again.');
     }
   }
 
   Future<void> _loginWithGoogle() async {
-    if (isGoogleLoggingIn) return;
-
-    setState(() {
-      isGoogleLoggingIn = true;
-    });
+    if (isGoogleLoggingIn || isLoggingIn) return;
+    setState(() => isGoogleLoggingIn = true);
 
     try {
       UserCredential userCredential;
-
       if (kIsWeb) {
-        final googleProvider = GoogleAuthProvider();
-
-        userCredential =
-            await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        userCredential = await FirebaseAuth.instance.signInWithPopup(
+          GoogleAuthProvider(),
+        );
       } else {
         final googleSignIn = GoogleSignIn.instance;
-
         await googleSignIn.initialize();
-
         final googleUser = await googleSignIn.authenticate();
         final googleAuth = googleUser.authentication;
-
         final credential = GoogleAuthProvider.credential(
           idToken: googleAuth.idToken,
         );
-
-        userCredential =
-            await FirebaseAuth.instance.signInWithCredential(credential);
+        userCredential = await FirebaseAuth.instance.signInWithCredential(
+          credential,
+        );
       }
 
       final user = userCredential.user;
+      if (user == null) throw Exception('Google user not found.');
 
-      if (user == null) {
-        throw Exception('Google user not found.');
-      }
-
-      final userRef =
-          FirebaseFirestore.instance.collection('users').doc(user.uid);
-
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
       final userDoc = await userRef.get();
-
       if (!userDoc.exists) {
         await userRef.set({
           'name': user.displayName ?? 'LearnRoot User',
@@ -217,45 +192,23 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final gender = await _getGender(user);
-
       if (!mounted) return;
-
-      setState(() {
-        isGoogleLoggingIn = false;
-      });
-
+      setState(() => isGoogleLoggingIn = false);
       _openHome(gender);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-
-      setState(() {
-        isGoogleLoggingIn = false;
-      });
-
+      setState(() => isGoogleLoggingIn = false);
       String message = e.message ?? 'Google sign-in failed.';
-
       if (e.code == 'popup-closed-by-user') {
         message = 'Google sign-in was cancelled.';
       } else if (e.code == 'popup-blocked') {
-        message =
-            'The Google sign-in window was blocked. Please allow popups and try again.';
+        message = 'Allow popups in your browser and try again.';
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    } catch (e) {
+      _showMessage(message);
+    } catch (_) {
       if (!mounted) return;
-
-      setState(() {
-        isGoogleLoggingIn = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google sign-in failed: $e'),
-        ),
-      );
+      setState(() => isGoogleLoggingIn = false);
+      _showMessage('Google sign-in failed. Please try again.');
     }
   }
 
@@ -266,299 +219,575 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(
-        color: _secondaryText,
-      ),
-      prefixIcon: Icon(
-        icon,
-        color: _secondaryText,
-      ),
+      hintStyle: TextStyle(color: _secondaryText),
+      prefixIcon: Icon(icon, color: _secondaryText, size: 20),
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: _inputBackground,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 17),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: _secondaryText.withValues(alpha: .12)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: AppTheme.primaryPurple,
-          width: 1.2,
-        ),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: _primaryColor, width: 1.5),
       ),
     );
   }
 
-  Color get _backgroundColor =>
-      widget.isDarkMode ? AppTheme.darkBackground : AppTheme.lightBackground;
+  Widget _brandMark({double size = 48}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_primaryColor, AppTheme.gradientPurpleEnd],
+        ),
+        borderRadius: BorderRadius.circular(size * .30),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryColor.withValues(alpha: .28),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Icon(Icons.school_rounded, color: Colors.white, size: size * .52),
+    );
+  }
 
-  Color get _cardColor =>
-      widget.isDarkMode ? AppTheme.darkCard : AppTheme.lightCard;
+  Widget _buildBrandPanel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            _brandMark(size: 54),
+            const SizedBox(width: 15),
+            Text(
+              'LearnRoot',
+              style: TextStyle(
+                color: _mainText,
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -.9,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 38),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: _primaryColor.withValues(alpha: .13),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: _primaryColor.withValues(alpha: .25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.auto_awesome_rounded,
+                size: 15,
+                color: AppTheme.gradientPurpleEnd,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'YOUR PERSONAL AI LEARNING SPACE',
+                style: TextStyle(
+                  color: _mainText,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        Text(
+          'Every concept.\nOne step at a time.',
+          style: TextStyle(
+            color: _mainText,
+            fontSize: 43,
+            height: 1.12,
+            letterSpacing: -1.5,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Build strong foundations, uncover learning gaps, and turn difficult topics into clear ideas.',
+          style: TextStyle(color: _secondaryText, fontSize: 16, height: 1.7),
+        ),
+        const SizedBox(height: 28),
+        _featureLine(
+          Icons.account_tree_rounded,
+          'Learning paths that connect concepts',
+        ),
+        const SizedBox(height: 15),
+        _featureLine(
+          Icons.auto_awesome_rounded,
+          'AI-powered explanations and revision',
+        ),
+        const SizedBox(height: 15),
+        _featureLine(Icons.insights_rounded, 'A clearer view of your progress'),
+        const SizedBox(height: 34),
+        _miniLearningGraph(),
+      ],
+    );
+  }
 
-  Color get _inputBackground =>
-      widget.isDarkMode ? AppTheme.darkSecondary : AppTheme.lightSecondary;
+  Widget _featureLine(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: _primaryColor.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon, color: AppTheme.gradientPurpleEnd, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: _mainText,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-  Color get _primaryColor => AppTheme.primaryPurple;
+  Widget _miniLearningGraph() {
+    final surface = widget.isDarkMode
+        ? Colors.white.withValues(alpha: .035)
+        : Colors.white.withValues(alpha: .55);
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _secondaryText.withValues(alpha: .13)),
+      ),
+      child: Row(
+        children: [
+          _graphNode('Learn', Icons.menu_book_rounded),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: _primaryColor.withValues(alpha: .55),
+            ),
+          ),
+          _graphNode('Connect', Icons.hub_rounded),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: _primaryColor.withValues(alpha: .55),
+            ),
+          ),
+          _graphNode('Grow', Icons.trending_up_rounded),
+        ],
+      ),
+    );
+  }
 
-  Color get _mainText =>
-      widget.isDarkMode ? AppTheme.darkMainText : AppTheme.lightMainText;
+  Widget _graphNode(String label, IconData icon) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                _primaryColor.withValues(alpha: .22),
+                AppTheme.gradientPurpleEnd.withValues(alpha: .10),
+              ],
+            ),
+            border: Border.all(color: _primaryColor.withValues(alpha: .28)),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: AppTheme.gradientPurpleEnd, size: 20),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          label,
+          style: TextStyle(
+            color: _secondaryText,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
 
-  Color get _secondaryText => widget.isDarkMode
-      ? AppTheme.darkSecondaryText
-      : AppTheme.lightSecondaryText;
+  Widget _buildLoginCard() {
+    return Container(
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        color: _cardColor.withValues(alpha: widget.isDarkMode ? .94 : .97),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: _primaryColor.withValues(alpha: .22)),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryColor.withValues(
+              alpha: widget.isDarkMode ? .13 : .08,
+            ),
+            blurRadius: 50,
+            spreadRadius: 1,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _primaryColor.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Text(
+              'WELCOME BACK',
+              style: TextStyle(
+                color: AppTheme.gradientPurpleEnd,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.25,
+              ),
+            ),
+          ),
+          const SizedBox(height: 17),
+          Text(
+            'Sign in to LearnRoot',
+            style: TextStyle(
+              color: _mainText,
+              fontSize: 26,
+              letterSpacing: -.6,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pick up where your learning journey left off.',
+            style: TextStyle(color: _secondaryText, fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 28),
+          _fieldLabel('Email address'),
+          const SizedBox(height: 8),
+          TextField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.email],
+            style: TextStyle(color: _mainText),
+            decoration: _inputDecoration(
+              hintText: 'you@example.com',
+              icon: Icons.mail_outline_rounded,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _fieldLabel('Password'),
+          const SizedBox(height: 8),
+          TextField(
+            controller: passwordController,
+            obscureText: hidePassword,
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.password],
+            onSubmitted: (_) =>
+                (isLoggingIn || isGoogleLoggingIn) ? null : _login(),
+            style: TextStyle(color: _mainText),
+            decoration: _inputDecoration(
+              hintText: 'Enter your password',
+              icon: Icons.lock_outline_rounded,
+              suffixIcon: IconButton(
+                tooltip: hidePassword ? 'Show password' : 'Hide password',
+                icon: Icon(
+                  hidePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: _secondaryText,
+                  size: 20,
+                ),
+                onPressed: () => setState(() => hidePassword = !hidePassword),
+              ),
+            ),
+          ),
+          const SizedBox(height: 25),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_primaryColor, AppTheme.gradientPurpleEnd],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryColor.withValues(alpha: .28),
+                    blurRadius: 18,
+                    offset: const Offset(0, 7),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: (isLoggingIn || isGoogleLoggingIn) ? null : _login,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  disabledBackgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: isLoggingIn
+                    ? const SizedBox(
+                        width: 21,
+                        height: 21,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Continue learning',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(width: 9),
+                          Icon(Icons.arrow_forward_rounded, size: 18),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Divider(color: _secondaryText.withValues(alpha: .22)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'OR CONTINUE WITH',
+                  style: TextStyle(
+                    color: _secondaryText,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: .8,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Divider(color: _secondaryText.withValues(alpha: .22)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton(
+              onPressed: (isLoggingIn || isGoogleLoggingIn)
+                  ? null
+                  : _loginWithGoogle,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _mainText,
+                side: BorderSide(color: _secondaryText.withValues(alpha: .24)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: isGoogleLoggingIn
+                  ? const SizedBox(
+                      width: 19,
+                      height: 19,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'G',
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF4285F4),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Continue with Google',
+                          style: TextStyle(
+                            color: _mainText,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(height: 21),
+          Center(
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              alignment: WrapAlignment.center,
+              children: [
+                Text(
+                  "New to LearnRoot? ",
+                  style: TextStyle(color: _secondaryText, fontSize: 12),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.gradientPurpleEnd,
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            RegistrationScreen(isDarkMode: widget.isDarkMode),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Create an account',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String label) => Text(
+    label,
+    style: TextStyle(
+      color: _mainText,
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _backgroundColor,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: 480,
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: _primaryColor,
-                      borderRadius: BorderRadius.circular(20),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: LearnRootAuthBackground(isDark: widget.isDarkMode),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 1020;
+                if (wide) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 42,
+                      vertical: 28,
                     ),
-                    child: const Icon(
-                      Icons.school_rounded,
-                      size: 38,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'LearnRoot',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                      color: _mainText,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Learn smarter. Learn step by step.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: _secondaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 42),
-                  Container(
-                    padding: const EdgeInsets.all(28),
-                    decoration: BoxDecoration(
-                      color: _cardColor,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: _primaryColor.withValues(alpha: 0.25),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome Back!',
-                          style: TextStyle(
-                            fontSize: 27,
-                            fontWeight: FontWeight.bold,
-                            color: _mainText,
-                          ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: 1180,
+                          minHeight: constraints.maxHeight > 56
+                              ? constraints.maxHeight - 56
+                              : 0.0,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Login to continue your learning journey.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: _secondaryText,
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        Text(
-                          'Email',
-                          style: TextStyle(
-                            color: _mainText,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          style: TextStyle(
-                            color: _mainText,
-                          ),
-                          decoration: _inputDecoration(
-                            hintText: 'Enter your email',
-                            icon: Icons.email_outlined,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Password',
-                          style: TextStyle(
-                            color: _mainText,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: passwordController,
-                          obscureText: hidePassword,
-                          style: TextStyle(
-                            color: _mainText,
-                          ),
-                          decoration: _inputDecoration(
-                            hintText: 'Enter your password',
-                            icon: Icons.lock_outline,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                hidePassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                color: _secondaryText,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  hidePassword = !hidePassword;
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: isLoggingIn ? null : _login,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primaryColor,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor:
-                                  _primaryColor.withValues(alpha: 0.55),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: isLoggingIn
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Login',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
+                        child: Row(
                           children: [
-                            Expanded(
-                              child: Divider(
-                                color: _secondaryText.withValues(alpha: 0.25),
-                              ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                'OR',
-                                style: TextStyle(
-                                  color: _secondaryText,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Divider(
-                                color: _secondaryText.withValues(alpha: 0.25),
-                              ),
-                            ),
+                            Expanded(child: _buildBrandPanel()),
+                            const SizedBox(width: 70),
+                            SizedBox(width: 445, child: _buildLoginCard()),
                           ],
                         ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: OutlinedButton.icon(
-                            onPressed:
-                                isGoogleLoggingIn ? null : _loginWithGoogle,
-                            icon: isGoogleLoggingIn
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.g_mobiledata_rounded),
-                            label: Text(
-                              isGoogleLoggingIn
-                                  ? 'Signing in...'
-                                  : 'Continue with Google',
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _mainText,
-                              side: BorderSide(
-                                color: _secondaryText.withValues(alpha: 0.25),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                      ),
+                    ),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 26, 20, 28),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 470),
+                      child: Column(
+                        children: [
+                          _brandMark(size: 56),
+                          const SizedBox(height: 14),
+                          Text(
+                            'LearnRoot',
+                            style: TextStyle(
+                              color: _mainText,
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -.8,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        Center(
-                          child: TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const RegistrationScreen(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              "Don't have an account? Register",
-                              style: TextStyle(
-                                color: _secondaryText,
-                              ),
+                          const SizedBox(height: 7),
+                          Text(
+                            'Learn smarter. Learn step by step.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _secondaryText,
+                              fontSize: 13,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 28),
+                          _buildLoginCard(),
+                          const SizedBox(height: 18),
+                          Text(
+                            'A stronger foundation starts with one small step.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _secondaryText,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ),
-        ),
+        ],
       ),
     );
   }

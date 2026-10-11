@@ -3,70 +3,74 @@ import '../models/topic.dart';
 Topic _dsTopic(
   int id,
   String name,
-  List<int> prerequisites,
-) {
+  List<int> prerequisites, {
+  List<String> linkedPrerequisites = const [],
+}) {
   return Topic(
     id: 'ds_$id',
     name: name,
     subject: 'Data Structures',
-    prerequisites: prerequisites.map((p) => 'ds_$p').toList(),
+    prerequisites: [...prerequisites.map((p) => 'ds_$p'), ...linkedPrerequisites],
   );
 }
 
 Topic _cTopic(
   int id,
   String name,
-  List<int> prerequisites,
-) {
+  List<int> prerequisites, {
+  List<String> linkedPrerequisites = const [],
+}) {
   return Topic(
     id: 'c_$id',
     name: name,
     subject: 'C Programming',
-    prerequisites: prerequisites.map((p) => 'c_$p').toList(),
+    prerequisites: [...prerequisites.map((p) => 'c_$p'), ...linkedPrerequisites],
   );
 }
 
 Topic _osTopic(
   int id,
   String name,
-  List<int> prerequisites,
-) {
+  List<int> prerequisites, {
+  List<String> linkedPrerequisites = const [],
+}) {
   return Topic(
     id: 'os_$id',
     name: name,
     subject: 'Operating Systems',
-    prerequisites: prerequisites.map((p) => 'os_$p').toList(),
+    prerequisites: [...prerequisites.map((p) => 'os_$p'), ...linkedPrerequisites],
   );
 }
 
-Topic _cnTopic(int id, String name, List<int> prerequisites) {
+Topic _cnTopic(int id, String name, List<int> prerequisites, { List<String> linkedPrerequisites = const [], }) {
   return Topic(
     id: 'cn_$id',
     name: name,
     subject: 'Computer Networks',
-    prerequisites: prerequisites.map((p) => 'cn_$p').toList(),
+    prerequisites: [...prerequisites.map((p) => 'cn_$p'), ...linkedPrerequisites],
   );
 }
 
-Topic _javaTopic(int id, String name, List<int> prerequisites) {
+Topic _javaTopic(int id, String name, List<int> prerequisites, { List<String> linkedPrerequisites = const [], }) {
   return Topic(
     id: 'java_$id',
     name: name,
     subject: 'OOPs – Java',
-    prerequisites: prerequisites.map((p) => 'java_$p').toList(),
+    prerequisites: [...prerequisites.map((p) => 'java_$p'), ...linkedPrerequisites],
   );
 }
 
 Topic _dbmsTopic(
   int id,
   String name,
-  List<int> prerequisites,
-) {
+  List<int> prerequisites, {
+  List<String> linkedPrerequisites = const [],
+}) {
   return Topic(
     id: 'dbms_$id',
     name: name,
     subject: 'DBMS',
-    prerequisites: prerequisites.map((p) => 'dbms_$p').toList(),
+    prerequisites: [...prerequisites.map((p) => 'dbms_$p'), ...linkedPrerequisites],
   );
 }
 
@@ -86,7 +90,7 @@ final List<Topic> syllabusTopics = [
   _dsTopic(12, 'Nested Loops & Break/Continue', [11]),
   _dsTopic(13, 'Functions & Function Calls', [11]),
   _dsTopic(14, 'Scope, Storage Classes & Lifetime', [13]),
-  _dsTopic(15, 'Pointers & Memory Addresses', [2]),
+  _dsTopic(15, 'Pointers & Memory Addresses', [2], linkedPrerequisites: ['c_118', 'c_120']),
   _dsTopic(16, 'Pointer Arithmetic', [15]),
   _dsTopic(17, 'Pointers to Pointers', [15]),
   _dsTopic(18, 'Functions Returning Pointers', [13, 15]),
@@ -121,7 +125,7 @@ final List<Topic> syllabusTopics = [
   _dsTopic(45, 'Greedy Algorithms', [32]),
 
   // UNIT 3: ARRAYS
-  _dsTopic(46, 'Introduction to Arrays', [24]),
+  _dsTopic(46, 'Introduction to Arrays', [24], linkedPrerequisites: ['c_90']),
   _dsTopic(47, 'Declaration & Initialization of Arrays', [46]),
   _dsTopic(48, 'Accessing Array Elements', [47]),
   _dsTopic(49, 'Address Calculation in Single-Dimensional Arrays', [48]),
@@ -178,7 +182,7 @@ final List<Topic> syllabusTopics = [
   _dsTopic(96, 'User-Defined Data Types using Structures', [95]),
 
   // UNIT 6: LINKED LISTS
-  _dsTopic(97, 'Introduction to Linked Lists', [26, 85]),
+  _dsTopic(97, 'Introduction to Linked Lists', [26, 85], linkedPrerequisites: ['c_156', 'c_141']),
   _dsTopic(98, 'Singly Linked List Representation', [97]),
   _dsTopic(99, 'Node Creation & Memory Allocation', [21, 98]),
   _dsTopic(100, 'Traversing a Singly Linked List', [98]),
@@ -202,7 +206,7 @@ final List<Topic> syllabusTopics = [
   _dsTopic(118, 'Linked List vs. Array Comparison', [46, 97]),
 
   // UNIT 7: STACKS
-  _dsTopic(119, 'Introduction to Stacks', [26]),
+  _dsTopic(119, 'Introduction to Stacks', [26], linkedPrerequisites: ['c_91']),
   _dsTopic(120, 'Stack ADT & Operations', [119]),
   _dsTopic(121, 'Array Implementation of Stacks', [46, 120]),
   _dsTopic(122, 'Linked List Implementation of Stacks', [98, 120]),
@@ -309,7 +313,7 @@ final List<Topic> syllabusTopics = [
   _dsTopic(213, 'Comparison of Heap Structures', [201, 207, 210]),
 
   // UNIT 13: GRAPHS
-  _dsTopic(214, 'Introduction to Graphs', [24]),
+  _dsTopic(214, 'Introduction to Graphs', [24], linkedPrerequisites: ['cn_1']),
   _dsTopic(215, 'Graph Terminology', [214]),
   _dsTopic(216, 'Directed and Undirected Graphs', [215]),
   _dsTopic(217, 'Representation of Graphs', [215]),
@@ -1189,7 +1193,7 @@ _cnTopic(191, 'Network Slicing in 5G', [184, 185]),
 // =========================
 
 // UNIT 1: JAVA FUNDAMENTALS
-_javaTopic(1, 'Introduction to Java', []),
+_javaTopic(1, 'Introduction to Java', [], linkedPrerequisites: ['c_1']),
 _javaTopic(2, 'History and Evolution of Java', [1]),
 _javaTopic(3, 'Features of Java', [1]),
 _javaTopic(4, 'Applications of Java', [3]),
@@ -1483,7 +1487,7 @@ _javaTopic(190, 'Java NIO Basics', [184, 186]),
   _dbmsTopic(65, 'Comparison of Normal Forms', [49, 50, 51, 60, 62, 64]),
 
   // UNIT 7: RELATIONAL ALGEBRA AND CALCULUS
-  _dbmsTopic(66, 'Relational Algebra and Calculus', [20]),
+  _dbmsTopic(66, 'Relational Algebra and Calculus', [20], linkedPrerequisites: ['dbms_21', 'dbms_22']),
   _dbmsTopic(67, 'Basic Operators', [66]),
   _dbmsTopic(68, 'Selection Operator', [67]),
   _dbmsTopic(69, 'Projection Operator', [67]),

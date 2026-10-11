@@ -8,6 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../theme/app_theme.dart';
 
+import '../../module4/models/topic.dart' as module4;
+import '../../module4/screens/quiz_screen.dart' as module4_quiz;
+import '../../module4/screens/smart_notes_screen.dart' as module4_notes;
+import '../../module4/screens/video_resources_screen.dart' as module4_videos;
+
 import '../data/syllabus_data.dart';
 import '../models/topic.dart';
 import 'graph_screen.dart';
@@ -1111,13 +1116,25 @@ return data.toString();
                                 secondarySurface,
                             iconColor:
                                 AppTheme.successGreen,
-                            onTap: () {
-                              _showComingSoon(
-                                context,
-                                'Generated Notes',
-                                isDark,
-                              );
-                            },
+                           onTap: () {
+  final module4Topic = module4.Module4Topic(
+    topicId: 0,
+    topicName: widget.selectedTopic.name,
+    subject: widget.selectedTopic.subject,
+    topicOrder: 0,
+    topicCode: widget.selectedTopic.id,
+    completed: false,
+  );
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => module4_notes.SmartNotesScreen(
+        topic: module4Topic,
+      ),
+    ),
+  );
+},
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -1136,13 +1153,25 @@ return data.toString();
                                 secondarySurface,
                             iconColor:
                                 AppTheme.gradientPurpleEnd,
-                            onTap: () {
-                              _showComingSoon(
-                                context,
-                                'Quiz',
-                                isDark,
-                              );
-                            },
+                           onTap: () {
+  final module4Topic = module4.Module4Topic(
+    topicId: 0,
+    topicName: widget.selectedTopic.name,
+    subject: widget.selectedTopic.subject,
+    topicOrder: 0,
+    topicCode: widget.selectedTopic.id,
+    completed: false,
+  );
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => module4_quiz.QuizScreen(
+        topic: module4Topic,
+      ),
+    ),
+  );
+},
                           ),
                         ),
                       ],
@@ -1163,13 +1192,26 @@ return data.toString();
                           iconBackground: secondarySurface,
                           iconColor:
                               AppTheme.successGreen,
-                          onTap: () {
-                            _showComingSoon(
-                              context,
-                              'Generated Notes',
-                              isDark,
-                            );
-                          },
+                        onTap: () {
+  final module4Topic = module4.Module4Topic(
+    topicId: 0,
+    topicName: widget.selectedTopic.name,
+    subject: widget.selectedTopic.subject,
+    topicOrder: 0,
+    topicCode: widget.selectedTopic.id,
+    completed: false,
+  );
+
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (context) {
+        return module4_videos.VideoResourcesScreen(
+          topic: module4Topic,
+        );
+      },
+    ),
+  );
+},
                         ),
                         const SizedBox(height: 14),
                         _buildExploreCard(
@@ -1186,11 +1228,23 @@ return data.toString();
                           iconColor:
                               AppTheme.gradientPurpleEnd,
                           onTap: () {
-                            _showComingSoon(
-                              context,
-                              'Quiz',
-                              isDark,
-                            );
+  final module4Topic = module4.Module4Topic(
+    topicId: 0,
+    topicName: widget.selectedTopic.name,
+    subject: widget.selectedTopic.subject,
+    topicOrder: 0,
+    topicCode: widget.selectedTopic.id,
+    completed: false,
+  );
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => module4_quiz.QuizScreen(
+        topic: module4Topic,
+      ),
+    ),
+  );
                           },
                         ),
                       ],
@@ -1211,12 +1265,25 @@ return data.toString();
                     iconBackground: secondarySurface,
                     iconColor: AppTheme.warningOrange,
                     onTap: () {
-                      _showComingSoon(
-                        context,
-                        'YouTube Recommended Videos',
-                        isDark,
-                      );
-                    },
+  final module4Topic = module4.Module4Topic(
+    topicId: 0,
+    topicName: widget.selectedTopic.name,
+    subject: widget.selectedTopic.subject,
+    topicOrder: 0,
+    topicCode: widget.selectedTopic.id,
+    completed: false,
+  );
+
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (context) {
+        return module4_videos.VideoResourcesScreen(
+          topic: module4Topic,
+        );
+      },
+    ),
+  );
+},
                   ),
 
                   const SizedBox(height: 34),
