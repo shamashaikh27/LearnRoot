@@ -23,3 +23,29 @@ build/
 
 # Local backup files
 app_backup.py
+
+
+# Firebase local state
+.firebase/
+
+# Local backups and duplicate files
+backups/
+*.backup
+*.bak
+lib/firebase_options_backup.txt
+lib/screens/home_screen - Copy.dart
+
+# Hosting backup configuration
+firebase.json.before-hosting
+# Firebase local state
+.firebase/
+
+# Local backups and duplicate files
+backups/
+*.backup
+*.bak
+lib/firebase_options_backup.txt
+lib/screens/home_screen - Copy.dart
+
+# Hosting backup configuration
+firebase.json.before-hosting

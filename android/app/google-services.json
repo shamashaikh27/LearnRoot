@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:361817694015:android:17383d2e038c327651fd8a",
+        "mobilesdk_app_id": "1:361817694015:android:0d5ebf344fd6c86751fd8a",
         "android_client_info": {
-          "package_name": "com.example.learnroot_71"
+          "package_name": "com.example.learnroot"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "361817694015-0v97qave5vkid2keu7gki7u92h1hm961.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDVkL-1_IJtxkRXOxngxlz6PqC1ARpYP6c"
@@ -20,7 +25,55 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "361817694015-0v97qave5vkid2keu7gki7u92h1hm961.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "361817694015-vqtoilk973bdd95mbrd86ge4puclc4db.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.learnroot71"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361817694015:android:17383d2e038c327651fd8a",
+        "android_client_info": {
+          "package_name": "com.example.learnroot_71"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "361817694015-0v97qave5vkid2keu7gki7u92h1hm961.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVkL-1_IJtxkRXOxngxlz6PqC1ARpYP6c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "361817694015-0v97qave5vkid2keu7gki7u92h1hm961.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "361817694015-vqtoilk973bdd95mbrd86ge4puclc4db.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.learnroot71"
+              }
+            }
+          ]
         }
       }
     }

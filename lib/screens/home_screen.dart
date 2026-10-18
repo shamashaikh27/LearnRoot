@@ -1,4 +1,4 @@
-//PART1
+
 // ============================================================
 // IMPORTS, HOME SCREEN AND VARIABLES
 // ============================================================
@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -49,10 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _revisionSubject = 'C Programming';
   String _learningPathSubject = 'Data Structures';
-  int _dailyGoalMinutes = 60;
   String _preferredLearningStyle = 'Visual';
-  bool _notificationsEnabled = true;
   bool _settingsLoading = true;
+
+  ThemeMode _selectedThemeMode = ThemeMode.dark;
 
   // Short Revision always reads topics from the existing LearnRoot syllabus.
   // This keeps the revision page synchronized with the actual subject/topic data.
@@ -148,18 +149,31 @@ class _HomeScreenState extends State<HomeScreen> {
       final data = snapshot.data() ?? <String, dynamic>{};
       if (!mounted) return;
       final savedTheme = data['themeMode']?.toString();
-      if (savedTheme == 'dark') {
-        widget.onThemeChanged(ThemeMode.dark);
-      } else if (savedTheme == 'light') {
-        widget.onThemeChanged(ThemeMode.light);
+
+      final restoredTheme = switch (savedTheme) {
+        'light' => ThemeMode.light,
+        'system' => ThemeMode.system,
+        'dark' => ThemeMode.dark,
+        _ => null,
+      };
+
+      if (restoredTheme != null) {
+        _selectedThemeMode = restoredTheme;
+        widget.onThemeChanged(restoredTheme);
       }
-      setState(() {
-        _dailyGoalMinutes = (data['dailyGoalMinutes'] as num?)?.toInt() ?? 60;
-        _preferredLearningStyle =
-            data['preferredLearningStyle']?.toString() ?? 'Visual';
-        _notificationsEnabled = data['notificationsEnabled'] as bool? ?? true;
-        _settingsLoading = false;
-      });
+
+
+setState(() {
+  _preferredLearningStyle =
+      data['preferredLearningStyle']?.toString() ?? 'Visual';
+
+  _learningPathSubject =
+      data['learningPathSubject']?.toString() ?? 'Data Structures';
+
+  _settingsLoading = false;
+});
+
+
     } catch (_) {
       if (mounted) setState(() => _settingsLoading = false);
     }
@@ -193,36 +207,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _chooseDailyGoal() async {
-    final choice = await showDialog<int>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: const Text('Daily study goal'),
-        children: [30, 45, 60, 90, 120].map((minutes) {
-          final label = minutes == 60
-              ? '1 hour'
-              : minutes == 120
-              ? '2 hours'
-              : '$minutes minutes';
-          return SimpleDialogOption(
-            onPressed: () => Navigator.pop(dialogContext, minutes),
-            child: Row(
-              children: [
-                Expanded(child: Text(label)),
-                if (_dailyGoalMinutes == minutes)
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: LearnRootColors.primary,
-                  ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-    if (choice == null || !mounted) return;
-    setState(() => _dailyGoalMinutes = choice);
-    await _saveUserPreferences({'dailyGoalMinutes': choice});
+  Future<void> _saveUserPreferencesSilently(Map<String, dynamic> values) async {
+    try {
+      final reference = _preferencesDocument;
+      if (reference == null) return;
+
+      await reference.set({
+        ...values,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {
+      // Keep theme switching smooth and silent.
+    }
   }
 
   Future<void> _chooseLearningStyle() async {
@@ -253,6 +249,80 @@ class _HomeScreenState extends State<HomeScreen> {
     if (choice == null || !mounted) return;
     setState(() => _preferredLearningStyle = choice);
     await _saveUserPreferences({'preferredLearningStyle': choice});
+  }
+
+  Future<void> _chooseAppearance() async {
+    final choice = await showDialog<ThemeMode>(
+      context: context,
+      builder: (dialogContext) {
+        final options = [
+          (
+            mode: ThemeMode.light,
+            title: 'Light Mode',
+            subtitle: 'A bright, comfortable learning space',
+            icon: Icons.light_mode_rounded,
+          ),
+          (
+            mode: ThemeMode.dark,
+            title: 'Dark Mode',
+            subtitle: 'A focused experience with darker surfaces',
+            icon: Icons.dark_mode_rounded,
+          ),
+          (
+            mode: ThemeMode.system,
+            title: 'System Default',
+            subtitle: 'Follow your device appearance settings',
+            icon: Icons.settings_suggest_rounded,
+          ),
+        ];
+
+        return AlertDialog(
+          title: const Text('Choose appearance'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: options.map((option) {
+              final selected = _selectedThemeMode == option.mode;
+
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  option.icon,
+                  color: selected
+                      ? LearnRootColors.primary
+                      : Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+                ),
+                title: Text(option.title),
+                subtitle: Text(option.subtitle),
+                trailing: selected
+                    ? const Icon(
+                        Icons.check_circle_rounded,
+                        color: LearnRootColors.primary,
+                      )
+                    : null,
+                onTap: () => Navigator.pop(dialogContext, option.mode),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+
+    if (choice == null || !mounted) return;
+
+    setState(() {
+      _selectedThemeMode = choice;
+    });
+
+    // Update the app theme and save it silently.
+    widget.onThemeChanged(choice);
+
+    final savedValue = switch (choice) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    };
+
+    await _saveUserPreferencesSilently({'themeMode': savedValue});
   }
 
   Future<void> _confirmSignOut() async {
@@ -921,7 +991,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   //PART2
-  //PART2
   // ============================================================
   // BUILD METHOD + DESKTOP AND MOBILE LAYOUT
   // ============================================================
@@ -1401,36 +1470,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(width: 12),
 
-          // NOTIFICATION
-          IconButton(
-            tooltip: 'Notifications',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text('Notifications'),
-                    content: const Text('You have no new notifications.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Close'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-            icon: Icon(
-              Icons.notifications_none_rounded,
-              color: themeColors.textSecondary,
-            ),
-          ),
-
-          const SizedBox(width: 4),
-
           // THEME TOGGLE
           IconButton(
             tooltip: isDark ? 'Switch to light mode' : 'Switch to dark mode',
@@ -1520,33 +1559,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 19,
                 fontWeight: FontWeight.bold,
               ),
-            ),
-          ),
-
-          IconButton(
-            tooltip: 'Notifications',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text('Notifications'),
-                    content: const Text('You have no new notifications.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Close'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-            icon: Icon(
-              Icons.notifications_none,
-              color: themeColors.textSecondary,
             ),
           ),
 
@@ -1641,17 +1653,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ============================================================
-  // WELCOME SECTION
-  // ============================================================
-
   Widget _buildWelcomeSection() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final double width = constraints.maxWidth;
-
-        // Mobile / narrow layout
-        if (width < 800) {
+        if (constraints.maxWidth < 800) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1664,7 +1669,6 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        // Desktop layout
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1680,173 +1684,222 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ============================================================
-  // WELCOME BANNER
+  // WELCOME SECTION
   // ============================================================
 
   Widget _buildWelcomeBanner() {
-    print('Logged-in gender: ${widget.gender}');
-    return Container(
-      height: 260,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF6848D8), Color(0xFF49308F), Color(0xFF29245F)],
-          stops: [0.0, 0.58, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: LearnRootColors.primary.withOpacity(0.35)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool compact = constraints.maxWidth < 500;
+    return LayoutBuilder(
+      builder: (context, outerConstraints) {
+        final bool compact = outerConstraints.maxWidth < 500;
 
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome back, $_userName!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                const Text(
-                  'Continue your learning journey and build stronger concepts every day.',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    height: 1.5,
-                  ),
-                ),
-
-                const Spacer(),
-
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    width: 130,
-                    height: 100,
-                    child: Image.asset(
-                      widget.gender == 'Female'
-                          ? 'assets/images/student_girl.png'
-                          : 'assets/images/student_boy.png',
-                      fit: BoxFit.contain,
-                      alignment: Alignment.center,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.school_rounded,
-                          color: Colors.white70,
-                          size: 65,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                flex: 5,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        return Container(
+          height: compact ? null : 260,
+          padding: EdgeInsets.all(compact ? 20 : 24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF6848D8), Color(0xFF49308F), Color(0xFF29245F)],
+              stops: [0.0, 0.58, 1.0],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: LearnRootColors.primary.withOpacity(0.35),
+            ),
+          ),
+          child: compact
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.18),
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.auto_awesome_rounded,
-                            size: 13,
-                            color: Color(0xFFE4D9FF),
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'YOUR LEARNING SPACE',
-                            style: TextStyle(
-                              color: Color(0xFFEDE7FF),
-                              fontSize: 9,
-                              letterSpacing: 1.1,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Text(
                       'Welcome back, $_userName!',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 26,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                         height: 1.15,
                       ),
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Small steps today. Stronger concepts tomorrow.',
+                      'Continue your learning journey and build stronger concepts every day.',
                       style: TextStyle(
                         color: Color(0xFFE2DAFF),
                         fontSize: 13,
                         height: 1.5,
                       ),
                     ),
+                    const SizedBox(height: 14),
+
+                    // Mobile student illustration
+                    Center(
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 155,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 132,
+                              height: 132,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    Colors.white.withOpacity(0.15),
+                                    Colors.white.withOpacity(0.03),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.12),
+                                ),
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: Image.asset(
+                                widget.gender == 'Female'
+                                    ? 'assets/images/student_girl.png'
+                                    : 'assets/images/student_boy.png',
+                                fit: BoxFit.contain,
+                                alignment: Alignment.bottomCenter,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.school_rounded,
+                                    color: Colors.white70,
+                                    size: 76,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Welcome text
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.18),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 13,
+                                  color: Color(0xFFE4D9FF),
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'YOUR LEARNING SPACE',
+                                  style: TextStyle(
+                                    color: Color(0xFFEDE7FF),
+                                    fontSize: 9,
+                                    letterSpacing: 1.1,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Welcome back, $_userName!',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              height: 1.15,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Small steps today. Stronger concepts tomorrow.',
+                            style: TextStyle(
+                              color: Color(0xFFE2DAFF),
+                              fontSize: 13,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // Desktop student illustration
+                    Expanded(
+                      flex: 4,
+                      child: SizedBox(
+                        height: 212,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 175,
+                              height: 175,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    Colors.white.withOpacity(0.14),
+                                    Colors.white.withOpacity(0.025),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.12),
+                                ),
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 5,
+                                  bottom: 2,
+                                ),
+                                child: Image.asset(
+                                  widget.gender == 'Female'
+                                      ? 'assets/images/student_girl.png'
+                                      : 'assets/images/student_boy.png',
+                                  fit: BoxFit.contain,
+                                  alignment: Alignment.bottomCenter,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.school_rounded,
+                                      color: Colors.white70,
+                                      size: 86,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-
-              const SizedBox(width: 12),
-
-              Expanded(
-                flex: 4,
-                child: Center(
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 190,
-                    child: Image.asset(
-                      widget.gender == 'Female'
-                          ? 'assets/images/student_girl.png'
-                          : 'assets/images/student_boy.png',
-                      fit: BoxFit.contain,
-                      alignment: Alignment.center,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.school_rounded,
-                          color: Colors.white70,
-                          size: 80,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+        );
+      },
     );
   }
 
@@ -1854,96 +1907,406 @@ class _HomeScreenState extends State<HomeScreen> {
   // CURRENT SUBJECT CARD
   // ============================================================
 
-  Widget _buildCurrentSubjectCard() {
-    final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
 
-    return Container(
-      height: 260,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: themeColors.card,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: themeColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Current Subject',
-            style: TextStyle(color: themeColors.textSecondary, fontSize: 12),
-          ),
+Widget _buildCurrentSubjectCard() {
+  final themeColors =
+      Theme.of(context).extension<LearnRootThemeColors>()!;
+  final user = FirebaseAuth.instance.currentUser;
 
-          const SizedBox(height: 18),
-
-          Container(
-            width: 55,
-            height: 55,
-            decoration: BoxDecoration(
-              color: menuColors[2].withOpacity(0.15),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Icon(
-              Icons.account_tree_outlined,
-              color: menuColors[2],
-              size: 28,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Text(
-            'Data Structures',
-            style: TextStyle(
-              color: themeColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 6),
-
-          Text(
-            'Trees',
-            style: TextStyle(color: themeColors.textSecondary, fontSize: 12),
-          ),
-
-          const Spacer(),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const SubjectScreen(subject: 'Data Structures'),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: menuColors[2],
-                foregroundColor: const Color(0xFF102039),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text('Continue Learning'),
-            ),
-          ),
-        ],
-      ),
+  if (user == null) {
+    return _buildCurrentSubjectCardContent(
+      themeColors: themeColors,
+      subject: _learningPathSubject,
+      topicName: 'Sign in to view recent activity',
     );
   }
+
+  return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+    stream: FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('learningActivity')
+        .doc('recent')
+        .snapshots(),
+    builder: (context, snapshot) {
+      final data = snapshot.data?.data();
+
+      final savedSubject = data?['subject']?.toString().trim();
+      final savedTopic = data?['topicName']?.toString().trim();
+
+      final subject = savedSubject != null && savedSubject.isNotEmpty
+          ? savedSubject
+          : _learningPathSubject;
+
+      final topicName = savedTopic != null && savedTopic.isNotEmpty
+          ? savedTopic
+          : 'Choose a topic to get started';
+
+      return _buildCurrentSubjectCardContent(
+        themeColors: themeColors,
+        subject: subject,
+        topicName: topicName,
+      );
+    },
+  );
+}
+
+
+Widget _buildCurrentSubjectCardContent({
+  required LearnRootThemeColors themeColors,
+  required String subject,
+  required String topicName,
+}) {
+  return Container(
+    height: 260,
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(
+      color: themeColors.card,
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: themeColors.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Current Subject',
+          style: TextStyle(
+            color: themeColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Container(
+          width: 55,
+          height: 55,
+          decoration: BoxDecoration(
+            color: menuColors[2].withOpacity(0.15),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Icon(
+            Icons.account_tree_outlined,
+            color: menuColors[2],
+            size: 28,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          subject,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: themeColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          topicName,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: themeColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+        const Spacer(),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+
+onPressed: () => _resumeRecentTopic(subject),
+
+            style: ElevatedButton.styleFrom(
+              backgroundColor: menuColors[2],
+              foregroundColor: const Color(0xFF102039),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Continue Learning'),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   // ============================================================
   // PROGRESS CARD
   // ============================================================
 
+  bool _isTopicCompleted(
+    Topic topic,
+    Set<String> completedIds,
+    Set<String> completedKeys,
+  ) {
+    final idMatches = completedIds.contains(topic.id);
+
+    final key =
+        '${topic.subject.trim().toLowerCase()}::'
+        '${topic.name.trim().toLowerCase()}';
+
+    return idMatches || completedKeys.contains(key);
+  }
+
+  bool _arePrerequisitesCompleted(
+    Topic topic,
+    Set<String> completedIds,
+    Set<String> completedKeys,
+  ) {
+    for (final prerequisiteId in topic.prerequisites) {
+      Topic? prerequisite;
+
+      for (final item in syllabusTopics) {
+        if (item.id == prerequisiteId) {
+          prerequisite = item;
+          break;
+        }
+      }
+
+      // An unknown prerequisite must not unlock the topic.
+      if (prerequisite == null) {
+        return false;
+      }
+
+      if (!_isTopicCompleted(prerequisite, completedIds, completedKeys)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  void _openSyllabusTopic(Topic topic) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            TopicDetailsScreen(selectedTopic: topic, subject: topic.subject),
+      ),
+    );
+  }
+
+
+Future<void> _resumeRecentTopic(String subject) async {
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please sign in to continue learning.'),
+      ),
+    );
+    return;
+  }
+
+  final userRef =
+      FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+  try {
+
+final recentSnapshot =
+    await userRef.collection('learningActivity').doc('recent').get();
+
+final progressSnapshot =
+    await userRef.collection('topicProgress').get();
+
+final recentData = recentSnapshot.data();
+
+
+    final recentTopicId = recentData?['topicId']?.toString().trim();
+
+    final aliases = _revisionSubjectAliases[subject] ?? [subject];
+    final selectedSubjects =
+        aliases.map((s) => s.trim().toLowerCase()).toSet();
+
+    final completedIds = <String>{};
+    final completedKeys = <String>{};
+
+    for (final doc in progressSnapshot.docs) {
+      final data = doc.data();
+      if (data['status']?.toString() != 'completed') continue;
+
+      completedIds.add(doc.id);
+
+      final topicId = data['topicId']?.toString();
+      if (topicId != null && topicId.isNotEmpty) {
+        completedIds.add(topicId);
+      }
+
+      final completedSubject =
+          (data['subject'] ?? '').toString().trim().toLowerCase();
+      final topicName =
+          (data['topicName'] ?? '').toString().trim().toLowerCase();
+
+      if (completedSubject.isNotEmpty && topicName.isNotEmpty) {
+        completedKeys.add('$completedSubject::$topicName');
+      }
+    }
+
+    final subjectTopics = syllabusTopics.where((topic) {
+      return selectedSubjects.contains(topic.subject.trim().toLowerCase());
+    }).toList();
+
+    final incompleteTopics = subjectTopics.where((topic) {
+      return !_isTopicCompleted(topic, completedIds, completedKeys);
+    }).toList();
+
+    final availableTopics = incompleteTopics.where((topic) {
+      return _arePrerequisitesCompleted(
+        topic,
+        completedIds,
+        completedKeys,
+      );
+    }).toList();
+
+    Topic? topicToOpen;
+
+    if (recentTopicId != null && recentTopicId.isNotEmpty) {
+      for (final topic in incompleteTopics) {
+        if (topic.id == recentTopicId &&
+            _arePrerequisitesCompleted(
+              topic,
+              completedIds,
+              completedKeys,
+            )) {
+          topicToOpen = topic;
+          break;
+        }
+      }
+    }
+
+    topicToOpen ??= availableTopics.isNotEmpty
+        ? availableTopics.first
+        : null;
+
+    if (!mounted) return;
+
+    if (topicToOpen == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No available topics to continue in $subject.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    _openSyllabusTopic(topicToOpen);
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Unable to load your recent topic. Please try again.'),
+      ),
+    );
+  }
+}
+
+
   Widget _buildProgressCard() {
     final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return _progressCardContent(
+        themeColors: themeColors,
+        progress: 0,
+        message: 'Sign in to track your progress.',
+      );
+    }
+
+    final progressStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('topicProgress')
+        .snapshots();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: progressStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _progressCardContent(
+            themeColors: themeColors,
+            progress: 0,
+            message: 'Progress could not be loaded.',
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return Container(
+            height: 260,
+            alignment: Alignment.center,
+            child: const CircularProgressIndicator(),
+          );
+        }
+
+        final completedIds = <String>{};
+        final completedKeys = <String>{};
+
+        for (final doc in snapshot.data?.docs ?? []) {
+          final data = doc.data();
+
+          if (data['status']?.toString() != 'completed') {
+            continue;
+          }
+
+          completedIds.add(doc.id);
+
+          if (data['topicId'] != null) {
+            completedIds.add(data['topicId'].toString());
+          }
+
+          final subject = (data['subject'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          final topicName = (data['topicName'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+          if (subject.isNotEmpty && topicName.isNotEmpty) {
+            completedKeys.add('$subject::$topicName');
+          }
+        }
+
+        bool isCompleted(dynamic topic) {
+          final idMatches = completedIds.contains(topic.id.toString());
+          final key =
+              '${topic.subject.trim().toLowerCase()}::'
+              '${topic.name.trim().toLowerCase()}';
+
+          return idMatches || completedKeys.contains(key);
+        }
+
+        final total = syllabusTopics.length;
+        final completed = syllabusTopics.where(isCompleted).length;
+        final progress = total == 0 ? 0.0 : completed / total;
+
+        return _progressCardContent(
+          themeColors: themeColors,
+          progress: progress,
+          message: total == 0
+              ? 'No syllabus topics available.'
+              : '$completed of $total syllabus topics completed.',
+        );
+      },
+    );
+  }
+
+  Widget _progressCardContent({
+    required LearnRootThemeColors themeColors,
+    required double progress,
+    required String message,
+  }) {
+    final percentage = (progress * 100).round();
 
     return Container(
       height: 260,
@@ -1956,63 +2319,62 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Your Progress',
-            style: TextStyle(color: themeColors.textSecondary, fontSize: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Your Progress',
+                  style: TextStyle(
+                    color: themeColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.trending_up_rounded,
+                color: themeColors.textPrimary,
+                size: 23,
+              ),
+            ],
           ),
-
-          const Spacer(),
-
+          const SizedBox(height: 20),
           Center(
             child: SizedBox(
-              width: 120,
-              height: 120,
+              width: 112,
+              height: 112,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  SizedBox(
-                    width: 110,
-                    height: 110,
+                  SizedBox.expand(
                     child: CircularProgressIndicator(
-                      value: 0.68,
-                      strokeWidth: 10,
-                      backgroundColor: themeColors.progressTrack,
-                      valueColor: AlwaysStoppedAnimation<Color>(menuColors[5]),
+                      value: progress.clamp(0.0, 1.0),
+                      strokeWidth: 9,
+                      backgroundColor: themeColors.border,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        themeColors.textPrimary,
+                      ),
                     ),
                   ),
-
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '68%',
-                        style: TextStyle(
-                          color: themeColors.textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Completed',
-                        style: TextStyle(
-                          color: themeColors.textSecondary,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '$percentage%',
+                    style: TextStyle(
+                      color: themeColors.textPrimary,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-
-          const Spacer(),
-
-          Center(
-            child: Text(
-              'Keep going!',
-              style: TextStyle(color: themeColors.textSecondary, fontSize: 12),
-            ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: themeColors.textSecondary, fontSize: 12),
           ),
         ],
       ),
@@ -2020,6 +2382,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   //PART6
+
   // ============================================================
   // DASHBOARD QUICK ACTIONS
   // ============================================================
@@ -2163,94 +2526,228 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildContinueLearning() {
     final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
+    final user = FirebaseAuth.instance.currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    if (user == null) {
+      return _sectionCard(
+        title: 'Continue Learning',
+        icon: Icons.play_circle_outline,
+        child: const Text('Sign in to continue learning.'),
+      );
+    }
 
-    return _sectionCard(
-      title: 'Continue Learning',
-      icon: Icons.play_circle_outline,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(15),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  const SubjectScreen(subject: 'Data Structures'),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: isDark ? themeColors.card : const Color(0xFFF3EEFF),
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: isDark
-                  ? themeColors.border
-                  : LearnRootColors.primary.withOpacity(0.10),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: menuColors[1].withOpacity(0.16),
-                  borderRadius: BorderRadius.circular(15),
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
+
+    final progressStream = userRef.collection('topicProgress').snapshots();
+
+    final recentActivityStream = userRef
+        .collection('learningActivity')
+        .doc('recent')
+        .snapshots();
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: recentActivityStream,
+      builder: (context, recentSnapshot) {
+        // All dashboard learning sections follow the subject selected in Learning Path.
+
+final recentData = recentSnapshot.data?.data();
+
+final recentSubject = recentData?['subject']?.toString().trim();
+final recentTopicId = recentData?['topicId']?.toString().trim();
+
+final effectiveSubject =
+    recentSubject != null && recentSubject.isNotEmpty
+        ? recentSubject
+        : _learningPathSubject;
+
+final selectedAliases =
+    _revisionSubjectAliases[effectiveSubject] ?? [effectiveSubject];
+
+final selectedSubjects = selectedAliases
+    .map((subject) => subject.trim().toLowerCase())
+    .toSet();
+
+
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: progressStream,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return _sectionCard(
+                title: 'Continue Learning',
+                icon: Icons.play_circle_outline,
+                child: const Text('Unable to load your learning progress.'),
+              );
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final completedIds = <String>{};
+            final completedKeys = <String>{};
+
+            for (final doc in snapshot.data?.docs ?? []) {
+              final data = doc.data();
+              if (data['status']?.toString() != 'completed') continue;
+
+              completedIds.add(doc.id);
+
+              final topicId = data['topicId']?.toString();
+              if (topicId != null && topicId.isNotEmpty) {
+                completedIds.add(topicId);
+              }
+
+              final subject = (data['subject'] ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+              final name = (data['topicName'] ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+
+              if (subject.isNotEmpty && name.isNotEmpty) {
+                completedKeys.add('$subject::$name');
+              }
+            }
+
+            final selectedTopicList = syllabusTopics.where((topic) {
+              return selectedSubjects.contains(
+                topic.subject.trim().toLowerCase(),
+              );
+            }).toList();
+
+            final incompleteTopics = selectedTopicList.where((topic) {
+              return !_isTopicCompleted(topic, completedIds, completedKeys);
+            }).toList();
+
+            final availableTopics = incompleteTopics.where((topic) {
+              return _arePrerequisitesCompleted(
+                topic,
+                completedIds,
+                completedKeys,
+              );
+            }).toList();
+
+            // Never fall back to a topic from a different subject.
+
+Topic? recentTopic;
+
+if (recentTopicId != null && recentTopicId.isNotEmpty) {
+  for (final candidate in incompleteTopics) {
+    if (candidate.id == recentTopicId) {
+      recentTopic = candidate;
+      break;
+    }
+  }
+}
+
+final topic = recentTopic ??
+    (availableTopics.isNotEmpty
+        ? availableTopics.first
+        : incompleteTopics.isNotEmpty
+            ? incompleteTopics.first
+            : null);
+
+            if (topic == null) {
+              return _sectionCard(
+                title: 'Continue Learning',
+                icon: Icons.check_circle_outline,
+                child: Text(
+          'You have completed all available topics in $effectiveSubject!',
                 ),
-                child: Icon(
-                  Icons.account_tree_outlined,
-                  color: menuColors[1],
-                  size: 30,
-                ),
-              ),
+              );
+            }
 
-              const SizedBox(width: 16),
+            final completedCount = selectedTopicList
+                .where(
+                  (item) =>
+                      _isTopicCompleted(item, completedIds, completedKeys),
+                )
+                .length;
 
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Data Structures',
-                      style: TextStyle(
-                        color: themeColors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
+            final progress = selectedTopicList.isEmpty
+                ? 0.0
+                : completedCount / selectedTopicList.length;
+
+            return _sectionCard(
+              title: 'Continue Learning',
+              icon: Icons.play_circle_outline,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(15),
+                onTap: () => _openSyllabusTopic(topic),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: isDark ? themeColors.card : const Color(0xFFF3EEFF),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: themeColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.menu_book_rounded,
+                        color: LearnRootColors.primary,
+                        size: 34,
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      'Trees • Binary Trees',
-                      style: TextStyle(
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              topic.name,
+                              style: TextStyle(
+                                color: themeColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              topic.subject,
+                              style: TextStyle(
+                                color: themeColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 6,
+                              backgroundColor: themeColors.border,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                LearnRootColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              '$completedCount of ${selectedTopicList.length} topics completed',
+                              style: TextStyle(
+                                color: themeColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
                         color: themeColors.textSecondary,
-                        fontSize: 12,
+                        size: 16,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    LinearProgressIndicator(
-                      value: 0.68,
-                      minHeight: 6,
-                      backgroundColor: themeColors.border,
-                      valueColor: AlwaysStoppedAnimation<Color>(menuColors[1]),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-
-              const SizedBox(width: 15),
-
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: themeColors.textSecondary,
-                size: 17,
-              ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -2259,6 +2756,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // ============================================================
 
   Widget _buildLearningPath() {
+    final user = FirebaseAuth.instance.currentUser;
+
     return _sectionCard(
       title: 'Your Learning Path',
       icon: Icons.account_tree_outlined,
@@ -2273,47 +2772,132 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(color: LearnRootColors.primary),
         ),
       ),
-      child: Column(
-        children: [
-          _pathItem(
-            'Pointers',
-            'Completed',
-            Icons.check_circle,
-            LearnRootColors.success,
-            true,
-          ),
+      child: user == null
+          ? const Text('Sign in to view your learning path.')
+          : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('topicProgress')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Text('Unable to load your learning path.');
+                }
 
-          _pathLine(),
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          _pathItem(
-            'Linked Lists',
-            'Completed',
-            Icons.check_circle,
-            LearnRootColors.success,
-            true,
-          ),
+                final completedIds = <String>{};
+                final completedKeys = <String>{};
 
-          _pathLine(),
+                for (final doc in snapshot.data?.docs ?? []) {
+                  final data = doc.data();
 
-          _pathItem(
-            'Trees',
-            'Current Topic',
-            Icons.play_circle_fill,
-            LearnRootColors.primary,
-            true,
-          ),
+                  if (data['status']?.toString() != 'completed') {
+                    continue;
+                  }
 
-          _pathLine(),
+                  completedIds.add(doc.id);
 
-          _pathItem(
-            'Graphs',
-            'Locked',
-            Icons.lock_outline,
-            LearnRootColors.textSecondary,
-            false,
-          ),
-        ],
-      ),
+                  final topicId = data['topicId']?.toString();
+                  if (topicId != null && topicId.isNotEmpty) {
+                    completedIds.add(topicId);
+                  }
+
+                  final subject = (data['subject'] ?? '')
+                      .toString()
+                      .trim()
+                      .toLowerCase();
+                  final name = (data['topicName'] ?? '')
+                      .toString()
+                      .trim()
+                      .toLowerCase();
+
+                  if (subject.isNotEmpty && name.isNotEmpty) {
+                    completedKeys.add('$subject::$name');
+                  }
+                }
+
+                final aliases =
+                    _revisionSubjectAliases[_learningPathSubject] ??
+                    [_learningPathSubject];
+
+                final topics = syllabusTopics
+                    .where(
+                      (topic) => aliases.any(
+                        (alias) =>
+                            topic.subject.trim().toLowerCase() ==
+                            alias.trim().toLowerCase(),
+                      ),
+                    )
+                    .take(4)
+                    .toList();
+
+                if (topics.isEmpty) {
+                  return const Text('No syllabus topics available yet.');
+                }
+
+                return Column(
+                  children: [
+                    for (int i = 0; i < topics.length; i++) ...[
+                      Builder(
+                        builder: (context) {
+                          final topic = topics[i];
+                          final completed = _isTopicCompleted(
+                            topic,
+                            completedIds,
+                            completedKeys,
+                          );
+                          final unlocked = _arePrerequisitesCompleted(
+                            topic,
+                            completedIds,
+                            completedKeys,
+                          );
+
+                          final title = completed
+                              ? 'Completed'
+                              : unlocked
+                              ? 'Ready to learn'
+                              : 'Prerequisites pending';
+
+                          final icon = completed
+                              ? Icons.check_circle
+                              : unlocked
+                              ? Icons.play_circle_fill
+                              : Icons.lock_outline;
+
+                          final color = completed
+                              ? LearnRootColors.success
+                              : unlocked
+                              ? LearnRootColors.primary
+                              : Theme.of(context)
+                                    .extension<LearnRootThemeColors>()!
+                                    .textSecondary;
+
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: unlocked
+                                ? () => _openSyllabusTopic(topic)
+                                : null,
+                            child: _pathItem(
+                              topic.name,
+                              '${topic.subject} • $title',
+                              icon,
+                              color,
+                              unlocked,
+                            ),
+                          );
+                        },
+                      ),
+                      if (i < topics.length - 1) _pathLine(),
+                    ],
+                  ],
+                );
+              },
+            ),
     );
   }
 
@@ -2372,15 +2956,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
           if (active && title == 'Trees')
             ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const SubjectScreen(subject: 'Data Structures'),
-                  ),
-                );
-              },
+
+onPressed: () {
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please sign in to continue learning.'),
+      ),
+    );
+    return;
+  }
+
+  final userRef =
+      FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => SubjectScreen(subject:  _learningPathSubject),
+    ),
+  );
+},
+
               style: ElevatedButton.styleFrom(
                 backgroundColor: LearnRootColors.primary,
                 foregroundColor: Colors.white,
@@ -2448,8 +3047,6 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildShortRevision(),
               const SizedBox(height: 20),
-              _buildStudyGoal(),
-              const SizedBox(height: 20),
               _buildRecommendedTopics(),
               const SizedBox(height: 20),
               _buildQuizPerformance(),
@@ -2459,17 +3056,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Column(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: _buildShortRevision()),
-                const SizedBox(width: 20),
-                Expanded(child: _buildStudyGoal()),
-              ],
-            ),
-
+            _buildShortRevision(),
             const SizedBox(height: 20),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2483,12 +3071,6 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-
-  //PART7
-  //PART7
-  // ============================================================
-  // SUBJECTS
-  // ============================================================
 
   Widget _buildSubjects() {
     final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
@@ -2677,96 +3259,144 @@ class _HomeScreenState extends State<HomeScreen> {
   // STUDY GOAL + RECOMMENDED TOPICS + QUIZ PERFORMANCE
   // ============================================================
 
-  Widget _buildStudyGoal() {
+
+Widget _buildRecommendedTopics() {
+    final user = FirebaseAuth.instance.currentUser;
     final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
 
-    return _sectionCard(
-      title: 'Study Goal',
-      icon: Icons.flag_outlined,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    if (user == null) {
+      return _sectionCard(
+        title: 'Recommended Topics',
+        icon: Icons.auto_awesome_outlined,
+        child: const Text('Sign in to get personalized recommendations.'),
+      );
+    }
+
+    final progressStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('topicProgress')
+        .snapshots();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: progressStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _sectionCard(
+            title: 'Recommended Topics',
+            icon: Icons.auto_awesome_outlined,
+            child: const Text('Unable to load recommended topics.'),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final completedIds = <String>{};
+        final completedKeys = <String>{};
+
+        for (final doc in snapshot.data?.docs ?? []) {
+          final data = doc.data();
+
+          if (data['status']?.toString() != 'completed') {
+            continue;
+          }
+
+          completedIds.add(doc.id);
+
+          final topicId = data['topicId']?.toString();
+          if (topicId != null && topicId.isNotEmpty) {
+            completedIds.add(topicId);
+          }
+
+          final subject = (data['subject'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          final name = (data['topicName'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+          if (subject.isNotEmpty && name.isNotEmpty) {
+            completedKeys.add('$subject::$name');
+          }
+        }
+
+        // Recommend only topics from the currently selected subject.
+        final selectedAliases =
+            _revisionSubjectAliases[_learningPathSubject] ??
+            [_learningPathSubject];
+        final selectedSubjects = selectedAliases
+            .map((subject) => subject.trim().toLowerCase())
+            .toSet();
+
+        final recommendations = syllabusTopics
+            .where((topic) {
+              return selectedSubjects.contains(
+                    topic.subject.trim().toLowerCase(),
+                  ) &&
+                  !_isTopicCompleted(topic, completedIds, completedKeys) &&
+                  _arePrerequisitesCompleted(
+                    topic,
+                    completedIds,
+                    completedKeys,
+                  );
+            })
+            .take(3)
+            .toList();
+
+        if (recommendations.isEmpty) {
+          return _sectionCard(
+            title: 'Recommended Topics',
+            icon: Icons.auto_awesome_outlined,
+            child: Text(
+              'No recommended topics are currently available for $_learningPathSubject. '
+              'Complete its prerequisites or review your Learning Path.',
+            ),
+          );
+        }
+
+        final icons = <IconData>[
+          Icons.school_outlined,
+          Icons.code,
+          Icons.account_tree_outlined,
+        ];
+
+        return _sectionCard(
+          title: 'Recommended Topics',
+          icon: Icons.auto_awesome_outlined,
+          child: Column(
             children: [
-              Expanded(
-                child: Text(
-                  'Daily Goal',
-                  style: TextStyle(
-                    color: themeColors.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+              for (int i = 0; i < recommendations.length; i++) ...[
+                _recommendedTopic(
+                  recommendations[i],
+                  _isTopicCompleted(
+                        recommendations[i],
+                        completedIds,
+                        completedKeys,
+                      )
+                      ? 'Already completed'
+                      : 'Ready to learn · ${recommendations[i].subject}',
+                  icons[i % icons.length],
                 ),
-              ),
-              Text(
-                '45 / 60 min',
-                style: TextStyle(
-                  color: themeColors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
+                if (i < recommendations.length - 1) const SizedBox(height: 12),
+              ],
             ],
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: 0.75,
-              minHeight: 8,
-              backgroundColor: themeColors.border,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                LearnRootColors.primary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '15 minutes remaining today',
-            style: TextStyle(color: themeColors.textSecondary, fontSize: 11),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // ============================================================
-  // RECOMMENDED TOPICS
-  // ============================================================
-
-  Widget _buildRecommendedTopics() {
-    return _sectionCard(
-      title: 'Recommended Topics',
-      icon: Icons.auto_awesome_outlined,
-      child: Column(
-        children: [
-          _recommendedTopic(
-            'Pointers',
-            'Continue from your current learning path.',
-            Icons.code,
-          ),
-          const SizedBox(height: 12),
-          _recommendedTopic(
-            'Linked Lists',
-            'Recommended based on your progress.',
-            Icons.link,
-          ),
-          const SizedBox(height: 12),
-          _recommendedTopic(
-            'Binary Trees',
-            'Strengthen your data structure concepts.',
-            Icons.account_tree_outlined,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _recommendedTopic(String title, String description, IconData icon) {
+  Widget _recommendedTopic(Topic topic, String description, IconData icon) {
     final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
 
     return InkWell(
       borderRadius: BorderRadius.circular(13),
-      onTap: () {},
+      onTap: () => _openSyllabusTopic(topic),
       child: Container(
         padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
@@ -2791,7 +3421,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    topic.name,
                     style: TextStyle(
                       color: themeColors.textPrimary,
                       fontSize: 13,
@@ -2827,82 +3457,114 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildQuizPerformance() {
     final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
 
-    return _sectionCard(
-      title: 'Quiz Performance',
-      icon: Icons.quiz_outlined,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Average Score',
-                  style: TextStyle(
-                    color: themeColors.textSecondary,
-                    fontSize: 11,
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return _sectionCard(
+        title: 'Quiz Performance',
+        icon: Icons.quiz_outlined,
+        child: const Text('Sign in to view your quiz statistics.'),
+      );
+    }
+
+    final attemptsStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('quizAttempts')
+        .snapshots();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: attemptsStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _sectionCard(
+            title: 'Quiz Performance',
+            icon: Icons.quiz_outlined,
+            child: const Text('Unable to load quiz statistics.'),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return _sectionCard(
+            title: 'Quiz Performance',
+            icon: Icons.quiz_outlined,
+            child: const LinearProgressIndicator(),
+          );
+        }
+
+        final selectedAliases =
+            _revisionSubjectAliases[_learningPathSubject] ??
+            [_learningPathSubject];
+        final selectedSubjects = selectedAliases
+            .map((subject) => subject.trim().toLowerCase())
+            .toSet();
+
+        // Keep every stored attempt; filter only what this dashboard displays.
+        final attempts = snapshot.data!.docs.where((doc) {
+          final subject = (doc.data()['subject'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          return selectedSubjects.contains(subject);
+        }).toList();
+
+        final scores = attempts
+            .map((doc) => doc.data()['percentage'])
+            .whereType<num>()
+            .map((score) => score.toDouble())
+            .where((score) => score >= 0 && score <= 100)
+            .toList();
+
+        final average = scores.isEmpty
+            ? null
+            : scores.reduce((a, b) => a + b) / scores.length;
+
+        final best = scores.isEmpty
+            ? null
+            : scores.reduce((a, b) => a > b ? a : b);
+
+        Widget stat(String label, String value) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: themeColors.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
-              ),
-              Text(
-                '82%',
-                style: TextStyle(
-                  color: themeColors.textPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 13),
-
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Attempted',
+                Text(
+                  value,
                   style: TextStyle(
-                    color: themeColors.textSecondary,
-                    fontSize: 11,
+                    color: themeColors.textPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-              Text(
-                '34',
-                style: TextStyle(
-                  color: themeColors.textPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          );
+        }
 
-          const SizedBox(height: 13),
-
-          Row(
+        return _sectionCard(
+          title: 'Quiz Performance',
+          icon: Icons.quiz_outlined,
+          child: Column(
             children: [
-              Expanded(
-                child: Text(
-                  'Best Score',
-                  style: TextStyle(
-                    color: themeColors.textSecondary,
-                    fontSize: 11,
-                  ),
-                ),
+              stat(
+                'Average Score',
+                average == null ? '—' : '${average.round()}%',
               ),
-              Text(
-                '96%',
-                style: TextStyle(
-                  color: themeColors.textPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              stat('Attempted', '${attempts.length}'),
+              stat('Best Score', best == null ? '—' : '${best.round()}%'),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -2959,10 +3621,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     )
                     .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _learningPathSubject = value);
-                },
+               onChanged: (value) async {
+  if (value == null) return;
+
+  setState(() => _learningPathSubject = value);
+
+  await _saveUserPreferences({
+    'learningPathSubject': value,
+  });
+},
               ),
             ),
           ),
@@ -2983,22 +3650,93 @@ class _HomeScreenState extends State<HomeScreen> {
                 .snapshots(),
             builder: (context, snapshot) {
               final completedIds = <String>{};
+              final completedKeys = <String>{};
+
               if (snapshot.hasData) {
                 for (final doc in snapshot.data!.docs) {
                   final data = doc.data();
+
                   if (data['status']?.toString() == 'completed') {
                     completedIds.add(doc.id);
-                    if (data['topicId'] != null)
+
+                    if (data['topicId'] != null) {
                       completedIds.add(data['topicId'].toString());
+                    }
+
+                    final savedSubject = (data['subject'] ?? '')
+                        .toString()
+                        .trim()
+                        .toLowerCase();
+                    final savedTopicName = (data['topicName'] ?? '')
+                        .toString()
+                        .trim()
+                        .toLowerCase();
+
+                    if (savedSubject.isNotEmpty && savedTopicName.isNotEmpty) {
+                      completedKeys.add('$savedSubject::$savedTopicName');
+                    }
                   }
                 }
               }
-              final completedCount = topics
-                  .where((t) => completedIds.contains(t.id.toString()))
+
+              bool isTopicCompletedForPath(dynamic topic) {
+                final id = topic.id.toString();
+                final key =
+                    '${topic.subject.trim().toLowerCase()}::'
+                    '${topic.name.trim().toLowerCase()}';
+
+                return completedIds.contains(id) || completedKeys.contains(key);
+              }
+
+              bool prerequisitesAreDone(dynamic topic) {
+                final prerequisiteIds = topic.prerequisites
+                    .map((id) => id.toString())
+                    .toSet();
+
+                if (prerequisiteIds.isEmpty) return true;
+
+                final prerequisiteTopics = syllabusTopics
+                    .where(
+                      (item) => prerequisiteIds.contains(item.id.toString()),
+                    )
+                    .toList();
+
+                // Keep a topic locked if any prerequisite ID is missing.
+                if (prerequisiteTopics.length != prerequisiteIds.length) {
+                  return false;
+                }
+
+                return prerequisiteTopics.every(isTopicCompletedForPath);
+              }
+
+              // Sort without changing the original syllabus list.
+              final orderedTopics = [...topics];
+
+              int priority(dynamic topic) {
+                if (isTopicCompletedForPath(topic)) return 0;
+                if (prerequisitesAreDone(topic)) return 1;
+                return 2;
+              }
+
+              orderedTopics.sort((a, b) {
+                final priorityDifference = priority(a).compareTo(priority(b));
+
+                if (priorityDifference != 0) {
+                  return priorityDifference;
+                }
+
+                // Keep the original syllabus order within each group.
+                return topics.indexOf(a).compareTo(topics.indexOf(b));
+              });
+
+              final completedCount = orderedTopics
+                  .where(isTopicCompletedForPath)
                   .length;
+
               final ratio = topics.isEmpty
                   ? 0.0
                   : completedCount / topics.length;
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -3052,26 +3790,39 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(color: themeColors.textSecondary),
                           )
                         else
-                          ...topics.asMap().entries.map((entry) {
+                          ...orderedTopics.asMap().entries.map((entry) {
                             final index = entry.key;
                             final topic = entry.value;
                             final topicId = topic.id.toString();
-                            final isCompleted = completedIds.contains(topicId);
+
+                            final topicKey =
+                                '${topic.subject.trim().toLowerCase()}::${topic.name.trim().toLowerCase()}';
+
+                            final isCompleted =
+                                completedIds.contains(topicId) ||
+                                completedKeys.contains(topicKey);
+
                             final prerequisites = topic.prerequisites
                                 .map((id) => id.toString())
                                 .toList();
-                            final prerequisiteNames = syllabusTopics
+
+                            final prerequisiteTopics = syllabusTopics
                                 .where(
                                   (item) => prerequisites.contains(
                                     item.id.toString(),
                                   ),
                                 )
+                                .toList();
+
+                            final prerequisiteNames = prerequisiteTopics
                                 .map((item) => item.name)
                                 .toList();
-                            final prerequisitesDone = prerequisites.every(
-                              completedIds.contains,
+
+                            final prerequisitesDone = prerequisitesAreDone(
+                              topic,
                             );
                             final eligible = prerequisitesDone;
+
                             final Color statusColor = isCompleted
                                 ? LearnRootColors.success
                                 : eligible
@@ -3906,24 +4657,47 @@ class _HomeScreenState extends State<HomeScreen> {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: topicStream,
       builder: (context, topicSnapshot) {
-        final completed = <String>{};
+        final completedIds = <String>{};
+        final completedKeys = <String>{};
+
         if (topicSnapshot.hasData) {
           for (final doc in topicSnapshot.data!.docs) {
             final data = doc.data();
+
             if (data['status']?.toString() == 'completed') {
-              completed.add(doc.id);
-              if (data['topicId'] != null)
-                completed.add(data['topicId'].toString());
+              completedIds.add(doc.id);
+
+              if (data['topicId'] != null) {
+                completedIds.add(data['topicId'].toString());
+              }
+
+              final savedSubject = (data['subject'] ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+              final savedTopicName = (data['topicName'] ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+
+              if (savedSubject.isNotEmpty && savedTopicName.isNotEmpty) {
+                completedKeys.add('$savedSubject::$savedTopicName');
+              }
             }
           }
         }
+
+        bool isTopicCompleted(dynamic topic) {
+          final idMatches = completedIds.contains(topic.id.toString());
+          final topicKey =
+              '${topic.subject.trim().toLowerCase()}::${topic.name.trim().toLowerCase()}';
+
+          return idMatches || completedKeys.contains(topicKey);
+        }
+
         final allTotal = syllabusTopics.length;
-        final overall = allTotal == 0
-            ? 0.0
-            : (syllabusTopics
-                      .where((t) => completed.contains(t.id.toString()))
-                      .length /
-                  allTotal);
+        final completedCount = syllabusTopics.where(isTopicCompleted).length;
+        final overall = allTotal == 0 ? 0.0 : completedCount / allTotal;
 
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: quizStream,
@@ -3956,11 +4730,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       _analyticsCard(
                         title: 'Syllabus completed',
                         value: '${(overall * 100).round()}%',
-                        subtitle:
-                            '${syllabusTopics.where((t) => completed.contains(t.id.toString())).length} of $allTotal topics',
+                        subtitle: '$completedCount of $allTotal topics',
                         icon: Icons.account_tree_outlined,
                         fraction: overall,
                       ),
+
                       _analyticsCard(
                         title: 'Quizzes attempted',
                         value: '${attempts.length}',
@@ -4021,9 +4795,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           )
                           .toList();
-                      final done = subjectTopics
-                          .where((t) => completed.contains(t.id.toString()))
-                          .length;
+                      final done = subjectTopics.where(isTopicCompleted).length;
                       final value = subjectTopics.isEmpty
                           ? 0.0
                           : done / subjectTopics.length;
@@ -4903,13 +5675,211 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   //PART15
+
+
+
+  // Lets a Google-only account add an email/password sign-in method
+  // without creating a second Firebase user.
+  Future<void> _setPasswordForGoogleAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null || user.email == null || user.email!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please sign in with Google before setting a password.'),
+        ),
+      );
+      return;
+    }
+
+    final hasPasswordProvider =
+        user.providerData.any((provider) => provider.providerId == 'password');
+
+    if (hasPasswordProvider) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This account already has email/password sign-in enabled.'),
+        ),
+      );
+      return;
+    }
+
+    final passwordController = TextEditingController();
+    final confirmController = TextEditingController();
+
+    try {
+      final passwords = await showDialog<Map<String, String>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          bool hidePassword = true;
+          bool hideConfirmation = true;
+
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: const Text('Set an account password'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'This adds password sign-in to ${user.email}. '
+                        'Your existing LearnRoot account and progress stay the same.',
+                      ),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: hidePassword,
+                        autofillHints: const [AutofillHints.newPassword],
+                        decoration: InputDecoration(
+                          labelText: 'New password',
+                          helperText: 'Use at least 6 characters.',
+                          suffixIcon: IconButton(
+                            onPressed: () => setDialogState(
+                              () => hidePassword = !hidePassword,
+                            ),
+                            icon: Icon(
+                              hidePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: confirmController,
+                        obscureText: hideConfirmation,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm password',
+                          suffixIcon: IconButton(
+                            onPressed: () => setDialogState(
+                              () => hideConfirmation = !hideConfirmation,
+                            ),
+                            icon: Icon(
+                              hideConfirmation
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      final password = passwordController.text;
+                      final confirmation = confirmController.text;
+
+                      if (password.length < 6) {
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Password must contain at least 6 characters.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (password != confirmation) {
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          const SnackBar(
+                            content: Text('The passwords do not match.'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.pop(dialogContext, {
+                        'password': password,
+                      });
+                    },
+                    child: const Text('Save password'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+
+      if (passwords == null || !mounted) return;
+
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: passwords['password']!,
+      );
+
+      await user.linkWithCredential(credential);
+      await user.reload();
+
+      if (!mounted) return;
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Password added successfully. You can now sign in with Google or email/password.',
+          ),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      String message;
+      switch (e.code) {
+        case 'provider-already-linked':
+          message = 'This account already has password sign-in enabled.';
+          break;
+        case 'credential-already-in-use':
+        case 'email-already-in-use':
+          message = 'This email/password credential is already linked to another Firebase account. No account was created.';
+          break;
+        case 'requires-recent-login':
+          message = 'For security, sign out and sign in with Google again, then retry setting the password.';
+          break;
+        case 'weak-password':
+          message = 'Choose a stronger password with at least 6 characters.';
+          break;
+        case 'network-request-failed':
+          message = 'Network error. Check your connection and try again.';
+          break;
+        default:
+          message = e.message ?? 'Could not set the password. Please try again.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not set the password. Please try again.'),
+        ),
+      );
+    } finally {
+      passwordController.dispose();
+      confirmController.dispose();
+    }
+  }
+
   // ============================================================
   // SETTINGS PAGE
   // ============================================================
 
   Widget _buildSettingsPage() {
-    final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeColors =
+        Theme.of(context).extension<LearnRootThemeColors>()!;
     final user = FirebaseAuth.instance.currentUser;
 
     return Column(
@@ -4921,83 +5891,45 @@ class _HomeScreenState extends State<HomeScreen> {
           Icons.settings_outlined,
         ),
         const SizedBox(height: 22),
+
+        // Learning Preferences
         _sectionCard(
           title: 'Learning Preferences',
           icon: Icons.tune_rounded,
           child: Column(
             children: [
               _settingItem(
-                'Daily Study Goal',
-                _settingsLoading
-                    ? 'Loading…'
-                    : '${_dailyGoalMinutes} minutes per day',
-                Icons.flag_outlined,
-                onTap: _settingsLoading ? () {} : _chooseDailyGoal,
-              ),
-              Divider(color: themeColors.border, height: 22),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: LearnRootColors.primary.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active_outlined,
-                    color: LearnRootColors.primary,
-                  ),
-                ),
-                title: Text(
-                  'Learning Reminders',
-                  style: TextStyle(
-                    color: themeColors.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  _notificationsEnabled
-                      ? 'Preference enabled'
-                      : 'Preference disabled',
-                  style: TextStyle(
-                    color: themeColors.textSecondary,
-                    fontSize: 11,
-                  ),
-                ),
-                trailing: Switch(
-                  value: _notificationsEnabled,
-                  onChanged: (value) async {
-                    setState(() => _notificationsEnabled = value);
-                    await _saveUserPreferences({'notificationsEnabled': value});
-                  },
-                ),
-              ),
-              Divider(color: themeColors.border, height: 22),
-              _settingItem(
                 'Preferred Learning Style',
                 _preferredLearningStyle,
                 Icons.psychology_outlined,
                 onTap: _chooseLearningStyle,
               ),
-              Divider(color: themeColors.border, height: 22),
+              Divider(
+                color: themeColors.border,
+                height: 22,
+              ),
               _settingItem(
                 'Appearance',
-                isDark ? 'Dark mode' : 'Light mode',
-                isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
-                onTap: () async {
-                  final next = isDark ? ThemeMode.light : ThemeMode.dark;
-                  widget.onThemeChanged(next);
-                  await _saveUserPreferences({
-                    'themeMode': next == ThemeMode.dark ? 'dark' : 'light',
-                  });
+                switch (_selectedThemeMode) {
+                  ThemeMode.light => 'Light Mode',
+                  ThemeMode.dark => 'Dark Mode',
+                  ThemeMode.system => 'System Default',
                 },
+                switch (_selectedThemeMode) {
+                  ThemeMode.light => Icons.light_mode_outlined,
+                  ThemeMode.dark => Icons.dark_mode_outlined,
+                  ThemeMode.system =>
+                    Icons.settings_suggest_outlined,
+                },
+                onTap: _chooseAppearance,
               ),
             ],
           ),
         ),
+
         const SizedBox(height: 18),
+
+        // Account
         _sectionCard(
           title: 'Account',
           icon: Icons.person_outline_rounded,
@@ -5010,18 +5942,44 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => ProfileScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => ProfileScreen(),
+                    ),
                   );
                 },
               ),
-              Divider(color: themeColors.border, height: 22),
+              Divider(
+                color: themeColors.border,
+                height: 22,
+              ),
               _settingItem(
                 'Signed in as',
                 user?.email ?? 'Guest account',
                 Icons.verified_user_outlined,
                 onTap: () {},
               ),
-              Divider(color: themeColors.border, height: 22),
+              if (user != null &&
+                  user.providerData.any(
+                    (provider) => provider.providerId == 'google.com',
+                  ) &&
+                  !user.providerData.any(
+                    (provider) => provider.providerId == 'password',
+                  )) ...[
+                Divider(
+                  color: themeColors.border,
+                  height: 22,
+                ),
+                _settingItem(
+                  'Set Password',
+                  'Enable email and password sign-in for this account',
+                  Icons.lock_outline_rounded,
+                  onTap: _setPasswordForGoogleAccount,
+                ),
+              ],
+              Divider(
+                color: themeColors.border,
+                height: 22,
+              ),
               _settingItem(
                 'Sign out',
                 'Sign out of this LearnRoot account',
@@ -5031,19 +5989,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+
         const SizedBox(height: 14),
+
+        // Preferences information
         _infoCard(
           Icons.info_outline_rounded,
           'About your preferences',
           _settingsLoading
               ? 'Loading your saved preferences…'
               : user == null
-              ? 'Preferences work for this session. Sign in to save them to your account.'
-              : 'Your preferences are saved to your signed-in student profile. Reminder scheduling is not enabled by this switch alone.',
+                  ? 'Preferences work for this session. Sign in to save them to your account.'
+                  : 'Your preferences are saved to your signed-in student profile.',
         ),
       ],
     );
   }
+
 
   Widget _settingItem(
     String title,
@@ -5051,7 +6013,8 @@ class _HomeScreenState extends State<HomeScreen> {
     IconData icon, {
     required VoidCallback onTap,
   }) {
-    final themeColors = Theme.of(context).extension<LearnRootThemeColors>()!;
+    final themeColors =
+        Theme.of(context).extension<LearnRootThemeColors>()!;
 
     return InkWell(
       onTap: onTap,
@@ -5067,11 +6030,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: LearnRootColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(icon, color: LearnRootColors.primary, size: 20),
+              child: Icon(
+                icon,
+                color: LearnRootColors.primary,
+                size: 20,
+              ),
             ),
-
             const SizedBox(width: 13),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -5084,9 +6049,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     subtitle,
                     style: TextStyle(
@@ -5097,13 +6060,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
-            Icon(Icons.chevron_right, color: themeColors.textSecondary),
+            Icon(
+              Icons.chevron_right,
+              color: themeColors.textSecondary,
+            ),
           ],
         ),
       ),
     );
   }
+
+
 
   //PART16
   // ============================================================

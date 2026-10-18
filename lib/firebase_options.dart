@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDVkL-1_IJtxkRXOxngxlz6PqC1ARpYP6c',
-    appId: '1:361817694015:android:17383d2e038c327651fd8a',
+    appId: '1:361817694015:android:0d5ebf344fd6c86751fd8a',
     messagingSenderId: '361817694015',
     projectId: 'learnroot-de5a8',
     storageBucket: 'learnroot-de5a8.firebasestorage.app',
@@ -60,29 +60,31 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAdlMxC-REBnog8OxyFY1apvs2jK1f_4u0',
-    appId: '1:361817694015:ios:f98400b3ed141be251fd8a',
+    appId: '1:361817694015:ios:77951707a84482c351fd8a',
     messagingSenderId: '361817694015',
     projectId: 'learnroot-de5a8',
     storageBucket: 'learnroot-de5a8.firebasestorage.app',
-    iosBundleId: 'com.example.learnroot71',
+    iosClientId: '361817694015-ulivlo0r65lnniqhitihfk5qf82g6qdp.apps.googleusercontent.com',
+    iosBundleId: 'com.example.learnroot',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyAdlMxC-REBnog8OxyFY1apvs2jK1f_4u0',
-    appId: '1:361817694015:ios:f98400b3ed141be251fd8a',
+    appId: '1:361817694015:ios:77951707a84482c351fd8a',
     messagingSenderId: '361817694015',
     projectId: 'learnroot-de5a8',
     storageBucket: 'learnroot-de5a8.firebasestorage.app',
-    iosBundleId: 'com.example.learnroot71',
+    iosClientId: '361817694015-ulivlo0r65lnniqhitihfk5qf82g6qdp.apps.googleusercontent.com',
+    iosBundleId: 'com.example.learnroot',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyBDRSGPxD4YBRrgyAYNn5TzIH_4bkqCl1s',
-    appId: '1:361817694015:web:71feca3777733da151fd8a',
+    appId: '1:361817694015:web:3c59b4469352cdba51fd8a',
     messagingSenderId: '361817694015',
     projectId: 'learnroot-de5a8',
     authDomain: 'learnroot-de5a8.firebaseapp.com',
     storageBucket: 'learnroot-de5a8.firebasestorage.app',
-    measurementId: 'G-CC2RTXVGYQ',
+    measurementId: 'G-40QX0H7QH8',
   );
 }

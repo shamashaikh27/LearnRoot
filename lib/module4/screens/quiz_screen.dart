@@ -166,6 +166,15 @@ class _QuizScreenState extends State<QuizScreen> {
         totalQuestions: questions.length,
         percentage: percentage,
       );
+
+      // Mark the topic as completed if the score is at least 60%.
+      if (percentage >= 60) {
+        await ProgressService.markTopicCompleted(
+          subject: widget.topic.subject,
+          topicId: widget.topic.topicCode.toString(),
+          topicName: widget.topic.topicName,
+        );
+      }
     } catch (e) {
       debugPrint('Could not save quiz progress: $e');
     }

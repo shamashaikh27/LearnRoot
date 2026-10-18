@@ -1,3 +1,4 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -33,16 +34,30 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Color get _backgroundColor =>
       widget.isDarkMode ? AppTheme.darkBackground : AppTheme.lightBackground;
+
   Color get _cardColor =>
       widget.isDarkMode ? AppTheme.darkCard : AppTheme.lightCard;
+
   Color get _inputBackground =>
       widget.isDarkMode ? AppTheme.darkSecondary : AppTheme.lightSecondary;
+
   Color get _primaryColor => AppTheme.primaryPurple;
+
   Color get _mainText =>
       widget.isDarkMode ? AppTheme.darkMainText : AppTheme.lightMainText;
+
   Color get _secondaryText => widget.isDarkMode
       ? AppTheme.darkSecondaryText
       : AppTheme.lightSecondaryText;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (kIsWeb) {
+      _completeGoogleRedirect();
+    }
+  }
 
   @override
   void dispose() {
@@ -51,43 +66,142 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // Handles Google sign-in after returning from the redirect.
+  Future<void> _completeGoogleRedirect() async {
+    debugPrint('GOOGLE REDIRECT: handler started');
+
+    try {
+      final result = await FirebaseAuth.instance.getRedirectResult();
+
+      debugPrint(
+        'GOOGLE REDIRECT: redirect user = '
+        '${result.user?.uid ?? "null"}',
+      );
+
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      debugPrint(
+        'GOOGLE REDIRECT: current user = '
+        '${currentUser?.uid ?? "null"}',
+      );
+
+      final user = result.user ?? currentUser;
+
+      if (user == null) {
+        debugPrint(
+          'GOOGLE REDIRECT: no authenticated user found.',
+        );
+        return;
+      }
+
+      if (mounted) {
+        setState(() => isGoogleLoggingIn = true);
+      }
+
+      await _finishGoogleSignIn(user);
+    } on FirebaseAuthException catch (e, stackTrace) {
+      debugPrint(
+        'GOOGLE REDIRECT AUTH ERROR: ${e.code} - ${e.message}',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+
+      if (mounted) {
+        _showMessage('Google sign-in failed: ${e.code}');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('GOOGLE REDIRECT ERROR: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
+      if (mounted) {
+        _showMessage(
+          'Google sign-in encountered an error. '
+          'Check the terminal for details.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isGoogleLoggingIn = false);
+      }
+    }
+  }
+
   Future<String> _getGender(User user) async {
     try {
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
+
       final data = userDoc.data();
+
       if (data != null && data['gender'] != null) {
         return data['gender'].toString();
       }
-    } catch (_) {
-      // Authentication should still proceed if the profile cannot be read.
+    } catch (e) {
+      debugPrint('PROFILE GENDER READ ERROR: $e');
     }
+
     return 'Male';
   }
 
-  void _openHome(String gender) {
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HomeScreen(
-          onThemeChanged: widget.onThemeChanged,
-          isDarkMode: widget.isDarkMode,
-          gender: gender,
-        ),
-      ),
-    );
-  }
+  
+void _openHome(String gender) {
+  if (!mounted) return;
+
+  debugPrint('LOGIN: Firebase authenticated; root auth listener will open HomeScreen.');
+}
 
   void _showMessage(String message) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
+  }
+
+  // Creates or updates the user's Firestore profile, then opens HomeScreen.
+  // Authentication remains valid even if the profile write fails.
+  Future<void> _finishGoogleSignIn(User user) async {
+    debugPrint('GOOGLE SIGN-IN: finishing for ${user.uid}');
+
+    try {
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+      final userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        await userRef.set({
+          'name': user.displayName ?? 'LearnRoot User',
+          'email': user.email ?? '',
+          'gender': 'Male',
+          'provider': 'google',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        debugPrint('GOOGLE SIGN-IN: profile created');
+      } else {
+        debugPrint('GOOGLE SIGN-IN: profile already exists');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('GOOGLE SIGN-IN FIRESTORE ERROR: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
+      // Do not block navigation solely because Firestore profile
+      // creation or reading failed.
+    }
+
+    final gender = await _getGender(user);
+
+    if (!mounted) return;
+
+    setState(() => isGoogleLoggingIn = false);
+    _openHome(gender);
   }
 
   Future<void> _login() async {
@@ -100,12 +214,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => isLoggingIn = true);
+
     try {
-      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
       final user = credential.user;
+
       if (user == null) {
         throw FirebaseAuthException(
           code: 'user-not-found',
@@ -114,14 +232,18 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final gender = await _getGender(user);
+
       if (!mounted) return;
+
       setState(() => isLoggingIn = false);
       _openHome(gender);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+
       setState(() => isLoggingIn = false);
 
       String message;
+
       switch (e.code) {
         case 'invalid-email':
           message = 'Please enter a valid email address.';
@@ -143,72 +265,95 @@ class _LoginScreenState extends State<LoginScreen> {
         default:
           message = e.message ?? 'Login failed. Please try again.';
       }
+
       _showMessage(message);
-    } catch (_) {
+    } catch (e, stackTrace) {
+      debugPrint('EMAIL LOGIN ERROR: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
       if (!mounted) return;
+
       setState(() => isLoggingIn = false);
-      _showMessage('Something went wrong. Please try again.');
+      _showMessage('Something went wrong. Check the terminal.');
     }
   }
 
   Future<void> _loginWithGoogle() async {
     if (isGoogleLoggingIn || isLoggingIn) return;
+
     setState(() => isGoogleLoggingIn = true);
 
     try {
-      UserCredential userCredential;
       if (kIsWeb) {
-        userCredential = await FirebaseAuth.instance.signInWithPopup(
-          GoogleAuthProvider(),
-        );
-      } else {
-        final googleSignIn = GoogleSignIn.instance;
-        await googleSignIn.initialize();
-        final googleUser = await googleSignIn.authenticate();
-        final googleAuth = googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          idToken: googleAuth.idToken,
-        );
-        userCredential = await FirebaseAuth.instance.signInWithCredential(
-          credential,
-        );
-      }
+  debugPrint('GOOGLE SIGN-IN: starting web popup');
+
+  final userCredential =
+      await FirebaseAuth.instance.signInWithPopup(
+    GoogleAuthProvider(),
+  );
+
+  final user = userCredential.user;
+
+  if (user == null) {
+    throw Exception(
+      'Google sign-in completed without a Firebase user.',
+    );
+  }
+
+  debugPrint('GOOGLE SIGN-IN: popup authenticated ${user.uid}');
+
+  await _finishGoogleSignIn(user);
+  return;
+}
+
+      final googleSignIn = GoogleSignIn.instance;
+
+      await googleSignIn.initialize();
+
+      final googleUser = await googleSignIn.authenticate();
+      final googleAuth = googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
       final user = userCredential.user;
-      if (user == null) throw Exception('Google user not found.');
 
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
-      final userDoc = await userRef.get();
-      if (!userDoc.exists) {
-        await userRef.set({
-          'name': user.displayName ?? 'LearnRoot User',
-          'email': user.email ?? '',
-          'gender': 'Male',
-          'provider': 'google',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+      if (user == null) {
+        throw Exception('Google user not found.');
       }
 
-      final gender = await _getGender(user);
+      await _finishGoogleSignIn(user);
+    } on FirebaseAuthException catch (e, stackTrace) {
+      debugPrint(
+        'GOOGLE SIGN-IN AUTH ERROR: ${e.code} - ${e.message}',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+
       if (!mounted) return;
+
       setState(() => isGoogleLoggingIn = false);
-      _openHome(gender);
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      setState(() => isGoogleLoggingIn = false);
+
       String message = e.message ?? 'Google sign-in failed.';
+
       if (e.code == 'popup-closed-by-user') {
         message = 'Google sign-in was cancelled.';
       } else if (e.code == 'popup-blocked') {
-        message = 'Allow popups in your browser and try again.';
+        message = 'Google sign-in was blocked. Please try again.';
       }
+
       _showMessage(message);
-    } catch (_) {
+    } catch (e, stackTrace) {
+      debugPrint('GOOGLE SIGN-IN ERROR: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
       if (!mounted) return;
+
       setState(() => isGoogleLoggingIn = false);
-      _showMessage('Google sign-in failed. Please try again.');
+      _showMessage('Google sign-in failed. Check the terminal.');
     }
   }
 
@@ -224,18 +369,26 @@ class _LoginScreenState extends State<LoginScreen> {
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: _inputBackground,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 17),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 15,
+        vertical: 17,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: _secondaryText.withValues(alpha: .12)),
+        borderSide: BorderSide(
+          color: _secondaryText.withValues(alpha: .12),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: _primaryColor, width: 1.5),
+        borderSide: BorderSide(
+          color: _primaryColor,
+          width: 1.5,
+        ),
       ),
     );
   }
@@ -259,7 +412,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-      child: Icon(Icons.school_rounded, color: Colors.white, size: size * .52),
+      child: Icon(
+        Icons.school_rounded,
+        color: Colors.white,
+        size: size * .52,
+      ),
     );
   }
 
@@ -289,7 +446,9 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: BoxDecoration(
             color: _primaryColor.withValues(alpha: .13),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: _primaryColor.withValues(alpha: .25)),
+            border: Border.all(
+              color: _primaryColor.withValues(alpha: .25),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -326,7 +485,11 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 18),
         Text(
           'Build strong foundations, uncover learning gaps, and turn difficult topics into clear ideas.',
-          style: TextStyle(color: _secondaryText, fontSize: 16, height: 1.7),
+          style: TextStyle(
+            color: _secondaryText,
+            fontSize: 16,
+            height: 1.7,
+          ),
         ),
         const SizedBox(height: 28),
         _featureLine(
@@ -339,7 +502,10 @@ class _LoginScreenState extends State<LoginScreen> {
           'AI-powered explanations and revision',
         ),
         const SizedBox(height: 15),
-        _featureLine(Icons.insights_rounded, 'A clearer view of your progress'),
+        _featureLine(
+          Icons.insights_rounded,
+          'A clearer view of your progress',
+        ),
         const SizedBox(height: 34),
         _miniLearningGraph(),
       ],
@@ -356,7 +522,11 @@ class _LoginScreenState extends State<LoginScreen> {
             color: _primaryColor.withValues(alpha: .12),
             borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(icon, color: AppTheme.gradientPurpleEnd, size: 18),
+          child: Icon(
+            icon,
+            color: AppTheme.gradientPurpleEnd,
+            size: 18,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -377,12 +547,15 @@ class _LoginScreenState extends State<LoginScreen> {
     final surface = widget.isDarkMode
         ? Colors.white.withValues(alpha: .035)
         : Colors.white.withValues(alpha: .55);
+
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _secondaryText.withValues(alpha: .13)),
+        border: Border.all(
+          color: _secondaryText.withValues(alpha: .13),
+        ),
       ),
       child: Row(
         children: [
@@ -420,10 +593,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 AppTheme.gradientPurpleEnd.withValues(alpha: .10),
               ],
             ),
-            border: Border.all(color: _primaryColor.withValues(alpha: .28)),
+            border: Border.all(
+              color: _primaryColor.withValues(alpha: .28),
+            ),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: AppTheme.gradientPurpleEnd, size: 20),
+          child: Icon(
+            icon,
+            color: AppTheme.gradientPurpleEnd,
+            size: 20,
+          ),
         ),
         const SizedBox(height: 7),
         Text(
@@ -442,9 +621,13 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       padding: const EdgeInsets.all(30),
       decoration: BoxDecoration(
-        color: _cardColor.withValues(alpha: widget.isDarkMode ? .94 : .97),
+        color: _cardColor.withValues(
+          alpha: widget.isDarkMode ? .94 : .97,
+        ),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: _primaryColor.withValues(alpha: .22)),
+        border: Border.all(
+          color: _primaryColor.withValues(alpha: .22),
+        ),
         boxShadow: [
           BoxShadow(
             color: _primaryColor.withValues(
@@ -460,7 +643,10 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 6,
+            ),
             decoration: BoxDecoration(
               color: _primaryColor.withValues(alpha: .12),
               borderRadius: BorderRadius.circular(30),
@@ -488,7 +674,11 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 8),
           Text(
             'Pick up where your learning journey left off.',
-            style: TextStyle(color: _secondaryText, fontSize: 13, height: 1.5),
+            style: TextStyle(
+              color: _secondaryText,
+              fontSize: 13,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 28),
           _fieldLabel('Email address'),
@@ -512,8 +702,11 @@ class _LoginScreenState extends State<LoginScreen> {
             obscureText: hidePassword,
             textInputAction: TextInputAction.done,
             autofillHints: const [AutofillHints.password],
-            onSubmitted: (_) =>
-                (isLoggingIn || isGoogleLoggingIn) ? null : _login(),
+            onSubmitted: (_) {
+              if (!isLoggingIn && !isGoogleLoggingIn) {
+                _login();
+              }
+            },
             style: TextStyle(color: _mainText),
             decoration: _inputDecoration(
               hintText: 'Enter your password',
@@ -527,7 +720,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: _secondaryText,
                   size: 20,
                 ),
-                onPressed: () => setState(() => hidePassword = !hidePassword),
+                onPressed: () =>
+                    setState(() => hidePassword = !hidePassword),
               ),
             ),
           ),
@@ -550,7 +744,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               child: ElevatedButton(
-                onPressed: (isLoggingIn || isGoogleLoggingIn) ? null : _login,
+                onPressed:
+                    (isLoggingIn || isGoogleLoggingIn) ? null : _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   disabledBackgroundColor: Colors.transparent,
@@ -580,7 +775,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           SizedBox(width: 9),
-                          Icon(Icons.arrow_forward_rounded, size: 18),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 18,
+                          ),
                         ],
                       ),
               ),
@@ -590,7 +788,9 @@ class _LoginScreenState extends State<LoginScreen> {
           Row(
             children: [
               Expanded(
-                child: Divider(color: _secondaryText.withValues(alpha: .22)),
+                child: Divider(
+                  color: _secondaryText.withValues(alpha: .22),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -605,7 +805,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               Expanded(
-                child: Divider(color: _secondaryText.withValues(alpha: .22)),
+                child: Divider(
+                  color: _secondaryText.withValues(alpha: .22),
+                ),
               ),
             ],
           ),
@@ -619,7 +821,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   : _loginWithGoogle,
               style: OutlinedButton.styleFrom(
                 foregroundColor: _mainText,
-                side: BorderSide(color: _secondaryText.withValues(alpha: .24)),
+                side: BorderSide(
+                  color: _secondaryText.withValues(alpha: .24),
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -661,8 +865,11 @@ class _LoginScreenState extends State<LoginScreen> {
               alignment: WrapAlignment.center,
               children: [
                 Text(
-                  "New to LearnRoot? ",
-                  style: TextStyle(color: _secondaryText, fontSize: 12),
+                  'New to LearnRoot? ',
+                  style: TextStyle(
+                    color: _secondaryText,
+                    fontSize: 12,
+                  ),
                 ),
                 TextButton(
                   style: TextButton.styleFrom(
@@ -675,14 +882,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            RegistrationScreen(isDarkMode: widget.isDarkMode),
+                        builder: (_) => RegistrationScreen(
+                          isDarkMode: widget.isDarkMode,
+                        ),
                       ),
                     );
                   },
                   child: const Text(
                     'Create an account',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
@@ -694,13 +905,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _fieldLabel(String label) => Text(
-    label,
-    style: TextStyle(
-      color: _mainText,
-      fontSize: 12,
-      fontWeight: FontWeight.w700,
-    ),
-  );
+        label,
+        style: TextStyle(
+          color: _mainText,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -715,6 +926,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 1020;
+
                 if (wide) {
                   return SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
@@ -733,7 +945,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             Expanded(child: _buildBrandPanel()),
                             const SizedBox(width: 70),
-                            SizedBox(width: 445, child: _buildLoginCard()),
+                            SizedBox(
+                              width: 445,
+                              child: _buildLoginCard(),
+                            ),
                           ],
                         ),
                       ),
